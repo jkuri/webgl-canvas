@@ -28,7 +28,7 @@ function createRotationCursor(angle: number): string {
 }
 
 // Get rotation cursor for a specific corner handle
-export function getRotatedRotationCursor(handle: ResizeHandle, shapeRotation: number): string {
+function getRotatedRotationCursor(handle: ResizeHandle, shapeRotation: number): string {
   // Only corner handles can rotate
   const cornerAngles: Record<string, number> = {
     nw: 0,
@@ -60,9 +60,6 @@ export function getRotatedRotationCursor(handle: ResizeHandle, shapeRotation: nu
 
   return cursorCache.get(cacheKey)!;
 }
-
-// Default rotation cursor (for when Cmd is held but not over a corner)
-export const rotationCursor = createRotationCursor(0);
 
 // Cache for cursor URLs to avoid regenerating
 const cursorCache = new Map<string, string>();
@@ -204,17 +201,17 @@ export function useCanvasInteractions({
         return;
       }
 
-      if (activeTool === "zoom" && e.button === 0) {
-        e.shiftKey ? actions.zoomOut() : actions.zoomIn();
-        return;
-      }
-
       if (activeTool === "select" && e.button === 0) {
         const world = screenToWorld(e.clientX, e.clientY);
 
         // Check for rotation mode (Cmd/Ctrl + click on corner handles)
         if ((e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
           const selectedShapes = selectedIds.map((id) => getShapeById(id)).filter(Boolean) as Shape[];
+
+          // Don't allow rotation if any selected shape is locked
+          if (selectedShapes.some((s) => s.locked)) {
+            return;
+          }
 
           // Check if clicking on a corner handle
           let clickedHandle: ResizeHandle = null;
@@ -251,56 +248,61 @@ export function useCanvasInteractions({
         if (selectedIds.length > 0) {
           const selectedShapes = selectedIds.map((id) => getShapeById(id)).filter(Boolean) as Shape[];
 
-          // For single shape, use rotated handle hit test
-          let handle: ResizeHandle = null;
-          if (selectedShapes.length === 1) {
-            handle = hitTestRotatedShapeHandle(world.x, world.y, selectedShapes[0], transform.scale);
-          } else {
-            const bounds = calculateBoundingBox(selectedShapes);
-            if (bounds) {
-              handle = hitTestBoundsHandle(world.x, world.y, bounds, transform.scale);
-            }
-          }
+          // Don't allow resize if any selected shape is locked
+          const anyLocked = selectedShapes.some((s) => s.locked);
 
-          if (handle) {
-            const isSingleRotatedShape = selectedShapes.length === 1 && selectedShapes[0].rotation !== 0;
-            const shapeRotation = isSingleRotatedShape ? selectedShapes[0].rotation : 0;
-
-            // For single rotated shape, use unrotated bounds
-            const bounds = isSingleRotatedShape
-              ? {
-                  x: selectedShapes[0].x,
-                  y: selectedShapes[0].y,
-                  width: selectedShapes[0].width,
-                  height: selectedShapes[0].height,
-                }
-              : calculateBoundingBox(selectedShapes);
-
-            if (bounds) {
-              setIsResizing(true, handle);
-              const originalShapes = new Map<
-                string,
-                { x: number; y: number; width: number; height: number; rotation: number }
-              >();
-              for (const shape of selectedShapes) {
-                originalShapes.set(shape.id, {
-                  x: shape.x,
-                  y: shape.y,
-                  width: shape.width,
-                  height: shape.height,
-                  rotation: shape.rotation,
-                });
+          if (!anyLocked) {
+            // For single shape, use rotated handle hit test
+            let handle: ResizeHandle = null;
+            if (selectedShapes.length === 1) {
+              handle = hitTestRotatedShapeHandle(world.x, world.y, selectedShapes[0], transform.scale);
+            } else {
+              const bounds = calculateBoundingBox(selectedShapes);
+              if (bounds) {
+                handle = hitTestBoundsHandle(world.x, world.y, bounds, transform.scale);
               }
-              resizeStartRef.current = {
-                worldX: world.x,
-                worldY: world.y,
-                handle,
-                originalBounds: bounds,
-                originalShapes,
-                isSingleRotatedShape,
-                shapeRotation,
-              };
-              return;
+            }
+
+            if (handle) {
+              const isSingleRotatedShape = selectedShapes.length === 1 && selectedShapes[0].rotation !== 0;
+              const shapeRotation = isSingleRotatedShape ? selectedShapes[0].rotation : 0;
+
+              // For single rotated shape, use unrotated bounds
+              const bounds = isSingleRotatedShape
+                ? {
+                    x: selectedShapes[0].x,
+                    y: selectedShapes[0].y,
+                    width: selectedShapes[0].width,
+                    height: selectedShapes[0].height,
+                  }
+                : calculateBoundingBox(selectedShapes);
+
+              if (bounds) {
+                setIsResizing(true, handle);
+                const originalShapes = new Map<
+                  string,
+                  { x: number; y: number; width: number; height: number; rotation: number }
+                >();
+                for (const shape of selectedShapes) {
+                  originalShapes.set(shape.id, {
+                    x: shape.x,
+                    y: shape.y,
+                    width: shape.width,
+                    height: shape.height,
+                    rotation: shape.rotation,
+                  });
+                }
+                resizeStartRef.current = {
+                  worldX: world.x,
+                  worldY: world.y,
+                  handle,
+                  originalBounds: bounds,
+                  originalShapes,
+                  isSingleRotatedShape,
+                  shapeRotation,
+                };
+                return;
+              }
             }
           }
         }
@@ -313,13 +315,23 @@ export function useCanvasInteractions({
             setSelectedIds(isAlreadySelected ? selectedIds.filter((id) => id !== hit.id) : [...selectedIds, hit.id]);
           } else {
             if (!isAlreadySelected) setSelectedIds([hit.id]);
-            setIsDragging(true);
-            const shapesMap = new Map<string, { x: number; y: number }>();
-            for (const id of isAlreadySelected ? selectedIds : [hit.id]) {
+
+            // Check if any shape to be dragged is locked
+            const shapesToDrag = isAlreadySelected ? selectedIds : [hit.id];
+            const anyLocked = shapesToDrag.some((id) => {
               const shape = getShapeById(id);
-              if (shape) shapesMap.set(id, { x: shape.x, y: shape.y });
+              return shape?.locked;
+            });
+
+            if (!anyLocked) {
+              setIsDragging(true);
+              const shapesMap = new Map<string, { x: number; y: number }>();
+              for (const id of shapesToDrag) {
+                const shape = getShapeById(id);
+                if (shape) shapesMap.set(id, { x: shape.x, y: shape.y });
+              }
+              dragStartRef.current = { worldX: world.x, worldY: world.y, shapes: shapesMap };
             }
-            dragStartRef.current = { worldX: world.x, worldY: world.y, shapes: shapesMap };
           }
         } else {
           if (!e.shiftKey) setSelectedIds([]);

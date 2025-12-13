@@ -85,7 +85,7 @@ export function CanvasMenubar() {
 
         <MenubarMenu>
           <MenubarTrigger>View</MenubarTrigger>
-          <MenubarContent>
+          <MenubarContent className="w-42">
             <MenubarItem onClick={zoomIn}>
               Zoom In <MenubarShortcut>⌘+</MenubarShortcut>
             </MenubarItem>

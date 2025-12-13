@@ -1,10 +1,14 @@
 import { create } from "zustand";
+import { SHAPE_COLORS } from "@/lib/colors";
 import type { ResizeHandle, Shape, Tool, Transform } from "@/types";
 
 interface CanvasState {
   // Shapes
   shapes: Shape[];
   selectedIds: string[];
+
+  // Clipboard
+  clipboard: Shape[];
 
   // Transform
   transform: Transform;
@@ -36,6 +40,17 @@ interface CanvasActions {
   duplicateSelected: () => string[];
   bringToFront: (id: string) => void;
   sendToBack: (id: string) => void;
+
+  // Clipboard actions
+  copySelected: () => void;
+  paste: () => void;
+
+  // Transform actions for shapes
+  flipHorizontal: () => void;
+  flipVertical: () => void;
+
+  // Lock actions
+  toggleLock: () => void;
 
   // Selection actions
   setSelectedIds: (ids: string[]) => void;
@@ -71,16 +86,16 @@ interface CanvasActions {
 }
 
 const DEFAULT_SHAPES: Shape[] = [
-  { id: "1", type: "rect", x: 100, y: 100, width: 200, height: 150, rotation: 0, color: [0.4, 0.6, 1, 1] },
-  { id: "2", type: "rect", x: 350, y: 200, width: 150, height: 150, rotation: 0, color: [1, 0.5, 0.3, 1] },
-  { id: "3", type: "rect", x: 200, y: 350, width: 180, height: 120, rotation: 0, color: [0.5, 0.9, 0.5, 1] },
-  { id: "4", type: "rect", x: -100, y: -100, width: 120, height: 120, rotation: 0, color: [0.9, 0.4, 0.8, 1] },
+  { id: "1", type: "rect", x: 100, y: 100, width: 200, height: 150, rotation: 0, color: SHAPE_COLORS.Blue },
+  { id: "2", type: "rect", x: 450, y: 200, width: 150, height: 150, rotation: 0, color: SHAPE_COLORS.Fuchsia },
+  { id: "3", type: "rect", x: 200, y: 450, width: 180, height: 120, rotation: 0, color: SHAPE_COLORS.Green },
 ];
 
 export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => ({
   // Initial state
   shapes: DEFAULT_SHAPES,
   selectedIds: [],
+  clipboard: [],
   transform: { x: 0, y: 0, scale: 1 },
   activeTool: "select",
   isSpaceHeld: false,
@@ -157,6 +172,103 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       const shape = state.shapes[idx];
       const newShapes = [shape, ...state.shapes.slice(0, idx), ...state.shapes.slice(idx + 1)];
       return { shapes: newShapes };
+    }),
+
+  // Clipboard actions
+  copySelected: () => {
+    const state = get();
+    const selectedShapes = state.shapes.filter((s) => state.selectedIds.includes(s.id));
+    set({ clipboard: selectedShapes });
+  },
+
+  paste: () => {
+    const state = get();
+    if (state.clipboard.length === 0) return;
+
+    const newShapes: Shape[] = [];
+    const newIds: string[] = [];
+
+    for (const shape of state.clipboard) {
+      const newShape: Shape = {
+        ...shape,
+        id: crypto.randomUUID(),
+        x: shape.x + 20,
+        y: shape.y + 20,
+      };
+      newShapes.push(newShape);
+      newIds.push(newShape.id);
+    }
+
+    set((s) => ({
+      shapes: [...s.shapes, ...newShapes],
+      selectedIds: newIds,
+      clipboard: newShapes, // Update clipboard for subsequent pastes
+    }));
+  },
+
+  // Transform actions for shapes
+  flipHorizontal: () =>
+    set((state) => {
+      if (state.selectedIds.length === 0) return state;
+
+      // Calculate bounding box center of selection
+      const selectedShapes = state.shapes.filter((s) => state.selectedIds.includes(s.id));
+      let minX = Infinity;
+      let maxX = -Infinity;
+      for (const shape of selectedShapes) {
+        minX = Math.min(minX, shape.x);
+        maxX = Math.max(maxX, shape.x + shape.width);
+      }
+      const centerX = (minX + maxX) / 2;
+
+      return {
+        shapes: state.shapes.map((s) => {
+          if (!state.selectedIds.includes(s.id)) return s;
+          // Mirror x position around center and flip rotation
+          const newX = centerX - (s.x + s.width - centerX);
+          return { ...s, x: newX, rotation: -s.rotation };
+        }),
+      };
+    }),
+
+  flipVertical: () =>
+    set((state) => {
+      if (state.selectedIds.length === 0) return state;
+
+      // Calculate bounding box center of selection
+      const selectedShapes = state.shapes.filter((s) => state.selectedIds.includes(s.id));
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (const shape of selectedShapes) {
+        minY = Math.min(minY, shape.y);
+        maxY = Math.max(maxY, shape.y + shape.height);
+      }
+      const centerY = (minY + maxY) / 2;
+
+      return {
+        shapes: state.shapes.map((s) => {
+          if (!state.selectedIds.includes(s.id)) return s;
+          // Mirror y position around center and flip rotation
+          const newY = centerY - (s.y + s.height - centerY);
+          return { ...s, y: newY, rotation: -s.rotation };
+        }),
+      };
+    }),
+
+  // Lock actions
+  toggleLock: () =>
+    set((state) => {
+      if (state.selectedIds.length === 0) return state;
+      // Check if any selected shape is unlocked
+      const selectedShapes = state.shapes.filter((s) => state.selectedIds.includes(s.id));
+      const anyUnlocked = selectedShapes.some((s) => !s.locked);
+
+      return {
+        shapes: state.shapes.map((s) => {
+          if (!state.selectedIds.includes(s.id)) return s;
+          return { ...s, locked: anyUnlocked };
+        }),
+      };
     }),
 
   // Selection actions

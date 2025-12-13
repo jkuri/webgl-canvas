@@ -1,6 +1,5 @@
 export {
   calculateBoundingBox,
-  getRotatedCorners,
   getShapesInBox,
   hitTestBoundsHandle,
   hitTestResizeHandle,

@@ -30,6 +30,11 @@ export function WebGLCanvas() {
     clearSelection,
     deleteSelected,
     duplicateSelected,
+    copySelected,
+    paste,
+    flipHorizontal,
+    flipVertical,
+    toggleLock,
   } = useCanvasStore();
 
   const { handlers, actions } = useCanvasControls();
@@ -100,7 +105,6 @@ export function WebGLCanvas() {
     const handleResize = (entries: ResizeObserverEntry[]) => {
       const { width, height } = entries[0].contentRect;
       renderer.resize(width, height);
-      renderer.markDirty();
     };
 
     const resizeObserver = new ResizeObserver(handleResize);
@@ -135,16 +139,54 @@ export function WebGLCanvas() {
         setIsSpaceHeld(true);
       }
       if (e.metaKey || e.ctrlKey) setIsCmdHeld(true);
-      if (e.code === "KeyV") setActiveTool("select");
-      if (e.code === "KeyH") setActiveTool("pan");
-      if (e.code === "KeyZ") setActiveTool("zoom");
+
+      // Tool shortcuts (only when no modifier)
+      if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        if (e.code === "KeyV") setActiveTool("select");
+        if (e.code === "KeyH") setActiveTool("pan");
+      }
+
       if (e.code === "Escape") clearSelection();
+
+      // Delete
       if ((e.code === "Delete" || e.code === "Backspace") && selectedIds.length > 0) {
         deleteSelected();
       }
+
+      // Copy (Cmd+C)
+      if (e.code === "KeyC" && (e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
+        e.preventDefault();
+        copySelected();
+      }
+
+      // Paste (Cmd+V)
+      if (e.code === "KeyV" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        paste();
+      }
+
+      // Duplicate (Cmd+D)
       if (e.code === "KeyD" && (e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
         e.preventDefault();
         duplicateSelected();
+      }
+
+      // Flip Horizontal (Shift+H)
+      if (e.code === "KeyH" && e.shiftKey && !e.metaKey && !e.ctrlKey && selectedIds.length > 0) {
+        e.preventDefault();
+        flipHorizontal();
+      }
+
+      // Flip Vertical (Shift+V)
+      if (e.code === "KeyV" && e.shiftKey && !e.metaKey && !e.ctrlKey && selectedIds.length > 0) {
+        e.preventDefault();
+        flipVertical();
+      }
+
+      // Lock/Unlock (Shift+Cmd+L)
+      if (e.code === "KeyL" && e.shiftKey && (e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
+        e.preventDefault();
+        toggleLock();
       }
     };
 
@@ -183,6 +225,11 @@ export function WebGLCanvas() {
     selectedIds,
     deleteSelected,
     duplicateSelected,
+    copySelected,
+    paste,
+    flipHorizontal,
+    flipVertical,
+    toggleLock,
     setIsSpaceHeld,
     setActiveTool,
     clearSelection,
@@ -206,15 +253,36 @@ export function WebGLCanvas() {
               ? getCursorForHandle(hoveredHandle)
               : isSpaceHeld || activeTool === "pan"
                 ? "grab"
-                : activeTool === "zoom"
-                  ? "zoom-in"
-                  : "default";
+                : "default";
 
   // Calculate bounding box and rotation for selected shapes
   const selectionInfo = useMemo(() => {
     if (selectedIds.length === 0) return null;
     const selectedShapes = shapes.filter((s) => selectedIds.includes(s.id));
     if (selectedShapes.length === 0) return null;
+
+    // Helper to get rotated corners
+    const getRotatedCorners = (shape: (typeof shapes)[0]) => {
+      const { x, y, width, height, rotation } = shape;
+      const centerX = x + width / 2;
+      const centerY = y + height / 2;
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+
+      return [
+        { x, y },
+        { x: x + width, y },
+        { x: x + width, y: y + height },
+        { x, y: y + height },
+      ].map((corner) => {
+        const dx = corner.x - centerX;
+        const dy = corner.y - centerY;
+        return {
+          x: centerX + dx * cos - dy * sin,
+          y: centerY + dx * sin + dy * cos,
+        };
+      });
+    };
 
     // For single shape, use its actual bounds and rotation
     if (selectedShapes.length === 1) {
@@ -225,17 +293,20 @@ export function WebGLCanvas() {
       };
     }
 
-    // For multiple shapes, calculate axis-aligned bounding box (no rotation)
+    // For multiple shapes, calculate axis-aligned bounding box using rotated corners
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
 
     for (const shape of selectedShapes) {
-      minX = Math.min(minX, shape.x);
-      minY = Math.min(minY, shape.y);
-      maxX = Math.max(maxX, shape.x + shape.width);
-      maxY = Math.max(maxY, shape.y + shape.height);
+      const corners = getRotatedCorners(shape);
+      for (const corner of corners) {
+        minX = Math.min(minX, corner.x);
+        minY = Math.min(minY, corner.y);
+        maxX = Math.max(maxX, corner.x);
+        maxY = Math.max(maxY, corner.y);
+      }
     }
 
     return {

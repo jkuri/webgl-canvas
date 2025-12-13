@@ -7,6 +7,7 @@ export interface Shape {
   height: number;
   rotation: number; // in radians
   color: [number, number, number, number];
+  locked?: boolean;
 }
 
 export interface SelectionBox {
@@ -29,5 +30,5 @@ export interface BoundingBox {
   height: number;
 }
 
-export type Tool = "select" | "pan" | "zoom";
+export type Tool = "select" | "pan";
 export type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | null;

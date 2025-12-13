@@ -61,26 +61,22 @@ export function DimensionLabel({ bounds, transform, rotation = 0 }: DimensionLab
   // Calculate the angle of the bottom edge
   const edgeAngle = Math.atan2(bottomEdge.p2.y - bottomEdge.p1.y, bottomEdge.p2.x - bottomEdge.p1.x);
 
-  // Calculate perpendicular offset (outward from the shape, below the edge)
-  // We need to offset away from the shape center
-  const edgeMidX = bottomEdgeCenterX;
-  const edgeMidY = bottomEdgeCenterY;
+  // Convert bottom edge center to screen coordinates first
+  const screenEdgeX = bottomEdgeCenterX * transform.scale + transform.x;
+  const screenEdgeY = bottomEdgeCenterY * transform.scale + transform.y;
 
-  // Direction from shape center to edge midpoint (outward direction)
-  const outwardX = edgeMidX - centerX;
-  const outwardY = edgeMidY - centerY;
+  // Calculate outward direction from shape center to edge midpoint
+  const outwardX = bottomEdgeCenterX - centerX;
+  const outwardY = bottomEdgeCenterY - centerY;
   const outwardLen = Math.sqrt(outwardX * outwardX + outwardY * outwardY);
 
+  // Apply offset in screen space (constant 16px regardless of zoom)
   const offset = 16;
-  const offsetX = outwardLen > 0 ? (outwardX / outwardLen) * offset : 0;
-  const offsetY = outwardLen > 0 ? (outwardY / outwardLen) * offset : offset;
+  const screenOffsetX = outwardLen > 0 ? (outwardX / outwardLen) * offset : 0;
+  const screenOffsetY = outwardLen > 0 ? (outwardY / outwardLen) * offset : offset;
 
-  // Apply offset in world space, then convert to screen
-  const labelWorldX = bottomEdgeCenterX + offsetX;
-  const labelWorldY = bottomEdgeCenterY + offsetY;
-
-  const screenX = labelWorldX * transform.scale + transform.x;
-  const screenY = labelWorldY * transform.scale + transform.y;
+  const screenX = screenEdgeX + screenOffsetX;
+  const screenY = screenEdgeY + screenOffsetY;
 
   // Convert edge angle to degrees for CSS rotation
   // Keep text readable (not upside down) - if angle would make text upside down, flip it

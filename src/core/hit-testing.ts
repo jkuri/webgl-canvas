@@ -1,7 +1,7 @@
 import type { BoundingBox, ResizeHandle, Shape } from "@/types";
 
 // Helper to get rotated corners of a shape
-export function getRotatedCorners(shape: Shape): { x: number; y: number }[] {
+function getRotatedCorners(shape: Shape): { x: number; y: number }[] {
   const { x, y, width, height, rotation } = shape;
   const centerX = x + width / 2;
   const centerY = y + height / 2;

@@ -1,4 +1,4 @@
-import { ArrowDown01Icon, Cursor01Icon, FourFinger02Icon, ZoomInAreaIcon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, Cursor01Icon, FourFinger02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCanvasStore } from "@/store";
-import type { Tool } from "@/types";
 
 const ZOOM_PRESETS = [
   { label: "50%", value: 0.5 },
@@ -27,10 +26,9 @@ export function CanvasToolbar() {
   const zoomTo = useCanvasStore((s) => s.zoomTo);
   const resetView = useCanvasStore((s) => s.resetView);
 
-  const tools: { id: Tool; icon: typeof Cursor01Icon; label: string; shortcut: string }[] = [
-    { id: "select", icon: Cursor01Icon, label: "Select", shortcut: "V" },
-    { id: "pan", icon: FourFinger02Icon, label: "Pan", shortcut: "H" },
-    { id: "zoom", icon: ZoomInAreaIcon, label: "Zoom", shortcut: "Z" },
+  const tools = [
+    { id: "select" as const, icon: Cursor01Icon, label: "Select", shortcut: "V" },
+    { id: "pan" as const, icon: FourFinger02Icon, label: "Pan", shortcut: "H" },
   ];
 
   return (

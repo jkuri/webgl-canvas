@@ -52,7 +52,7 @@ const GRID_FRAGMENT_SHADER = `
     fragCoord.y = u_resolution.y - fragCoord.y;
     vec2 worldPos = (fragCoord - u_translation) / u_scale;
 
-    float baseSpacing = 10.0;
+    float baseSpacing = 20.0;
     float spacing = baseSpacing;
     if (u_scale < 0.5) spacing = baseSpacing * 4.0;
     else if (u_scale < 1.0) spacing = baseSpacing * 2.0;
@@ -60,12 +60,23 @@ const GRID_FRAGMENT_SHADER = `
     vec2 gridPos = mod(worldPos + spacing * 0.5, spacing);
     vec2 center = vec2(spacing * 0.5);
     float dist = length(gridPos - center);
-    float dotSize = 0.8 / u_scale;
+    float dotSize = 1.5 / u_scale;
     float dot = 1.0 - smoothstep(dotSize * 0.5, dotSize, dist);
 
-    gl_FragColor = vec4(vec3(0.82), dot * 0.6);
+    // Gray dots on light background (0.985)
+    // Mix background color with dot color based on dot intensity
+    vec3 bgColor = vec3(0.985);
+    vec3 dotColor = vec3(0.92);
+    gl_FragColor = vec4(mix(bgColor, dotColor, dot), 1.0);
   }
 `;
+
+type GetStateFunc = () => {
+  transform: Transform;
+  shapes: Shape[];
+  selectedIds: string[];
+  selectionBox: SelectionBox | null;
+};
 
 export class WebGLRenderer {
   private gl: WebGLRenderingContext;
@@ -77,6 +88,7 @@ export class WebGLRenderer {
   private animationId: number | null = null;
   private needsRender = true;
   private lastTransform: Transform | null = null;
+  private getState: GetStateFunc | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -131,8 +143,9 @@ export class WebGLRenderer {
     this.canvas.width = width * window.devicePixelRatio;
     this.canvas.height = height * window.devicePixelRatio;
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    if (this.lastTransform) {
-      this.needsRender = true;
+    // Render immediately to prevent flicker
+    if (this.getState) {
+      this.renderFrame(this.getState());
     }
   }
 
@@ -148,6 +161,7 @@ export class WebGLRenderer {
       selectionBox: SelectionBox | null;
     },
   ): void {
+    this.getState = getState;
     const loop = () => {
       const state = getState();
       const { transform } = state;
@@ -191,7 +205,7 @@ export class WebGLRenderer {
     const { x, y, scale } = transform;
     const dpr = window.devicePixelRatio;
 
-    gl.clearColor(0.98, 0.98, 0.98, 1);
+    gl.clearColor(0.985, 0.985, 0.985, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -230,18 +244,18 @@ export class WebGLRenderer {
 
       if (selectedShapes.length === 1) {
         // Single shape: draw rotated outline with handles
-        this.drawShapeOutlineWithHandles(selectedShapes[0]);
+        this.drawShapeOutlineWithHandles(selectedShapes[0], scale);
       } else if (selectedShapes.length > 1) {
         // Multiple shapes: draw individual outlines + axis-aligned bounding box
         for (const shape of selectedShapes) {
-          this.drawShapeOutline(shape);
+          this.drawShapeOutline(shape, scale);
         }
         const bounds = this.calculateBoundingBox(selectedShapes);
-        this.drawBoundingBoxWithHandles(bounds, true);
+        this.drawBoundingBoxWithHandles(bounds, true, scale);
       }
 
       if (selectionBox) {
-        this.drawSelectionBox(selectionBox);
+        this.drawSelectionBox(selectionBox, scale);
       }
     }
   }
@@ -252,11 +266,15 @@ export class WebGLRenderer {
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
 
+    // Use rotated corners for accurate bounding box
     for (const shape of shapes) {
-      minX = Math.min(minX, shape.x);
-      minY = Math.min(minY, shape.y);
-      maxX = Math.max(maxX, shape.x + shape.width);
-      maxY = Math.max(maxY, shape.y + shape.height);
+      const corners = this.getRotatedCorners(shape);
+      for (const corner of corners) {
+        minX = Math.min(minX, corner.x);
+        minY = Math.min(minY, corner.y);
+        maxX = Math.max(maxX, corner.x);
+        maxY = Math.max(maxY, corner.y);
+      }
     }
 
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
@@ -320,15 +338,22 @@ export class WebGLRenderer {
     });
   }
 
-  private drawLineBetweenPoints(p1: { x: number; y: number }, p2: { x: number; y: number }, lineWidth: number): void {
+  private drawLineBetweenPoints(
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    lineWidth: number,
+    scale: number,
+  ): void {
     const gl = this.gl;
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0) return;
 
-    const nx = (-dy / len) * (lineWidth / 2);
-    const ny = (dx / len) * (lineWidth / 2);
+    // Make line width zoom-independent
+    const adjustedWidth = lineWidth / scale;
+    const nx = (-dy / len) * (adjustedWidth / 2);
+    const ny = (dx / len) * (adjustedWidth / 2);
 
     const v = new Float32Array([
       p1.x - nx,
@@ -349,10 +374,11 @@ export class WebGLRenderer {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
-  private drawHandle(x: number, y: number): void {
+  private drawHandle(x: number, y: number, scale: number): void {
     const gl = this.gl;
-    const handleSize = 6;
-    const handleBorder = 1;
+    // Make handle size zoom-independent
+    const handleSize = 6 / scale;
+    const handleBorder = 1 / scale;
     const hs = handleSize / 2;
     const hb = handleBorder;
     const strokeColor: [number, number, number, number] = [0.1, 0.1, 0.1, 1];
@@ -398,7 +424,7 @@ export class WebGLRenderer {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
-  private drawShapeOutline(shape: Shape): void {
+  private drawShapeOutline(shape: Shape, scale: number): void {
     const gl = this.gl;
     const strokeColor: [number, number, number, number] = [0.1, 0.1, 0.1, 1];
     const borderWidth = 1.5;
@@ -410,11 +436,11 @@ export class WebGLRenderer {
 
     // Draw lines between corners
     for (let i = 0; i < 4; i++) {
-      this.drawLineBetweenPoints(rotatedCorners[i], rotatedCorners[(i + 1) % 4], borderWidth);
+      this.drawLineBetweenPoints(rotatedCorners[i], rotatedCorners[(i + 1) % 4], borderWidth, scale);
     }
   }
 
-  private drawShapeOutlineWithHandles(shape: Shape): void {
+  private drawShapeOutlineWithHandles(shape: Shape, scale: number): void {
     const gl = this.gl;
     const strokeColor: [number, number, number, number] = [0.1, 0.1, 0.1, 1];
     const borderWidth = 1.5;
@@ -426,47 +452,27 @@ export class WebGLRenderer {
 
     // Draw lines between corners
     for (let i = 0; i < 4; i++) {
-      this.drawLineBetweenPoints(rotatedCorners[i], rotatedCorners[(i + 1) % 4], borderWidth);
+      this.drawLineBetweenPoints(rotatedCorners[i], rotatedCorners[(i + 1) % 4], borderWidth, scale);
     }
 
     // Draw handles only at corners: nw(0), ne(1), se(2), sw(3)
     // Edge resize is done by clicking on the lines themselves
     for (const corner of rotatedCorners) {
-      this.drawHandle(corner.x, corner.y);
+      this.drawHandle(corner.x, corner.y, scale);
     }
   }
 
-  private drawBoundingBoxWithHandles(bounds: BoundingBox, isMultiSelect: boolean): void {
+  private drawBoundingBoxWithHandles(bounds: BoundingBox, _isMultiSelect: boolean, scale: number): void {
     const { x, y, width, height } = bounds;
     const gl = this.gl;
     const strokeColor: [number, number, number, number] = [0.1, 0.1, 0.1, 1];
-    const borderWidth = 1;
+    // Make border width zoom-independent
+    const borderWidth = 1 / scale;
 
     // Reset rotation for bounding box
     this.resetRotation();
 
-    // Draw gray fill for multi-selection
-    if (isMultiSelect) {
-      gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), 0.5, 0.5, 0.5, 0.08);
-      const fillVerts = new Float32Array([
-        x,
-        y,
-        x + width,
-        y,
-        x,
-        y + height,
-        x,
-        y + height,
-        x + width,
-        y,
-        x + width,
-        y + height,
-      ]);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, fillVerts, gl.STATIC_DRAW);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-    }
-
+    // No fill for multi-selection - transparent background
     gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...strokeColor);
 
     const borders = [
@@ -492,11 +498,11 @@ export class WebGLRenderer {
     ];
 
     for (const handle of cornerHandles) {
-      this.drawHandle(handle.x, handle.y);
+      this.drawHandle(handle.x, handle.y, scale);
     }
   }
 
-  private drawSelectionBox(box: SelectionBox): void {
+  private drawSelectionBox(box: SelectionBox, scale: number): void {
     const gl = this.gl;
     const x = Math.min(box.startX, box.endX);
     const y = Math.min(box.startY, box.endY);
@@ -513,9 +519,9 @@ export class WebGLRenderer {
     gl.bufferData(gl.ARRAY_BUFFER, fillVerts, gl.STATIC_DRAW);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // Monochrome border (dark gray)
-    const lw = 1;
-    gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), 0.1, 0.1, 0.1, 0.6);
+    // Monochrome border (same as selection outline) - zoom-independent
+    const lw = 1 / scale;
+    gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), 0.1, 0.1, 0.1, 1);
     const borders = [
       [x, y, x + w, y + lw],
       [x, y + h - lw, x + w, y + h],
