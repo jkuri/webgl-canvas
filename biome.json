@@ -10,7 +10,8 @@
         "noRedundantRoles": "off",
         "useSemanticElements": "off",
         "noLabelWithoutControl": "off",
-        "noRedundantAlt": "off"
+        "noRedundantAlt": "off",
+        "noStaticElementInteractions": "off"
       },
       "style": {
         "noNonNullAssertion": "off"

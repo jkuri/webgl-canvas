@@ -1,9 +1,11 @@
 export {
   calculateBoundingBox,
+  getRotatedCorners,
   getShapesInBox,
   hitTestBoundsHandle,
+  hitTestElement,
   hitTestResizeHandle,
-  hitTestRotatedShapeHandle,
+  hitTestRotatedElementHandle,
   hitTestShape,
 } from "./hit-testing";
 export { WebGLRenderer } from "./webgl-renderer";

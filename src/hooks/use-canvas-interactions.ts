@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
-import { calculateBoundingBox, hitTestBoundsHandle, hitTestRotatedShapeHandle } from "@/core";
+import { calculateBoundingBox, hitTestBoundsHandle, hitTestRotatedElementHandle } from "@/core";
 import { useCanvasStore } from "@/store";
-import type { BoundingBox, ResizeHandle, Shape } from "@/types";
+import type { BoundingBox, CanvasElement, ResizeHandle, Shape } from "@/types";
 
 // Generate Figma-style SVG cursor for resize handles with rotation
 function createRotatedResizeCursor(angle: number): string {
@@ -67,11 +67,6 @@ const cursorCache = new Map<string, string>();
 function getRotatedCursor(handle: ResizeHandle, rotation: number): string {
   if (!handle) return "default";
 
-  // Base angles for each handle direction
-  // nwse handles (nw, se) = 0 degrees (diagonal from top-left to bottom-right)
-  // nesw handles (ne, sw) = 90 degrees (diagonal from top-right to bottom-left)
-  // ns handles (n, s) = 45 degrees (vertical)
-  // ew handles (e, w) = -45 degrees (horizontal)
   const baseAngles: Record<string, number> = {
     nw: 0,
     se: 0,
@@ -98,10 +93,39 @@ function getRotatedCursor(handle: ResizeHandle, rotation: number): string {
   return cursorCache.get(cacheKey)!;
 }
 
+// Helper to get bounds for any element type
+function getElementBoundsLocal(element: CanvasElement): { x: number; y: number; width: number; height: number } {
+  switch (element.type) {
+    case "rect":
+      return { x: element.x, y: element.y, width: element.width, height: element.height };
+    case "ellipse":
+      return {
+        x: element.cx - element.rx,
+        y: element.cy - element.ry,
+        width: element.rx * 2,
+        height: element.ry * 2,
+      };
+    case "line": {
+      const minX = Math.min(element.x1, element.x2);
+      const minY = Math.min(element.y1, element.y2);
+      return {
+        x: minX,
+        y: minY,
+        width: Math.abs(element.x2 - element.x1),
+        height: Math.abs(element.y2 - element.y1),
+      };
+    }
+    case "path":
+      return element.bounds;
+    case "group":
+      return { x: 0, y: 0, width: 0, height: 0 };
+  }
+}
+
 interface UseCanvasInteractionsProps {
   screenToWorld: (screenX: number, screenY: number) => { x: number; y: number };
-  hitTest: (worldX: number, worldY: number) => Shape | null;
-  hitTestResizeHandle: (worldX: number, worldY: number, shape: Shape) => ResizeHandle;
+  hitTest: (worldX: number, worldY: number) => CanvasElement | null;
+  hitTestResizeHandle: (worldX: number, worldY: number, element: CanvasElement) => ResizeHandle;
   handlers: {
     startPan: (e: MouseEvent) => void;
     updatePan: (e: MouseEvent) => void;
@@ -130,7 +154,7 @@ export function useCanvasInteractions({
     selectedIds,
     hoveredHandle,
     transform,
-    shapes,
+    elements,
     setIsPanning,
     setIsDragging,
     setIsResizing,
@@ -140,14 +164,17 @@ export function useCanvasInteractions({
     setHoveredHandle,
     setContextMenuTarget,
     setSelectionBox,
-    getShapeById,
-    updateShape,
+    getElementById,
+    updateElement,
   } = useCanvasStore();
 
   const dragStartRef = useRef<{
     worldX: number;
     worldY: number;
-    shapes: Map<string, { x: number; y: number }>;
+    elements: Map<
+      string,
+      { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }
+    >;
   } | null>(null);
 
   const resizeStartRef = useRef<{
@@ -155,9 +182,27 @@ export function useCanvasInteractions({
     worldY: number;
     handle: ResizeHandle;
     originalBounds: BoundingBox;
-    originalShapes: Map<string, { x: number; y: number; width: number; height: number; rotation: number }>;
-    isSingleRotatedShape: boolean;
-    shapeRotation: number;
+    originalElements: Map<
+      string,
+      {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        rotation: number;
+        type: string;
+        cx?: number;
+        cy?: number;
+        rx?: number;
+        ry?: number;
+        x1?: number;
+        y1?: number;
+        x2?: number;
+        y2?: number;
+      }
+    >;
+    isSingleRotatedElement: boolean;
+    elementRotation: number;
   } | null>(null);
 
   const rotateStartRef = useRef<{
@@ -165,29 +210,55 @@ export function useCanvasInteractions({
     centerX: number;
     centerY: number;
     originalRotations: Map<string, number>;
+    originalElements: Map<
+      string,
+      {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        rotation: number;
+        type: string;
+        cx?: number;
+        cy?: number;
+        rx?: number;
+        ry?: number;
+        x1?: number;
+        y1?: number;
+        x2?: number;
+        y2?: number;
+      }
+    >;
     handle: ResizeHandle;
   } | null>(null);
 
   const marqueeStartRef = useRef<{ worldX: number; worldY: number } | null>(null);
   const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Get the rotation of the currently selected shape(s) for cursor
-  // Note: We depend on shapes array to ensure reactivity when rotation changes
+  // Get the rotation of the currently selected element(s) for cursor
   const selectedRotation = useMemo(() => {
     if (selectedIds.length === 1) {
-      const shape = shapes.find((s) => s.id === selectedIds[0]);
-      return shape?.rotation ?? 0;
+      const element = elements.find((e) => e.id === selectedIds[0]);
+      return element?.rotation ?? 0;
     }
     return 0;
-  }, [selectedIds, shapes]);
+  }, [selectedIds, elements]);
 
   const getCursorForHandle = useCallback(
     (handle: ResizeHandle): string => {
       if (!handle) return "default";
-      // Always use custom rotated cursor (even when rotation is 0)
+
+      // Special case for line endpoints - use move cursor
+      if (selectedIds.length === 1) {
+        const element = elements.find((e) => e.id === selectedIds[0]);
+        if (element?.type === "line" && (handle === "nw" || handle === "se")) {
+          return "move";
+        }
+      }
+
       return getRotatedCursor(handle, selectedRotation);
     },
-    [selectedRotation],
+    [selectedRotation, selectedIds, elements],
   );
 
   const handleMouseDown = useCallback(
@@ -206,19 +277,24 @@ export function useCanvasInteractions({
 
         // Check for rotation mode (Cmd/Ctrl + click on corner handles)
         if ((e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
-          const selectedShapes = selectedIds.map((id) => getShapeById(id)).filter(Boolean) as Shape[];
+          const selectedElements = selectedIds.map((id) => getElementById(id)).filter(Boolean) as CanvasElement[];
 
-          // Don't allow rotation if any selected shape is locked
-          if (selectedShapes.some((s) => s.locked)) {
+          // Don't allow rotation if any selected element is locked
+          if (selectedElements.some((e) => e.locked)) {
             return;
           }
 
           // Check if clicking on a corner handle
           let clickedHandle: ResizeHandle = null;
-          if (selectedShapes.length === 1) {
-            clickedHandle = hitTestRotatedShapeHandle(world.x, world.y, selectedShapes[0], transform.scale);
+          if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
+            clickedHandle = hitTestRotatedElementHandle(
+              world.x,
+              world.y,
+              selectedElements[0] as Shape,
+              transform.scale,
+            );
           } else {
-            const bounds = calculateBoundingBox(selectedShapes);
+            const bounds = calculateBoundingBox(selectedElements);
             if (bounds) {
               clickedHandle = hitTestBoundsHandle(world.x, world.y, bounds, transform.scale);
             }
@@ -228,17 +304,70 @@ export function useCanvasInteractions({
           const isCorner =
             clickedHandle === "nw" || clickedHandle === "ne" || clickedHandle === "se" || clickedHandle === "sw";
           if (isCorner) {
-            const bounds = calculateBoundingBox(selectedShapes);
+            const bounds = calculateBoundingBox(selectedElements);
             if (bounds) {
               const centerX = bounds.x + bounds.width / 2;
               const centerY = bounds.y + bounds.height / 2;
               const startAngle = Math.atan2(world.y - centerY, world.x - centerX);
               const originalRotations = new Map<string, number>();
-              for (const shape of selectedShapes) {
-                originalRotations.set(shape.id, shape.rotation);
+              const originalElements = new Map<
+                string,
+                {
+                  x: number;
+                  y: number;
+                  width: number;
+                  height: number;
+                  rotation: number;
+                  type: string;
+                  cx?: number;
+                  cy?: number;
+                  rx?: number;
+                  ry?: number;
+                  x1?: number;
+                  y1?: number;
+                  x2?: number;
+                  y2?: number;
+                }
+              >();
+
+              for (const element of selectedElements) {
+                originalRotations.set(element.id, element.rotation);
+                const eBounds = getElementBoundsLocal(element);
+                const entry = {
+                  ...eBounds,
+                  rotation: element.rotation,
+                  type: element.type,
+                  cx: undefined as number | undefined,
+                  cy: undefined as number | undefined,
+                  rx: undefined as number | undefined,
+                  ry: undefined as number | undefined,
+                  x1: undefined as number | undefined,
+                  y1: undefined as number | undefined,
+                  x2: undefined as number | undefined,
+                  y2: undefined as number | undefined,
+                };
+                if (element.type === "ellipse") {
+                  entry.cx = element.cx;
+                  entry.cy = element.cy;
+                  entry.rx = element.rx;
+                  entry.ry = element.ry;
+                } else if (element.type === "line") {
+                  entry.x1 = element.x1;
+                  entry.y1 = element.y1;
+                  entry.x2 = element.x2;
+                  entry.y2 = element.y2;
+                }
+                originalElements.set(element.id, entry);
               }
               setIsRotating(true);
-              rotateStartRef.current = { startAngle, centerX, centerY, originalRotations, handle: clickedHandle };
+              rotateStartRef.current = {
+                startAngle,
+                centerX,
+                centerY,
+                originalRotations,
+                originalElements,
+                handle: clickedHandle,
+              };
               return;
             }
           }
@@ -246,60 +375,88 @@ export function useCanvasInteractions({
 
         // Check resize handle first
         if (selectedIds.length > 0) {
-          const selectedShapes = selectedIds.map((id) => getShapeById(id)).filter(Boolean) as Shape[];
+          const selectedElements = selectedIds.map((id) => getElementById(id)).filter(Boolean) as CanvasElement[];
 
-          // Don't allow resize if any selected shape is locked
-          const anyLocked = selectedShapes.some((s) => s.locked);
+          // Don't allow resize if any selected element is locked
+          const anyLocked = selectedElements.some((e) => e.locked);
 
           if (!anyLocked) {
-            // For single shape, use rotated handle hit test
+            // For single element, use rotated handle hit test
             let handle: ResizeHandle = null;
-            if (selectedShapes.length === 1) {
-              handle = hitTestRotatedShapeHandle(world.x, world.y, selectedShapes[0], transform.scale);
+            if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
+              handle = hitTestRotatedElementHandle(world.x, world.y, selectedElements[0] as Shape, transform.scale);
             } else {
-              const bounds = calculateBoundingBox(selectedShapes);
+              const bounds = calculateBoundingBox(selectedElements);
               if (bounds) {
                 handle = hitTestBoundsHandle(world.x, world.y, bounds, transform.scale);
               }
             }
 
             if (handle) {
-              const isSingleRotatedShape = selectedShapes.length === 1 && selectedShapes[0].rotation !== 0;
-              const shapeRotation = isSingleRotatedShape ? selectedShapes[0].rotation : 0;
+              const isSingleRotatedElement =
+                selectedElements.length === 1 &&
+                (selectedElements[0].rotation !== 0 || selectedElements[0].type === "line") &&
+                selectedElements[0].type !== "group";
+              const elementRotation = isSingleRotatedElement ? selectedElements[0].rotation : 0;
 
-              // For single rotated shape, use unrotated bounds
-              const bounds = isSingleRotatedShape
-                ? {
-                    x: selectedShapes[0].x,
-                    y: selectedShapes[0].y,
-                    width: selectedShapes[0].width,
-                    height: selectedShapes[0].height,
-                  }
-                : calculateBoundingBox(selectedShapes);
+              // Get bounds for the element(s)
+              const bounds = isSingleRotatedElement
+                ? getElementBoundsLocal(selectedElements[0])
+                : calculateBoundingBox(selectedElements);
 
               if (bounds) {
                 setIsResizing(true, handle);
-                const originalShapes = new Map<
+                const originalElements = new Map<
                   string,
-                  { x: number; y: number; width: number; height: number; rotation: number }
+                  {
+                    x: number;
+                    y: number;
+                    width: number;
+                    height: number;
+                    rotation: number;
+                    type: string;
+                    cx?: number;
+                    cy?: number;
+                    rx?: number;
+                    ry?: number;
+                  }
                 >();
-                for (const shape of selectedShapes) {
-                  originalShapes.set(shape.id, {
-                    x: shape.x,
-                    y: shape.y,
-                    width: shape.width,
-                    height: shape.height,
-                    rotation: shape.rotation,
-                  });
+                for (const element of selectedElements) {
+                  const eBounds = getElementBoundsLocal(element);
+                  const entry = {
+                    ...eBounds,
+                    rotation: element.rotation,
+                    type: element.type,
+                    cx: undefined as number | undefined,
+                    cy: undefined as number | undefined,
+                    rx: undefined as number | undefined,
+                    ry: undefined as number | undefined,
+                    x1: undefined as number | undefined,
+                    y1: undefined as number | undefined,
+                    x2: undefined as number | undefined,
+                    y2: undefined as number | undefined,
+                  };
+                  if (element.type === "ellipse") {
+                    entry.cx = element.cx;
+                    entry.cy = element.cy;
+                    entry.rx = element.rx;
+                    entry.ry = element.ry;
+                  } else if (element.type === "line") {
+                    entry.x1 = element.x1;
+                    entry.y1 = element.y1;
+                    entry.x2 = element.x2;
+                    entry.y2 = element.y2;
+                  }
+                  originalElements.set(element.id, entry);
                 }
                 resizeStartRef.current = {
                   worldX: world.x,
                   worldY: world.y,
                   handle,
                   originalBounds: bounds,
-                  originalShapes,
-                  isSingleRotatedShape,
-                  shapeRotation,
+                  originalElements,
+                  isSingleRotatedElement,
+                  elementRotation,
                 };
                 return;
               }
@@ -316,21 +473,34 @@ export function useCanvasInteractions({
           } else {
             if (!isAlreadySelected) setSelectedIds([hit.id]);
 
-            // Check if any shape to be dragged is locked
-            const shapesToDrag = isAlreadySelected ? selectedIds : [hit.id];
-            const anyLocked = shapesToDrag.some((id) => {
-              const shape = getShapeById(id);
-              return shape?.locked;
+            // Check if any element to be dragged is locked
+            const elementsToDrag = isAlreadySelected ? selectedIds : [hit.id];
+            const anyLocked = elementsToDrag.some((id) => {
+              const element = getElementById(id);
+              return element?.locked;
             });
 
             if (!anyLocked) {
               setIsDragging(true);
-              const shapesMap = new Map<string, { x: number; y: number }>();
-              for (const id of shapesToDrag) {
-                const shape = getShapeById(id);
-                if (shape) shapesMap.set(id, { x: shape.x, y: shape.y });
+              const elementsMap = new Map<
+                string,
+                { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }
+              >();
+              for (const id of elementsToDrag) {
+                const element = getElementById(id);
+                if (element) {
+                  if (element.type === "rect") {
+                    elementsMap.set(id, { x: element.x, y: element.y });
+                  } else if (element.type === "ellipse") {
+                    elementsMap.set(id, { x: 0, y: 0, cx: element.cx, cy: element.cy });
+                  } else if (element.type === "line") {
+                    elementsMap.set(id, { x: 0, y: 0, x1: element.x1, y1: element.y1, x2: element.x2, y2: element.y2 });
+                  } else if (element.type === "path") {
+                    elementsMap.set(id, { x: element.bounds.x, y: element.bounds.y });
+                  }
+                }
               }
-              dragStartRef.current = { worldX: world.x, worldY: world.y, shapes: shapesMap };
+              dragStartRef.current = { worldX: world.x, worldY: world.y, elements: elementsMap };
             }
           }
         } else {
@@ -351,7 +521,7 @@ export function useCanvasInteractions({
       selectedIds,
       hitTest,
       hitTestResizeHandle,
-      getShapeById,
+      getElementById,
       transform.scale,
       setIsPanning,
       setIsDragging,
@@ -359,6 +529,7 @@ export function useCanvasInteractions({
       setIsMarqueeSelecting,
       setSelectedIds,
       setSelectionBox,
+      setIsRotating,
     ],
   );
 
@@ -369,13 +540,13 @@ export function useCanvasInteractions({
       // Update hovered handle
       if (activeTool === "select" && !isPanning && !isDragging && !isResizing && !isMarqueeSelecting) {
         if (selectedIds.length > 0) {
-          const selectedShapes = selectedIds.map((id) => getShapeById(id)).filter(Boolean) as Shape[];
+          const selectedElements = selectedIds.map((id) => getElementById(id)).filter(Boolean) as CanvasElement[];
 
           let handle: ResizeHandle = null;
-          if (selectedShapes.length === 1) {
-            handle = hitTestRotatedShapeHandle(world.x, world.y, selectedShapes[0], transform.scale);
+          if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
+            handle = hitTestRotatedElementHandle(world.x, world.y, selectedElements[0] as Shape, transform.scale);
           } else {
-            const bounds = calculateBoundingBox(selectedShapes);
+            const bounds = calculateBoundingBox(selectedElements);
             if (bounds) {
               handle = hitTestBoundsHandle(world.x, world.y, bounds, transform.scale);
             }
@@ -394,8 +565,30 @@ export function useCanvasInteractions({
       if (isDragging && dragStartRef.current) {
         const deltaX = world.x - dragStartRef.current.worldX;
         const deltaY = world.y - dragStartRef.current.worldY;
-        for (const [id, startPos] of dragStartRef.current.shapes) {
-          updateShape(id, { x: startPos.x + deltaX, y: startPos.y + deltaY });
+        for (const [id, startPos] of dragStartRef.current.elements) {
+          const element = getElementById(id);
+          if (!element) continue;
+
+          if (element.type === "rect") {
+            updateElement(id, { x: startPos.x + deltaX, y: startPos.y + deltaY });
+          } else if (element.type === "ellipse") {
+            updateElement(id, { cx: (startPos.cx ?? 0) + deltaX, cy: (startPos.cy ?? 0) + deltaY });
+          } else if (element.type === "line") {
+            updateElement(id, {
+              x1: (startPos.x1 ?? 0) + deltaX,
+              y1: (startPos.y1 ?? 0) + deltaY,
+              x2: (startPos.x2 ?? 0) + deltaX,
+              y2: (startPos.y2 ?? 0) + deltaY,
+            });
+          } else if (element.type === "path") {
+            updateElement(id, {
+              bounds: {
+                ...element.bounds,
+                x: startPos.x + deltaX,
+                y: startPos.y + deltaY,
+              },
+            });
+          }
         }
       }
 
@@ -405,121 +598,109 @@ export function useCanvasInteractions({
           originalBounds,
           worldX: startX,
           worldY: startY,
-          originalShapes,
-          isSingleRotatedShape,
-          shapeRotation,
+          originalElements,
+          isSingleRotatedElement,
+          elementRotation,
         } = resizeStartRef.current;
 
         const deltaX = world.x - startX;
         const deltaY = world.y - startY;
 
-        if (isSingleRotatedShape && originalShapes.size === 1) {
-          // For single rotated shape, use anchor-based resize
-          const [id, original] = [...originalShapes.entries()][0];
-          const cos = Math.cos(shapeRotation);
-          const sin = Math.sin(shapeRotation);
-          const cosNeg = Math.cos(-shapeRotation);
-          const sinNeg = Math.sin(-shapeRotation);
+        // For now, only support resize for rect elements (most common case)
+        // TODO: Add proper ellipse and line resize support
+        if (isSingleRotatedElement && originalElements.size === 1) {
+          const [id, original] = [...originalElements.entries()][0];
 
-          // Transform delta to local space
-          const localDeltaX = deltaX * cosNeg - deltaY * sinNeg;
-          const localDeltaY = deltaX * sinNeg + deltaY * cosNeg;
+          if (original.type === "rect") {
+            const cos = Math.cos(elementRotation);
+            const sin = Math.sin(elementRotation);
+            const cosNeg = Math.cos(-elementRotation);
+            const sinNeg = Math.sin(-elementRotation);
 
-          let newWidth = original.width;
-          let newHeight = original.height;
-          let anchorLocalX = 0;
-          let anchorLocalY = 0;
+            const localDeltaX = deltaX * cosNeg - deltaY * sinNeg;
+            const localDeltaY = deltaX * sinNeg + deltaY * cosNeg;
 
-          // Determine anchor point (opposite corner) and new dimensions
-          if (handle?.includes("e")) {
-            newWidth = original.width + localDeltaX;
-            anchorLocalX = original.x; // left edge is anchor
-          } else if (handle?.includes("w")) {
-            newWidth = original.width - localDeltaX;
-            anchorLocalX = original.x + original.width; // right edge is anchor
-          } else {
-            anchorLocalX = original.x + original.width / 2; // center
+            let newWidth = original.width;
+            let newHeight = original.height;
+            let anchorLocalX = 0;
+            let anchorLocalY = 0;
+
+            if (handle?.includes("e")) {
+              newWidth = original.width + localDeltaX;
+              anchorLocalX = original.x;
+            } else if (handle?.includes("w")) {
+              newWidth = original.width - localDeltaX;
+              anchorLocalX = original.x + original.width;
+            } else {
+              anchorLocalX = original.x + original.width / 2;
+            }
+
+            if (handle?.includes("s")) {
+              newHeight = original.height + localDeltaY;
+              anchorLocalY = original.y;
+            } else if (handle?.includes("n")) {
+              newHeight = original.height - localDeltaY;
+              anchorLocalY = original.y + original.height;
+            } else {
+              anchorLocalY = original.y + original.height / 2;
+            }
+
+            const minSize = 20;
+            newWidth = Math.max(minSize, newWidth);
+            newHeight = Math.max(minSize, newHeight);
+
+            const origCenterX = original.x + original.width / 2;
+            const origCenterY = original.y + original.height / 2;
+            const anchorOffsetX = anchorLocalX - origCenterX;
+            const anchorOffsetY = anchorLocalY - origCenterY;
+            const anchorWorldX = origCenterX + anchorOffsetX * cos - anchorOffsetY * sin;
+            const anchorWorldY = origCenterY + anchorOffsetX * sin + anchorOffsetY * cos;
+
+            let finalAnchorOffsetX = 0;
+            let finalAnchorOffsetY = 0;
+            if (handle?.includes("w")) {
+              finalAnchorOffsetX = newWidth / 2;
+            } else if (handle?.includes("e")) {
+              finalAnchorOffsetX = -newWidth / 2;
+            }
+            if (handle?.includes("n")) {
+              finalAnchorOffsetY = newHeight / 2;
+            } else if (handle?.includes("s")) {
+              finalAnchorOffsetY = -newHeight / 2;
+            }
+
+            const newCenterWorldX = anchorWorldX - (finalAnchorOffsetX * cos - finalAnchorOffsetY * sin);
+            const newCenterWorldY = anchorWorldY - (finalAnchorOffsetX * sin + finalAnchorOffsetY * cos);
+
+            const finalX = newCenterWorldX - newWidth / 2;
+            const finalY = newCenterWorldY - newHeight / 2;
+
+            updateElement(id, {
+              x: finalX,
+              y: finalY,
+              width: newWidth,
+              height: newHeight,
+            });
+          } else if (original.type === "line") {
+            const currentX1 = original.x1 ?? 0;
+            const currentY1 = original.y1 ?? 0;
+            const currentX2 = original.x2 ?? 0;
+            const currentY2 = original.y2 ?? 0;
+
+            if (handle === "nw") {
+              // Start point
+              updateElement(id, {
+                x1: currentX1 + deltaX,
+                y1: currentY1 + deltaY,
+              });
+            } else if (handle === "se") {
+              // End point
+              updateElement(id, {
+                x2: currentX2 + deltaX,
+                y2: currentY2 + deltaY,
+              });
+            }
           }
-
-          if (handle?.includes("s")) {
-            newHeight = original.height + localDeltaY;
-            anchorLocalY = original.y; // top edge is anchor
-          } else if (handle?.includes("n")) {
-            newHeight = original.height - localDeltaY;
-            anchorLocalY = original.y + original.height; // bottom edge is anchor
-          } else {
-            anchorLocalY = original.y + original.height / 2; // center
-          }
-
-          // Enforce minimum size
-          const minSize = 20;
-          newWidth = Math.max(minSize, newWidth);
-          newHeight = Math.max(minSize, newHeight);
-
-          // Calculate new local position based on anchor
-          let newX = original.x;
-          let newY = original.y;
-
-          if (handle?.includes("w")) {
-            newX = anchorLocalX - newWidth;
-          } else if (!handle?.includes("e")) {
-            newX = anchorLocalX - newWidth / 2;
-          }
-
-          if (handle?.includes("n")) {
-            newY = anchorLocalY - newHeight;
-          } else if (!handle?.includes("s")) {
-            newY = anchorLocalY - newHeight / 2;
-          }
-
-          // Calculate original anchor in world space
-          const origCenterX = original.x + original.width / 2;
-          const origCenterY = original.y + original.height / 2;
-          const anchorOffsetX = anchorLocalX - origCenterX;
-          const anchorOffsetY = anchorLocalY - origCenterY;
-          const anchorWorldX = origCenterX + anchorOffsetX * cos - anchorOffsetY * sin;
-          const anchorWorldY = origCenterY + anchorOffsetX * sin + anchorOffsetY * cos;
-
-          // Calculate new center
-          const newCenterX = newX + newWidth / 2;
-          const newCenterY = newY + newHeight / 2;
-
-          // Calculate where anchor would be with new dimensions
-          const newAnchorOffsetX = anchorLocalX - newCenterX;
-          const newAnchorOffsetY = anchorLocalY - newCenterY;
-
-          // Adjust anchor based on which handle
-          let finalAnchorOffsetX = newAnchorOffsetX;
-          let finalAnchorOffsetY = newAnchorOffsetY;
-          if (handle?.includes("w")) {
-            finalAnchorOffsetX = newWidth / 2;
-          } else if (handle?.includes("e")) {
-            finalAnchorOffsetX = -newWidth / 2;
-          } else {
-            finalAnchorOffsetX = 0;
-          }
-          if (handle?.includes("n")) {
-            finalAnchorOffsetY = newHeight / 2;
-          } else if (handle?.includes("s")) {
-            finalAnchorOffsetY = -newHeight / 2;
-          } else {
-            finalAnchorOffsetY = 0;
-          }
-
-          // Calculate new center position to keep anchor fixed
-          const newCenterWorldX = anchorWorldX - (finalAnchorOffsetX * cos - finalAnchorOffsetY * sin);
-          const newCenterWorldY = anchorWorldY - (finalAnchorOffsetX * sin + finalAnchorOffsetY * cos);
-
-          // Convert back to top-left position
-          const finalX = newCenterWorldX - newWidth / 2;
-          const finalY = newCenterWorldY - newHeight / 2;
-
-          updateShape(id, {
-            x: finalX,
-            y: finalY,
-            width: newWidth,
-            height: newHeight,
-          });
         } else {
           // Non-rotated or multi-select: use original axis-aligned logic
           let newBoundsX = originalBounds.x;
@@ -552,13 +733,15 @@ export function useCanvasInteractions({
             newBoundsHeight = minSize;
           }
 
-          for (const [id, original] of originalShapes) {
+          for (const [id, original] of originalElements) {
+            if (original.type !== "rect") continue; // Only resize rects for now
+
             const relX = (original.x - originalBounds.x) / originalBounds.width;
             const relY = (original.y - originalBounds.y) / originalBounds.height;
             const relW = original.width / originalBounds.width;
             const relH = original.height / originalBounds.height;
 
-            updateShape(id, {
+            updateElement(id, {
               x: newBoundsX + relX * newBoundsWidth,
               y: newBoundsY + relY * newBoundsHeight,
               width: Math.max(10, relW * newBoundsWidth),
@@ -569,12 +752,36 @@ export function useCanvasInteractions({
       }
 
       if (isRotating && rotateStartRef.current) {
-        const { startAngle, centerX, centerY, originalRotations } = rotateStartRef.current;
+        const { startAngle, centerX, centerY, originalRotations, originalElements } = rotateStartRef.current;
         const currentAngle = Math.atan2(world.y - centerY, world.x - centerX);
         const deltaAngle = currentAngle - startAngle;
 
-        for (const [id, originalRotation] of originalRotations) {
-          updateShape(id, { rotation: originalRotation + deltaAngle });
+        for (const [id, original] of originalElements) {
+          if (original.type === "line") {
+            // Rotate line endpoints
+            const cos = Math.cos(deltaAngle);
+            const sin = Math.sin(deltaAngle);
+
+            const rotatePoint = (x: number, y: number) => ({
+              x: centerX + (x - centerX) * cos - (y - centerY) * sin,
+              y: centerY + (x - centerX) * sin + (y - centerY) * cos,
+            });
+
+            const p1 = rotatePoint(original.x1!, original.y1!);
+            const p2 = rotatePoint(original.x2!, original.y2!);
+
+            updateElement(id, {
+              x1: p1.x,
+              y1: p1.y,
+              x2: p2.x,
+              y2: p2.y,
+              rotation: original.rotation + deltaAngle, // Keep rotation property updated for logic/bounds
+            });
+          } else {
+            // Standard rotation for other elements
+            const originalRotation = originalRotations.get(id) ?? 0;
+            updateElement(id, { rotation: originalRotation + deltaAngle });
+          }
         }
       }
 
@@ -599,26 +806,26 @@ export function useCanvasInteractions({
       handlers,
       screenToWorld,
       hitTestResizeHandle,
-      getShapeById,
+      getElementById,
       transform.scale,
       setHoveredHandle,
-      updateShape,
+      updateElement,
       setSelectionBox,
     ],
   );
 
   const handleMouseUp = useCallback(
-    (getShapesInBox: (box: { startX: number; startY: number; endX: number; endY: number }) => Shape[]) => {
+    (getElementsInBox: (box: { startX: number; startY: number; endX: number; endY: number }) => CanvasElement[]) => {
       if (isMarqueeSelecting && marqueeStartRef.current) {
         const world = screenToWorld(lastMousePosRef.current.x, lastMousePosRef.current.y);
-        const shapes = getShapesInBox({
+        const boxElements = getElementsInBox({
           startX: marqueeStartRef.current.worldX,
           startY: marqueeStartRef.current.worldY,
           endX: world.x,
           endY: world.y,
         });
-        if (shapes.length > 0) {
-          setSelectedIds([...new Set([...selectedIds, ...shapes.map((s) => s.id)])]);
+        if (boxElements.length > 0) {
+          setSelectedIds([...new Set([...selectedIds, ...boxElements.map((e) => e.id)])]);
         }
         setSelectionBox(null);
       }
@@ -656,7 +863,7 @@ export function useCanvasInteractions({
     [screenToWorld, hitTest, selectedIds, setContextMenuTarget, setSelectedIds],
   );
 
-  // Get rotation cursor based on hovered handle and shape rotation
+  // Get rotation cursor based on hovered handle and element rotation
   const getRotationCursorForHandle = useCallback(
     (handle: ResizeHandle): string => {
       return getRotatedRotationCursor(handle, selectedRotation);

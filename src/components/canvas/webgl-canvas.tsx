@@ -1,11 +1,44 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getShapesInBox, hitTestResizeHandle, hitTestShape, WebGLRenderer } from "@/core";
+import { getRotatedCorners, getShapesInBox, hitTestResizeHandle, hitTestShape, WebGLRenderer } from "@/core";
 import { useCanvasControls, useCanvasInteractions } from "@/hooks";
 import { useCanvasStore } from "@/store";
+import type { CanvasElement, Shape } from "@/types";
 import { CanvasContextMenu } from "./canvas-context-menu";
 import { CanvasMenubar } from "./canvas-menubar";
 import { CanvasToolbar } from "./canvas-toolbar";
 import { DimensionLabel } from "./dimension-label";
+import { LayersPanel } from "./layers-panel";
+import { Panel } from "./panel";
+import { PropertiesPanel } from "./properties-panel";
+
+// Helper to get bounds for any element type
+function getElementBoundsLocal(element: CanvasElement): { x: number; y: number; width: number; height: number } {
+  switch (element.type) {
+    case "rect":
+      return { x: element.x, y: element.y, width: element.width, height: element.height };
+    case "ellipse":
+      return {
+        x: element.cx - element.rx,
+        y: element.cy - element.ry,
+        width: element.rx * 2,
+        height: element.ry * 2,
+      };
+    case "line": {
+      const minX = Math.min(element.x1, element.x2);
+      const minY = Math.min(element.y1, element.y2);
+      return {
+        x: minX,
+        y: minY,
+        width: Math.abs(element.x2 - element.x1) || 1,
+        height: Math.abs(element.y2 - element.y1) || 1,
+      };
+    }
+    case "path":
+      return element.bounds;
+    case "group":
+      return { x: 0, y: 0, width: 0, height: 0 };
+  }
+}
 
 export function WebGLCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -14,7 +47,7 @@ export function WebGLCanvas() {
   const [isCmdHeld, setIsCmdHeld] = useState(false);
 
   const {
-    shapes,
+    elements,
     selectedIds,
     transform,
     activeTool,
@@ -35,6 +68,8 @@ export function WebGLCanvas() {
     flipHorizontal,
     flipVertical,
     toggleLock,
+    groupSelected,
+    ungroupSelected,
   } = useCanvasStore();
 
   const { handlers, actions } = useCanvasControls();
@@ -51,10 +86,10 @@ export function WebGLCanvas() {
     [transform],
   );
 
-  const hitTest = useCallback((worldX: number, worldY: number) => hitTestShape(worldX, worldY, shapes), [shapes]);
+  const hitTest = useCallback((worldX: number, worldY: number) => hitTestShape(worldX, worldY, elements), [elements]);
 
   const hitTestHandle = useCallback(
-    (worldX: number, worldY: number, shape: (typeof shapes)[0]) => hitTestResizeHandle(worldX, worldY, shape),
+    (worldX: number, worldY: number, element: CanvasElement) => hitTestResizeHandle(worldX, worldY, element),
     [],
   );
 
@@ -94,7 +129,7 @@ export function WebGLCanvas() {
   // Mark renderer dirty when state changes
   useEffect(() => {
     rendererRef.current?.markDirty();
-  }, [shapes, selectedIds, selectionBox]);
+  }, [elements, selectedIds, selectionBox]);
 
   // Handle canvas resize
   useEffect(() => {
@@ -118,20 +153,26 @@ export function WebGLCanvas() {
 
   const handleWheel = useCallback(
     (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        actions.zoomIn();
+        return;
+      }
       if (!containerRef.current) return;
       handlers.handleWheel(e, containerRef.current.getBoundingClientRect());
     },
-    [handlers],
+    [handlers, actions],
   );
 
   const onMouseUp = useCallback(() => {
-    handleMouseUp((box) => getShapesInBox(box, shapes));
-  }, [handleMouseUp, shapes]);
+    handleMouseUp((box) => getShapesInBox(box, elements));
+  }, [handleMouseUp, elements]);
 
   // Setup event listeners
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space" && !e.repeat) {
@@ -188,6 +229,18 @@ export function WebGLCanvas() {
         e.preventDefault();
         toggleLock();
       }
+
+      // Group (Cmd+G)
+      if (e.code === "KeyG" && (e.metaKey || e.ctrlKey) && !e.shiftKey && selectedIds.length > 1) {
+        e.preventDefault();
+        groupSelected();
+      }
+
+      // Ungroup (Cmd+Shift+G)
+      if (e.code === "KeyG" && (e.metaKey || e.ctrlKey) && e.shiftKey && selectedIds.length > 0) {
+        e.preventDefault();
+        ungroupSelected();
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -201,8 +254,8 @@ export function WebGLCanvas() {
     };
 
     container.addEventListener("wheel", handleWheel, { passive: false });
-    container.addEventListener("mousedown", handleMouseDown);
-    container.addEventListener("contextmenu", preventContextMenu);
+    canvas.addEventListener("mousedown", handleMouseDown);
+    canvas.addEventListener("contextmenu", preventContextMenu);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     window.addEventListener("keydown", handleKeyDown);
@@ -210,8 +263,8 @@ export function WebGLCanvas() {
 
     return () => {
       container.removeEventListener("wheel", handleWheel);
-      container.removeEventListener("mousedown", handleMouseDown);
-      container.removeEventListener("contextmenu", preventContextMenu);
+      canvas.removeEventListener("mousedown", handleMouseDown);
+      canvas.removeEventListener("contextmenu", preventContextMenu);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("keydown", handleKeyDown);
@@ -230,6 +283,8 @@ export function WebGLCanvas() {
     flipHorizontal,
     flipVertical,
     toggleLock,
+    groupSelected,
+    ungroupSelected,
     setIsSpaceHeld,
     setActiveTool,
     clearSelection,
@@ -255,52 +310,49 @@ export function WebGLCanvas() {
                 ? "grab"
                 : "default";
 
-  // Calculate bounding box and rotation for selected shapes
+  // Calculate bounding box and rotation for selected elements
   const selectionInfo = useMemo(() => {
     if (selectedIds.length === 0) return null;
-    const selectedShapes = shapes.filter((s) => selectedIds.includes(s.id));
-    if (selectedShapes.length === 0) return null;
+    const selectedElements = elements.filter((e) => selectedIds.includes(e.id));
+    if (selectedElements.length === 0) return null;
 
-    // Helper to get rotated corners
-    const getRotatedCorners = (shape: (typeof shapes)[0]) => {
-      const { x, y, width, height, rotation } = shape;
-      const centerX = x + width / 2;
-      const centerY = y + height / 2;
-      const cos = Math.cos(rotation);
-      const sin = Math.sin(rotation);
-
-      return [
-        { x, y },
-        { x: x + width, y },
-        { x: x + width, y: y + height },
-        { x, y: y + height },
-      ].map((corner) => {
-        const dx = corner.x - centerX;
-        const dy = corner.y - centerY;
+    // For single element, use its actual bounds and rotation
+    if (selectedElements.length === 1) {
+      const element = selectedElements[0];
+      if (element.type === "line") {
+        const dx = element.x2 - element.x1;
+        const dy = element.y2 - element.y1;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const cx = (element.x1 + element.x2) / 2;
+        const cy = (element.y1 + element.y2) / 2;
         return {
-          x: centerX + dx * cos - dy * sin,
-          y: centerY + dx * sin + dy * cos,
+          bounds: {
+            x: cx - length / 2,
+            y: cy,
+            width: length,
+            height: 0,
+          },
+          rotation: angle,
         };
-      });
-    };
+      }
 
-    // For single shape, use its actual bounds and rotation
-    if (selectedShapes.length === 1) {
-      const shape = selectedShapes[0];
+      const bounds = getElementBoundsLocal(element);
       return {
-        bounds: { x: shape.x, y: shape.y, width: shape.width, height: shape.height },
-        rotation: shape.rotation,
+        bounds,
+        rotation: element.rotation,
       };
     }
 
-    // For multiple shapes, calculate axis-aligned bounding box using rotated corners
+    // For multiple elements, calculate axis-aligned bounding box using rotated corners
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
 
-    for (const shape of selectedShapes) {
-      const corners = getRotatedCorners(shape);
+    for (const element of selectedElements) {
+      if (element.type === "group") continue;
+      const corners = getRotatedCorners(element as Shape);
       for (const corner of corners) {
         minX = Math.min(minX, corner.x);
         minY = Math.min(minY, corner.y);
@@ -313,7 +365,7 @@ export function WebGLCanvas() {
       bounds: { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
       rotation: 0,
     };
-  }, [selectedIds, shapes]);
+  }, [selectedIds, elements]);
 
   return (
     <div ref={containerRef} className="relative h-screen w-full select-none overflow-hidden" style={{ cursor }}>
@@ -327,6 +379,16 @@ export function WebGLCanvas() {
 
       <CanvasMenubar />
       <CanvasToolbar />
+
+      {/* Layers Panel */}
+      <Panel className="absolute top-0 left-0 border-r border-l-0">
+        <LayersPanel />
+      </Panel>
+
+      {/* Properties Panel */}
+      <Panel className="absolute top-0 right-0 border-r-0 border-l">
+        <PropertiesPanel />
+      </Panel>
     </div>
   );
 }
