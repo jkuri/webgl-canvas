@@ -1,4 +1,4 @@
-import { MinusSignIcon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import { MinusSignIcon, PlusSignIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ColorInput } from "@/components/shared/color-input";
 import { NumberInput } from "@/components/shared/number-input";
@@ -247,14 +247,47 @@ export function PropertiesPanel() {
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const elements = useCanvasStore((s) => s.elements);
   const updateElement = useCanvasStore((s) => s.updateElement);
+  const canvasBackground = useCanvasStore((s) => s.canvasBackground);
+  const setCanvasBackground = useCanvasStore((s) => s.setCanvasBackground);
+  const canvasBackgroundVisible = useCanvasStore((s) => s.canvasBackgroundVisible);
+  const setCanvasBackgroundVisible = useCanvasStore((s) => s.setCanvasBackgroundVisible);
 
   const selectedElement = elements.find((e) => e.id === selectedIds[0]);
   const isMultiple = selectedIds.length > 1;
 
   if (!selectedElement) {
     return (
-      <div className="flex h-full flex-col items-center justify-center p-4 text-muted-foreground text-xs">
-        <p>No selection</p>
+      <div className="flex h-full flex-col gap-0 text-foreground text-xs">
+        {/* Header */}
+        <div className="flex h-10 shrink-0 items-center justify-between border-b px-3 font-medium">
+          <span className="truncate">Page</span>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-2">
+          {/* Page Background */}
+          <div className="flex flex-col gap-3 p-3">
+            <SectionHeader title="Background" />
+            <div className="flex items-center gap-2">
+              <ColorInput
+                className="flex-1"
+                value={canvasBackground}
+                onChange={(hex) => setCanvasBackground(hex)}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                onClick={() => setCanvasBackgroundVisible(!canvasBackgroundVisible)}
+              >
+                {canvasBackgroundVisible ? (
+                  <EyeIcon />
+                ) : (
+                  <HugeiconsIcon icon={ViewOffSlashIcon} className="size-3.5" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

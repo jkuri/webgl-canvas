@@ -1,19 +1,24 @@
 import {
-  Menubar,
-  MenubarContent,
-  MenubarItem,
-  MenubarMenu,
-  MenubarSeparator,
-  MenubarShortcut,
-  MenubarTrigger,
-} from "@/components/ui/menubar";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 import { getRandomShapeColorCSS } from "@/lib/colors";
 import { useCanvasStore } from "@/store";
+import { FigmaIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 
 export function CanvasMenubar() {
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const elements = useCanvasStore((s) => s.elements);
-  const transform = useCanvasStore((s) => s.transform); // Added
+  const transform = useCanvasStore((s) => s.transform);
   const deleteSelected = useCanvasStore((s) => s.deleteSelected);
   const duplicateSelected = useCanvasStore((s) => s.duplicateSelected);
   const selectAll = useCanvasStore((s) => s.selectAll);
@@ -24,6 +29,10 @@ export function CanvasMenubar() {
   const resetView = useCanvasStore((s) => s.resetView);
   const groupSelected = useCanvasStore((s) => s.groupSelected);
   const ungroupSelected = useCanvasStore((s) => s.ungroupSelected);
+  const snapToGrid = useCanvasStore((s) => s.snapToGrid);
+  const snapToObjects = useCanvasStore((s) => s.snapToObjects);
+  const setSnapToGrid = useCanvasStore((s) => s.setSnapToGrid);
+  const setSnapToObjects = useCanvasStore((s) => s.setSnapToObjects);
 
   const getCenter = () => {
     const centerX = (window.innerWidth / 2 - transform.x) / transform.scale;
@@ -89,74 +98,129 @@ export function CanvasMenubar() {
   });
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
-      <Menubar className="pointer-events-auto shadow-md">
-        <MenubarMenu>
-          <MenubarTrigger>File</MenubarTrigger>
-          <MenubarContent>
-            <MenubarItem disabled>New Project</MenubarItem>
-            <MenubarItem disabled>Open...</MenubarItem>
-            <MenubarSeparator />
-            <MenubarItem disabled>Export</MenubarItem>
-          </MenubarContent>
-        </MenubarMenu>
+    <div className="flex h-12 w-full items-center border-b px-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex size-8 items-center justify-center rounded-md outline-none hover:bg-accent">
+          <HugeiconsIcon icon={FigmaIcon} className="size-5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" sideOffset={5} className="w-56">
+          {/* File Submenu */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+                File
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+                <DropdownMenuItem disabled>New Project</DropdownMenuItem>
+                <DropdownMenuItem disabled>Open...</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled>Export</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
-        <MenubarMenu>
-          <MenubarTrigger>Edit</MenubarTrigger>
-          <MenubarContent>
-            <MenubarItem disabled>
-              Undo <MenubarShortcut>⌘Z</MenubarShortcut>
-            </MenubarItem>
-            <MenubarItem disabled>
-              Redo <MenubarShortcut>⇧⌘Z</MenubarShortcut>
-            </MenubarItem>
-            <MenubarSeparator />
-            <MenubarItem onClick={duplicateSelected} disabled={selectedIds.length === 0}>
-              Duplicate <MenubarShortcut>⌘D</MenubarShortcut>
-            </MenubarItem>
-            <MenubarItem onClick={deleteSelected} disabled={selectedIds.length === 0}>
-              Delete <MenubarShortcut>⌫</MenubarShortcut>
-            </MenubarItem>
-            <MenubarSeparator />
-            <MenubarItem onClick={selectAll}>
-              Select All <MenubarShortcut>⌘A</MenubarShortcut>
-            </MenubarItem>
-            <MenubarSeparator />
-            <MenubarItem onClick={groupSelected} disabled={selectedIds.length < 2}>
-              Group <MenubarShortcut>⌘G</MenubarShortcut>
-            </MenubarItem>
-            <MenubarItem onClick={ungroupSelected} disabled={!hasGroupSelected}>
-              Ungroup <MenubarShortcut>⇧⌘G</MenubarShortcut>
-            </MenubarItem>
-          </MenubarContent>
-        </MenubarMenu>
+          {/* Edit Submenu */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+                Edit
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+                <DropdownMenuItem disabled>
+                    Undo <DropdownMenuShortcut>⌘Z</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled>
+                    Redo <DropdownMenuShortcut>⇧⌘Z</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={duplicateSelected} disabled={selectedIds.length === 0}>
+                    Duplicate <DropdownMenuShortcut>⌘D</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={deleteSelected} disabled={selectedIds.length === 0}>
+                    Delete <DropdownMenuShortcut>⌫</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={selectAll}>
+                    Select All <DropdownMenuShortcut>⌘A</DropdownMenuShortcut>
+                </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
-        <MenubarMenu>
-          <MenubarTrigger>Insert</MenubarTrigger>
-          <MenubarContent>
-            <MenubarItem onClick={handleAddRect}>Rectangle</MenubarItem>
-            <MenubarItem onClick={handleAddEllipse}>Ellipse</MenubarItem>
-            <MenubarItem onClick={handleAddLine}>Line</MenubarItem>
-          </MenubarContent>
-        </MenubarMenu>
+           {/* View Submenu */}
+           <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+                View
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-48">
+                <DropdownMenuItem onClick={zoomIn}>
+                    Zoom In <DropdownMenuShortcut>⌘+</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={zoomOut}>
+                    Zoom Out <DropdownMenuShortcut>⌘-</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => zoomTo(1)}>
+                    Zoom to 100% <DropdownMenuShortcut>⌘0</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={resetView}>
+                    Fit to Screen
+                </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
-        <MenubarMenu>
-          <MenubarTrigger>View</MenubarTrigger>
-          <MenubarContent className="w-42">
-            <MenubarItem onClick={zoomIn}>
-              Zoom In <MenubarShortcut>⌘+</MenubarShortcut>
-            </MenubarItem>
-            <MenubarItem onClick={zoomOut}>
-              Zoom Out <MenubarShortcut>⌘-</MenubarShortcut>
-            </MenubarItem>
-            <MenubarSeparator />
-            <MenubarItem onClick={() => zoomTo(1)}>
-              Zoom to 100% <MenubarShortcut>⌘0</MenubarShortcut>
-            </MenubarItem>
-            <MenubarItem onClick={resetView}>Fit to Screen</MenubarItem>
-          </MenubarContent>
-        </MenubarMenu>
-      </Menubar>
+          {/* Object Submenu */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+                Object
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+                 <DropdownMenuItem onClick={groupSelected} disabled={selectedIds.length < 2}>
+                    Group <DropdownMenuShortcut>⌘G</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={ungroupSelected} disabled={!hasGroupSelected}>
+                    Ungroup <DropdownMenuShortcut>⇧⌘G</DropdownMenuShortcut>
+                </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+           {/* Insert Submenu */}
+           <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+                Insert
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={handleAddRect}>Rectangle</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleAddEllipse}>Ellipse</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleAddLine}>Line</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+          {/* Preferences Submenu */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              Preferences
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuCheckboxItem
+                checked={snapToObjects}
+                onCheckedChange={setSnapToObjects}
+              >
+                Snap to objects
+              </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={useCanvasStore((s) => s.snapToGeometry)}
+              onCheckedChange={(c) => useCanvasStore.getState().setSnapToGeometry(c)}
+            >
+              Snap to geometry
+            </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={snapToGrid}
+                onCheckedChange={setSnapToGrid}
+              >
+                Snap to pixel grid <DropdownMenuShortcut>⇧⌘'</DropdownMenuShortcut>
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

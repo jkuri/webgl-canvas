@@ -57,27 +57,47 @@ const GRID_FRAGMENT_SHADER = `
   uniform vec2 u_resolution;
   uniform vec2 u_translation;
   uniform float u_scale;
+  uniform vec3 u_bgColor;
+  uniform float u_bgVisible;
 
   void main() {
     vec2 fragCoord = gl_FragCoord.xy;
     fragCoord.y = u_resolution.y - fragCoord.y;
     vec2 worldPos = (fragCoord - u_translation) / u_scale;
 
-    float baseSpacing = 20.0;
+    vec3 bgColor;
+
+    if (u_bgVisible > 0.5) {
+        bgColor = u_bgColor;
+    } else {
+        // Transparency Checkerboard
+        float size = 10.0;
+        vec2 p = floor(worldPos / size);
+        float pattern = mod(p.x + p.y, 2.0);
+        bgColor = mix(vec3(1.0), vec3(0.95), pattern);
+    }
+
+    float baseSpacing = 10.0;
     float spacing = baseSpacing;
-    if (u_scale < 0.5) spacing = baseSpacing * 4.0;
-    else if (u_scale < 1.0) spacing = baseSpacing * 2.0;
 
-    vec2 gridPos = mod(worldPos + spacing * 0.5, spacing);
-    vec2 center = vec2(spacing * 0.5);
-    float dist = length(gridPos - center);
-    float dotSize = 1.5 / u_scale;
-    float dot = 1.0 - smoothstep(dotSize * 0.5, dotSize, dist);
+    vec2 gridPos = mod(worldPos, spacing);
+    vec2 dist = min(gridPos, spacing - gridPos);
 
-    // Gray dots on light background (0.985)
-    vec3 bgColor = vec3(0.985);
-    vec3 dotColor = vec3(0.92);
-    gl_FragColor = vec4(mix(bgColor, dotColor, dot), 1.0);
+    // Line thickness (1px) aligned to pixel grid roughly
+    float lineThickness = 1.0 / u_scale;
+    float lineY = smoothstep(lineThickness, 0.0, dist.y);
+    float lineX = smoothstep(lineThickness, 0.0, dist.x);
+    float grid = max(lineX, lineY);
+
+    // Dynamic grid color
+    vec3 gridColor = vec3(0.92); // Light Gray
+
+    // Mix grid on top (only if background color is visible)
+    if (u_bgVisible > 0.5) {
+        gl_FragColor = vec4(mix(bgColor, gridColor, grid), 1.0);
+    } else {
+        gl_FragColor = vec4(bgColor, 1.0);
+    }
   }
 `;
 
@@ -86,6 +106,8 @@ type GetStateFunc = () => {
   elements: CanvasElement[];
   selectedIds: string[];
   selectionBox: SelectionBox | null;
+  canvasBackground: string;
+  canvasBackgroundVisible: boolean;
 };
 
 export class WebGLRenderer {
@@ -201,13 +223,23 @@ export class WebGLRenderer {
     elements: CanvasElement[];
     selectedIds: string[];
     selectionBox: SelectionBox | null;
+    canvasBackground: string;
+    canvasBackgroundVisible: boolean;
   }): void {
     const gl = this.gl;
-    const { transform, elements, selectedIds, selectionBox } = state;
+    const { transform, elements, selectedIds, selectionBox, canvasBackground, canvasBackgroundVisible } = state;
     const { x, y, scale } = transform;
     const dpr = window.devicePixelRatio;
 
-    gl.clearColor(0.985, 0.985, 0.985, 1);
+    // Convert bg color
+    const bgColor = cssToRGBA(canvasBackground);
+
+    // If visible, use it as clear color (optimization, though shader overwrites)
+    if (canvasBackgroundVisible) {
+        gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1);
+    } else {
+        gl.clearColor(1, 1, 1, 1);
+    }
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -223,6 +255,11 @@ export class WebGLRenderer {
       gl.uniform2f(gl.getUniformLocation(this.gridProgram, "u_resolution"), this.canvas.width, this.canvas.height);
       gl.uniform2f(gl.getUniformLocation(this.gridProgram, "u_translation"), x * dpr, y * dpr);
       gl.uniform1f(gl.getUniformLocation(this.gridProgram, "u_scale"), scale);
+
+      // Background uniforms
+      gl.uniform3f(gl.getUniformLocation(this.gridProgram, "u_bgColor"), bgColor[0], bgColor[1], bgColor[2]);
+      gl.uniform1f(gl.getUniformLocation(this.gridProgram, "u_bgVisible"), canvasBackgroundVisible ? 1.0 : 0.0);
+
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 

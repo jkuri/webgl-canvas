@@ -100,6 +100,18 @@ export interface BoundingBox {
 export type Tool = "select" | "pan" | "rect" | "ellipse" | "line";
 export type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | null;
 
+// Smart Guide
+export interface SmartGuide {
+  type: "x" | "y" | "distance";
+  x?: number; // For vertical line (x-axis alignment)
+  y?: number; // For horizontal line (y-axis alignment)
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+  label?: string; // For distance
+}
+
 // Helper to get bounding box for any element
 export function getElementBounds(element: CanvasElement): BoundingBox {
   switch (element.type) {

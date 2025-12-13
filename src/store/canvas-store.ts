@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CanvasElement, GroupElement, RectElement, ResizeHandle, Tool, Transform } from "@/types";
+import type { CanvasElement, GroupElement, ResizeHandle, SmartGuide, Tool, Transform } from "@/types";
 
 interface CanvasState {
   // Elements (replaces shapes)
@@ -29,9 +29,24 @@ interface CanvasState {
 
   // Selection box
   selectionBox: { startX: number; startY: number; endX: number; endY: number } | null;
+
+  // Page Settings
+  canvasBackground: string;
+  canvasBackgroundVisible: boolean;
+
+  // Snapping & Guides
+  snapToGrid: boolean;
+  snapToObjects: boolean;
+  snapToGeometry: boolean;
+  smartGuides: SmartGuide[];
 }
 
 interface CanvasActions {
+  // ... existing actions
+  setSnapToGrid: (enabled: boolean) => void;
+  setSnapToObjects: (enabled: boolean) => void;
+  setSnapToGeometry: (enabled: boolean) => void;
+  setSmartGuides: (guides: SmartGuide[]) => void;
   // Element actions
   addElement: (element: CanvasElement) => void;
   updateElement: (id: string, updates: Record<string, unknown>) => void;
@@ -91,6 +106,8 @@ interface CanvasActions {
   setContextMenuTarget: (element: CanvasElement | null) => void;
   setSelectionBox: (box: { startX: number; startY: number; endX: number; endY: number } | null) => void;
 
+  // Snapping actions
+  // setSnapToGrid... removed duplicates
   // Helpers
   getElementById: (id: string) => CanvasElement | undefined;
   getSelectedElements: () => CanvasElement[];
@@ -98,6 +115,10 @@ interface CanvasActions {
   getTopLevelElements: () => CanvasElement[]; // Elements without parents
   getChildrenOfGroup: (groupId: string) => CanvasElement[];
   getParentGroup: (elementId: string) => GroupElement | undefined;
+
+  // Page Actions
+  setCanvasBackground: (color: string) => void;
+  setCanvasBackgroundVisible: (visible: boolean) => void;
 }
 
 // Helper to generate default element names
@@ -176,159 +197,92 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   activeResizeHandle: null,
   contextMenuTarget: null,
   selectionBox: null,
+  canvasBackground: "#F5F5F5",
+  canvasBackgroundVisible: true,
+  snapToGrid: true,
+  snapToObjects: true,
+  snapToGeometry: false,
+  smartGuides: [],
 
   // Element actions
-  addElement: (element) => set((state) => ({ elements: [...state.elements, element] })),
+  addElement: (element) => set((state) => ({ elements: [...state.elements, element], selectedIds: [element.id] })),
 
   updateElement: (id, updates) =>
     set((state) => ({
-      elements: state.elements.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+      elements: state.elements.map((el) => {
+        if (el.id === id) {
+          return { ...el, ...updates } as CanvasElement;
+        }
+        return el;
+      }),
     })),
 
   deleteElement: (id) =>
     set((state) => {
-      const element = state.elements.find((e) => e.id === id);
-      // If deleting a group, also delete all children
-      const idsToDelete = new Set<string>([id]);
-      if (element?.type === "group") {
-        const collectChildren = (groupId: string) => {
-          const group = state.elements.find((e) => e.id === groupId) as GroupElement | undefined;
-          if (group?.childIds) {
-            for (const childId of group.childIds) {
-              idsToDelete.add(childId);
-              const child = state.elements.find((e) => e.id === childId);
-              if (child?.type === "group") {
-                collectChildren(childId);
-              }
-            }
+      const deleteRecursive = (elementId: string, elements: CanvasElement[]): CanvasElement[] => {
+        const element = elements.find((e) => e.id === elementId);
+        if (!element) return elements;
+
+        let newElements = elements.filter((e) => e.id !== elementId);
+
+        if (element.type === "group") {
+          for (const childId of (element as GroupElement).childIds) {
+            newElements = deleteRecursive(childId, newElements);
           }
-        };
-        collectChildren(id);
-      }
+        }
+        return newElements;
+      };
       return {
-        elements: state.elements.filter((e) => !idsToDelete.has(e.id)),
-        selectedIds: state.selectedIds.filter((sid) => !idsToDelete.has(sid)),
+        elements: deleteRecursive(id, state.elements),
+        selectedIds: state.selectedIds.filter((sid) => sid !== id),
       };
     }),
 
-  deleteSelected: () =>
-    set((state) => {
-      const idsToDelete = new Set<string>(state.selectedIds);
-      // Include children of selected groups
-      for (const id of state.selectedIds) {
-        const element = state.elements.find((e) => e.id === id);
-        if (element?.type === "group") {
-          const collectChildren = (groupId: string) => {
-            const group = state.elements.find((e) => e.id === groupId) as GroupElement | undefined;
-            if (group?.childIds) {
-              for (const childId of group.childIds) {
-                idsToDelete.add(childId);
-                const child = state.elements.find((e) => e.id === childId);
-                if (child?.type === "group") {
-                  collectChildren(childId);
-                }
-              }
-            }
-          };
-          collectChildren(id);
-        }
-      }
-      return {
-        elements: state.elements.filter((e) => !idsToDelete.has(e.id)),
-        selectedIds: [],
-      };
-    }),
+  deleteSelected: () => {
+    const state = get();
+    state.selectedIds.forEach((id) => { state.deleteElement(id); });
+  },
 
   duplicateSelected: () => {
     const state = get();
-    const newElements: CanvasElement[] = [];
     const newIds: string[] = [];
-    const idMapping = new Map<string, string>(); // old id -> new id
 
-    // First pass: create all new elements with new IDs
+    const newElements = [...state.elements];
+
     for (const id of state.selectedIds) {
-      const element = state.elements.find((e) => e.id === id);
-      if (element) {
+      const original = state.elements.find((e) => e.id === id);
+      if (original) {
         const newId = crypto.randomUUID();
-        idMapping.set(id, newId);
+        const copy = { ...original, id: newId, name: `${original.name} Copy` };
 
-        if (element.type === "rect") {
-          const newElement: RectElement = {
-            ...element,
-            id: newId,
-            name: `${element.name} Copy`,
-            x: element.x + 20,
-            y: element.y + 20,
-          };
-          newElements.push(newElement);
-        } else if (element.type === "ellipse") {
-          newElements.push({
-            ...element,
-            id: newId,
-            name: `${element.name} Copy`,
-            cx: element.cx + 20,
-            cy: element.cy + 20,
-          });
-        } else if (element.type === "line") {
-          newElements.push({
-            ...element,
-            id: newId,
-            name: `${element.name} Copy`,
-            x1: element.x1 + 20,
-            y1: element.y1 + 20,
-            x2: element.x2 + 20,
-            y2: element.y2 + 20,
-          });
-        } else if (element.type === "path") {
-          newElements.push({
-            ...element,
-            id: newId,
-            name: `${element.name} Copy`,
-            bounds: {
-              ...element.bounds,
-              x: element.bounds.x + 20,
-              y: element.bounds.y + 20,
-            },
-          });
-        } else if (element.type === "group") {
-          // Groups need to update childIds in second pass
-          newElements.push({
-            ...element,
-            id: newId,
-            name: `${element.name} Copy`,
-            childIds: [], // Will be updated in second pass
-          });
+        // Offset slightly
+        if (copy.type === "rect" || copy.type === "line" || copy.type === "path") {
+
+            if ('x' in copy) copy.x += 20;
+            if ('y' in copy) copy.y += 20;
+            if ('x1' in copy) { copy.x1 += 20; copy.x2 += 20; }
+            if ('y1' in copy) { copy.y1 += 20; copy.y2 += 20; }
+        } else if (copy.type === "ellipse") {
+             copy.cx += 20;
+             copy.cy += 20;
         }
+
+        newElements.push(copy);
         newIds.push(newId);
       }
     }
 
-    // Second pass: update group childIds with new IDs
-    for (const element of newElements) {
-      if (element.type === "group") {
-        const originalElement = state.elements.find(
-          (e) => e.id === [...idMapping.entries()].find(([_, v]) => v === element.id)?.[0],
-        );
-        if (originalElement?.type === "group") {
-          element.childIds = originalElement.childIds.map((childId) => idMapping.get(childId) ?? childId);
-        }
-      }
-    }
-
-    set((s) => ({
-      elements: [...s.elements, ...newElements],
-      selectedIds: newIds,
-    }));
-
+    set({ elements: newElements, selectedIds: newIds });
     return newIds;
   },
 
   bringToFront: (id) =>
     set((state) => {
-      const idx = state.elements.findIndex((e) => e.id === id);
-      if (idx === -1) return state;
-      const element = state.elements[idx];
-      const newElements = [...state.elements.slice(0, idx), ...state.elements.slice(idx + 1), element];
+      const index = state.elements.findIndex((e) => e.id === id);
+      if (index === -1 || index === state.elements.length - 1) return state;
+      const newElements = [...state.elements];
+      const [removed] = newElements.splice(index, 1);
+      newElements.push(removed);
       return { elements: newElements };
     }),
 
@@ -639,6 +593,12 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   setContextMenuTarget: (element) => set({ contextMenuTarget: element }),
   setSelectionBox: (box) => set({ selectionBox: box }),
 
+  // --- Snapping Actions ---
+  setSnapToGrid: (snap) => set({ snapToGrid: snap }),
+  setSnapToObjects: (snap) => set({ snapToObjects: snap }),
+  setSnapToGeometry: (snap) => set({ snapToGeometry: snap }),
+  setSmartGuides: (guides) => set({ smartGuides: guides }),
+
   // Helpers
   getElementById: (id) => get().elements.find((e) => e.id === id),
 
@@ -693,4 +653,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     if (!element?.parentId) return undefined;
     return state.elements.find((e) => e.id === element.parentId) as GroupElement | undefined;
   },
+
+  setCanvasBackground: (color) => set({ canvasBackground: color }),
+  setCanvasBackgroundVisible: (visible) => set({ canvasBackgroundVisible: visible }),
 }));

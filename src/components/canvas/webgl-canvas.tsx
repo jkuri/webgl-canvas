@@ -10,6 +10,7 @@ import { DimensionLabel } from "./dimension-label";
 import { LayersPanel } from "./layers-panel";
 import { Panel } from "./panel";
 import { PropertiesPanel } from "./properties-panel";
+import { SmartGuides } from "./smart-guides";
 
 // Helper to get bounds for any element type
 function getElementBoundsLocal(element: CanvasElement): { x: number; y: number; width: number; height: number } {
@@ -70,6 +71,8 @@ export function WebGLCanvas() {
     toggleLock,
     groupSelected,
     ungroupSelected,
+    canvasBackground,
+    canvasBackgroundVisible,
   } = useCanvasStore();
 
   const { handlers, actions } = useCanvasControls();
@@ -129,7 +132,7 @@ export function WebGLCanvas() {
   // Mark renderer dirty when state changes
   useEffect(() => {
     rendererRef.current?.markDirty();
-  }, [elements, selectedIds, selectionBox]);
+  }, [elements, selectedIds, selectionBox, canvasBackground, canvasBackgroundVisible]);
 
   // Handle canvas resize
   useEffect(() => {
@@ -371,6 +374,7 @@ export function WebGLCanvas() {
       <CanvasContextMenu onContextMenu={handleContextMenu}>
         <canvas ref={canvasRef} className="h-full w-full" />
       </CanvasContextMenu>
+      <SmartGuides />
 
       {selectionInfo && (
         <DimensionLabel
@@ -381,11 +385,11 @@ export function WebGLCanvas() {
         />
       )}
 
-      <CanvasMenubar />
       <CanvasToolbar />
 
       {/* Layers Panel */}
       <Panel className="absolute top-0 left-0 border-r border-l-0">
+        <CanvasMenubar />
         <LayersPanel />
       </Panel>
 

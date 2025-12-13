@@ -9,3 +9,4 @@ export {
   hitTestShape,
 } from "./hit-testing";
 export { WebGLRenderer } from "./webgl-renderer";
+export * from "./snapping";

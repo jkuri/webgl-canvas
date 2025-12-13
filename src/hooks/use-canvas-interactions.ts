@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from "react";
-import { calculateBoundingBox, getShapesInBox, hitTestBoundsHandle, hitTestRotatedElementHandle } from "@/core";
+import { calculateBoundingBox, getShapesInBox, hitTestBoundsHandle, hitTestRotatedElementHandle, calculateSnapAdjustment, getBounds, getSnapPoints, type Bounds, type Point } from "@/core";
 import { useCanvasStore } from "@/store";
 import type { BoundingBox, CanvasElement, ResizeHandle, Shape } from "@/types";
 
@@ -175,6 +175,9 @@ export function useCanvasInteractions({
       string,
       { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }
     >;
+    snapCandidates: Bounds[];
+    snapPoints: Point[];
+    originalBounds: Bounds;
   } | null>(null);
 
   const resizeStartRef = useRef<{
@@ -507,7 +510,42 @@ export function useCanvasInteractions({
                   }
                 }
               }
-              dragStartRef.current = { worldX: world.x, worldY: world.y, elements: elementsMap };
+
+              // Pre-calculate candidates for snapping (everything NOT being dragged)
+              // Calculate bounds for each candidate once
+              const snapCandidates = elements
+                   .filter(e => !elementsToDrag.includes(e.id))
+                   .map(e => getBounds(e));
+
+              const snapPoints = elements
+                  .filter(e => !elementsToDrag.includes(e.id))
+                  .flatMap(e => getSnapPoints(e));
+
+              const draggedEls = elements.filter(e => elementsToDrag.includes(e.id));
+              let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+              for (const el of draggedEls) {
+                  const b = getBounds(el);
+                  minX = Math.min(minX, b.minX);
+                  minY = Math.min(minY, b.minY);
+                  maxX = Math.max(maxX, b.maxX);
+                  maxY = Math.max(maxY, b.maxY);
+              }
+
+              const originalBounds: Bounds = {
+                  minX, minY, maxX, maxY,
+                  centerX: (minX + maxX) / 2,
+                  centerY: (minY + maxY) / 2
+              };
+
+              dragStartRef.current = {
+                  worldX: world.x,
+                  worldY: world.y,
+                  elements: elementsMap,
+                  snapCandidates,
+                  snapPoints,
+                  originalBounds
+              };
             }
           }
         } else {
@@ -577,27 +615,64 @@ export function useCanvasInteractions({
       if (isDragging && dragStartRef.current) {
         const deltaX = world.x - dragStartRef.current.worldX;
         const deltaY = world.y - dragStartRef.current.worldY;
+
+        // Snapping Logic
+        let finalDeltaX = deltaX;
+        let finalDeltaY = deltaY;
+
+        if (useCanvasStore.getState().snapToGrid || useCanvasStore.getState().snapToObjects || useCanvasStore.getState().snapToGeometry) {
+             const originalBounds = dragStartRef.current.originalBounds;
+             const snapCandidates = dragStartRef.current.snapCandidates;
+             const snapPoints = dragStartRef.current.snapPoints;
+
+             // Projected bounds
+             const projected: Bounds = {
+                 minX: originalBounds.minX + deltaX,
+                 minY: originalBounds.minY + deltaY,
+                 maxX: originalBounds.maxX + deltaX,
+                 maxY: originalBounds.maxY + deltaY,
+                 centerX: originalBounds.centerX + deltaX,
+                 centerY: originalBounds.centerY + deltaY
+             };
+
+             const snapResult = calculateSnapAdjustment(
+                 projected,
+                 snapCandidates,
+                 snapPoints,
+                 useCanvasStore.getState().snapToGrid,
+                 useCanvasStore.getState().snapToObjects,
+                 useCanvasStore.getState().snapToGeometry,
+                 transform.scale
+             );
+
+             finalDeltaX = deltaX + snapResult.x;
+             finalDeltaY = deltaY + snapResult.y;
+             useCanvasStore.getState().setSmartGuides(snapResult.guides);
+        } else {
+             useCanvasStore.getState().setSmartGuides([]);
+        }
+
         for (const [id, startPos] of dragStartRef.current.elements) {
           const element = getElementById(id);
           if (!element) continue;
 
           if (element.type === "rect") {
-            updateElement(id, { x: startPos.x + deltaX, y: startPos.y + deltaY });
+            updateElement(id, { x: startPos.x + finalDeltaX, y: startPos.y + finalDeltaY });
           } else if (element.type === "ellipse") {
-            updateElement(id, { cx: (startPos.cx ?? 0) + deltaX, cy: (startPos.cy ?? 0) + deltaY });
+            updateElement(id, { cx: (startPos.cx ?? 0) + finalDeltaX, cy: (startPos.cy ?? 0) + finalDeltaY });
           } else if (element.type === "line") {
             updateElement(id, {
-              x1: (startPos.x1 ?? 0) + deltaX,
-              y1: (startPos.y1 ?? 0) + deltaY,
-              x2: (startPos.x2 ?? 0) + deltaX,
-              y2: (startPos.y2 ?? 0) + deltaY,
+              x1: (startPos.x1 ?? 0) + finalDeltaX,
+              y1: (startPos.y1 ?? 0) + finalDeltaY,
+              x2: (startPos.x2 ?? 0) + finalDeltaX,
+              y2: (startPos.y2 ?? 0) + finalDeltaY,
             });
           } else if (element.type === "path") {
             updateElement(id, {
               bounds: {
                 ...element.bounds,
-                x: startPos.x + deltaX,
-                y: startPos.y + deltaY,
+                x: startPos.x + finalDeltaX,
+                y: startPos.y + finalDeltaY,
               },
             });
           }
@@ -906,6 +981,9 @@ export function useCanvasInteractions({
     resizeStartRef.current = null;
     rotateStartRef.current = null;
     marqueeStartRef.current = null;
+
+    // Clear guides
+    useCanvasStore.getState().setSmartGuides([]);
   }, [
     isMarqueeSelecting,
     screenToWorld,
