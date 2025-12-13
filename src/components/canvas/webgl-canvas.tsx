@@ -4,7 +4,6 @@ import { useCanvasControls, useCanvasInteractions } from "@/hooks";
 import { useCanvasStore } from "@/store";
 import type { CanvasElement, Shape } from "@/types";
 import { CanvasContextMenu } from "./canvas-context-menu";
-import { CanvasMenubar } from "./canvas-menubar";
 import { CanvasToolbar } from "./canvas-toolbar";
 import { DimensionLabel } from "./dimension-label";
 import { LayersPanel } from "./layers-panel";
@@ -389,7 +388,6 @@ export function WebGLCanvas() {
 
       {/* Layers Panel */}
       <Panel className="absolute top-0 left-0 border-r border-l-0">
-        <CanvasMenubar />
         <LayersPanel />
       </Panel>
 
