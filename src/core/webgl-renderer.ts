@@ -1,6 +1,6 @@
 import { cssToRGBA } from "@/lib/colors";
+import { parsePath, pathToFillVertices, pathToStrokeVertices } from "@/lib/path-parser";
 import type {
-  BoundingBox,
   CanvasElement,
   EllipseElement,
   LineElement,
@@ -15,13 +15,14 @@ const VERTEX_SHADER = `
   attribute vec2 a_position;
   uniform vec2 u_resolution;
   uniform vec2 u_translation;
+  uniform vec2 u_offset;
   uniform float u_scale;
   uniform float u_rotation;
   uniform vec2 u_rotationCenter;
 
   void main() {
-    // Apply rotation around center
-    vec2 pos = a_position - u_rotationCenter;
+    // Apply local offset then rotation around center
+    vec2 pos = a_position + u_offset - u_rotationCenter;
     float cosR = cos(u_rotation);
     float sinR = sin(u_rotation);
     vec2 rotated = vec2(
@@ -30,7 +31,7 @@ const VERTEX_SHADER = `
     );
     pos = rotated + u_rotationCenter;
 
-    vec2 position = (pos * u_scale + u_translation) / u_resolution * 2.0 - 1.0;
+    vec2 position = ((pos * u_scale) + u_translation) / u_resolution * 2.0 - 1.0;
     gl_Position = vec4(position * vec2(1, -1), 0, 1);
   }
 `;
@@ -110,6 +111,13 @@ type GetStateFunc = () => {
   canvasBackgroundVisible: boolean;
 };
 
+interface PathCacheEntry {
+  d: string;
+  vertices: Float32Array;
+  strokeVertices: Float32Array;
+  nativeBounds: { x: number; y: number };
+}
+
 export class WebGLRenderer {
   private gl: WebGLRenderingContext;
   private canvas: HTMLCanvasElement;
@@ -122,6 +130,7 @@ export class WebGLRenderer {
   private lastTransform: Transform | null = null;
   private getState: GetStateFunc | null = null;
 
+  private pathCache = new Map<string, PathCacheEntry>();
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const gl = canvas.getContext("webgl", { antialias: true, alpha: true });
@@ -236,9 +245,9 @@ export class WebGLRenderer {
 
     // If visible, use it as clear color (optimization, though shader overwrites)
     if (canvasBackgroundVisible) {
-        gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1);
+      gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1);
     } else {
-        gl.clearColor(1, 1, 1, 1);
+      gl.clearColor(1, 1, 1, 1);
     }
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.enable(gl.BLEND);
@@ -273,13 +282,34 @@ export class WebGLRenderer {
       gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
       gl.uniform2f(gl.getUniformLocation(this.shapeProgram, "u_resolution"), this.canvas.width, this.canvas.height);
       gl.uniform2f(gl.getUniformLocation(this.shapeProgram, "u_translation"), x * dpr, y * dpr);
+      gl.uniform2f(gl.getUniformLocation(this.shapeProgram, "u_offset"), 0, 0);
       gl.uniform1f(gl.getUniformLocation(this.shapeProgram, "u_scale"), scale);
+
+      // Calculate visible bounds (View Frustum Culling)
+      // Convert screen viewport (0,0 to width,height) to world coordinates
+      const visibleMinX = -x / scale;
+      const visibleMinY = -y / scale;
+      const visibleMaxX = (this.canvas.width / dpr - x) / scale;
+      const visibleMaxY = (this.canvas.height / dpr - y) / scale;
 
       // Render elements in order (groups are virtual, render their children)
       for (const element of elements) {
         if (element.visible === false) continue;
         if (element.parentId) continue; // Skip elements with parents (rendered by parent group)
-        this.renderElement(element, elements, scale);
+
+        // Culling Check:
+        // If element has bounds (most do via Rect/Ellipse/Path props or explicit bounds), use them.
+        // If element is a group, we might need to check its children or combined bounds.
+        // For now, simple culling for basic shapes. Groups render children recursively, checking each.
+        // NOTE: renderElement handles recursion, so we should actually apply culling INSIDE renderElement
+        // or duplicate logic here. But wait, renderElement is recursive.
+        // Better to pass visible bounds to renderElement.
+        this.renderElement(element, elements, scale, {
+          minX: visibleMinX,
+          minY: visibleMinY,
+          maxX: visibleMaxX,
+          maxY: visibleMaxY,
+        });
       }
 
       // Draw selection outlines
@@ -329,38 +359,118 @@ export class WebGLRenderer {
     return shapes;
   }
 
-  private renderElement(element: CanvasElement, allElements: CanvasElement[], scale: number): void {
+  private renderElement(
+    element: CanvasElement,
+    allElements: CanvasElement[],
+    scale: number,
+    visibleBounds?: { minX: number; minY: number; maxX: number; maxY: number },
+  ): void {
     if (element.visible === false) return;
+
+    // View Frustum Culling
+    if (visibleBounds) {
+      // Calculate element bounds
+      let ex = 0;
+      let ey = 0;
+      let ew = 0;
+      let eh = 0;
+
+      if (element.type === "group") {
+        // For groups, we could calculate combined bounds, but for now just pass check to children
+        // effectively checking each child.
+        // Optimization: Groups often don't have explicit bounds stored.
+      } else if (element.type === "rect" || element.type === "image" || element.type === "text") {
+        // We know these exist on these types
+        ex = (element as any).x;
+        ey = (element as any).y;
+        // text doesn't have explicit width/height in model usually but we can estimate or skip
+        ew = (element as any).width || 0;
+        eh = (element as any).height || 0;
+
+        // Skip culling for Text if width/height is 0 (it might be dynamic)
+        if (element.type === "text") {
+          // Text usually needs measurement. Skip culling or assume large bounds?
+          // Safest to SKIP culling for text if we don't know bounds.
+          // However, if we do bounds check:
+        }
+      } else if (element.type === "ellipse") {
+        const el = element as EllipseElement;
+        ex = el.cx - el.rx;
+        ey = el.cy - el.ry;
+        ew = el.rx * 2;
+        eh = el.ry * 2;
+      } else if (element.type === "path") {
+        const el = element as PathElement;
+        if (el.bounds) {
+          ex = el.bounds.x;
+          ey = el.bounds.y;
+          ew = el.bounds.width;
+          eh = el.bounds.height;
+        } else {
+          // If no bounds, skip culling (always render)
+          ex = visibleBounds.minX; // Force inside
+          ey = visibleBounds.minY;
+          ew = 1;
+          eh = 1;
+        }
+      } else if (element.type === "line") {
+        const el = element as LineElement;
+        ex = Math.min(el.x1, el.x2);
+        ey = Math.min(el.y1, el.y2);
+        ew = Math.abs(el.x2 - el.x1);
+        eh = Math.abs(el.y2 - el.y1);
+      }
+
+      // Perform intersection check (AABB)
+      // Only cull if we calculated valid bounds (width/height > 0 or specific types)
+      if (ew > 0 && eh > 0) {
+        if (
+          ex + ew < visibleBounds.minX ||
+          ex > visibleBounds.maxX ||
+          ey + eh < visibleBounds.minY ||
+          ey > visibleBounds.maxY
+        ) {
+          return; // Cull (skip rendering)
+        }
+      }
+    }
 
     switch (element.type) {
       case "rect":
-        this.drawRect(element);
+        this.drawRect(element as RectElement);
         break;
       case "ellipse":
-        this.drawEllipse(element, scale);
+        this.drawEllipse(element as EllipseElement, scale);
         break;
       case "line":
-        this.drawLine(element, scale);
+        this.drawLine(element as LineElement, scale);
         break;
       case "path":
         // Path rendering would require parsing the d attribute
-        // For now, just draw the bounding box
-        this.drawPathPlaceholder(element);
+        // For now, just draw the bounding box (or path if implemented)
+        this.drawPath(element as PathElement);
         break;
       case "group":
         // Render children
         for (const childId of element.childIds) {
           const child = allElements.find((e) => e.id === childId);
           if (child) {
-            this.renderElement(child, allElements, scale);
+            this.renderElement(child, allElements, scale, visibleBounds);
           }
         }
         break;
     }
   }
 
-  private cssColorToRGBA(color: string | null): [number, number, number, number] {
+  private cssColorToRGBA(
+    color: string | { ref: string; type: "gradient" | "pattern" } | null,
+  ): [number, number, number, number] {
     if (!color) return [0, 0, 0, 0];
+    // Handle gradient/pattern references - use fallback color for now
+    // TODO: Implement gradient/pattern rendering in WebGL
+    if (typeof color === "object" && "ref" in color) {
+      return [0.5, 0.5, 0.5, 1]; // Gray fallback for gradients/patterns
+    }
     return cssToRGBA(color);
   }
 
@@ -484,6 +594,12 @@ export class WebGLRenderer {
       if (rih > 0) {
         vRects.push(rix, riy, rix + riw, riy, rix, riy + rih, rix, riy + rih, rix + riw, riy, rix + riw, riy + rih);
       }
+
+      // Reset translation
+      gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
+
+      // Reset translation
+      gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
 
       // Set up shader for fill
       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
@@ -616,6 +732,7 @@ export class WebGLRenderer {
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.STATIC_DRAW);
       gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...color);
       gl.uniform1f(gl.getUniformLocation(this.shapeProgram!, "u_rotation"), rotation);
+      gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
       gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_rotationCenter"), cx, cy);
       gl.drawArrays(gl.TRIANGLES, 0, segments * 3);
     }
@@ -626,6 +743,7 @@ export class WebGLRenderer {
       strokeColor[3] *= opacity;
       this.resetRotation();
       gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...strokeColor);
+      gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
 
       // Draw ellipse outline as line segments
       const cos = Math.cos(rotation);
@@ -665,6 +783,7 @@ export class WebGLRenderer {
 
     this.resetRotation();
     gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...color);
+    gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
 
     // Calculate line angle
     const dx = x2 - x1;
@@ -875,39 +994,89 @@ export class WebGLRenderer {
     }
   }
 
-  private drawPathPlaceholder(element: PathElement): void {
-    // For now, just draw the bounding box outline
-    const { bounds, fill, opacity } = element;
-    if (!fill) return;
+  private drawPath(element: PathElement): void {
+    const { id, d, bounds, fill, stroke, opacity, rotation } = element;
+    if (!fill && !stroke) return;
 
     const gl = this.gl;
-    const color = this.cssColorToRGBA(fill);
-    color[3] *= opacity * 0.5; // Make it semi-transparent to indicate placeholder
-
     const { x, y, width, height } = bounds;
-    const vertices = new Float32Array([
-      x,
-      y,
-      x + width,
-      y,
-      x,
-      y + height,
-      x,
-      y + height,
-      x + width,
-      y,
-      x + width,
-      y + height,
-    ]);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-    gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...color);
-    gl.uniform1f(gl.getUniformLocation(this.shapeProgram!, "u_rotation"), element.rotation);
     const centerX = x + width / 2;
     const centerY = y + height / 2;
-    gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_rotationCenter"), centerX, centerY);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // Check cache
+    let cached = this.pathCache.get(id);
+
+    // Invalidate if d changed
+    if (cached && cached.d !== d) {
+      cached = undefined;
+    }
+
+    if (!cached) {
+      // Parse path commands
+      const commands = parsePath(d);
+      if (commands.length === 0) return;
+
+      const fillVertices = fill ? new Float32Array(pathToFillVertices(commands)) : new Float32Array(0);
+      const strokeVertices = stroke
+        ? new Float32Array(pathToStrokeVertices(commands, stroke.width))
+        : new Float32Array(0);
+
+      // Calculate native bounds from vertices
+      let minX = Infinity;
+      let minY = Infinity;
+      // Sample vertices to find min X/Y.
+      // Note: fillVertices is [x, y, x, y...].
+      const samples = fillVertices.length > 0 ? fillVertices : strokeVertices;
+      if (samples.length > 0) {
+        for (let i = 0; i < samples.length; i += 2) {
+          if (samples[i] < minX) minX = samples[i];
+          if (samples[i + 1] < minY) minY = samples[i + 1];
+        }
+      } else {
+        minX = element.bounds.x;
+        minY = element.bounds.y;
+      }
+
+      cached = {
+        d,
+        vertices: fillVertices,
+        strokeVertices: strokeVertices,
+        nativeBounds: { x: minX, y: minY },
+      };
+      this.pathCache.set(id, cached);
+    }
+
+    // Calculate translation delta
+    const dx = element.bounds.x - cached.nativeBounds.x;
+    const dy = element.bounds.y - cached.nativeBounds.y;
+    gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), dx, dy);
+
+    // Draw fill
+    if (fill && cached.vertices.length >= 6) {
+      const color = this.cssColorToRGBA(fill);
+      color[3] *= opacity;
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, cached.vertices, gl.STATIC_DRAW);
+      gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...color);
+      gl.uniform1f(gl.getUniformLocation(this.shapeProgram!, "u_rotation"), rotation);
+      gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_rotationCenter"), centerX, centerY);
+      gl.drawArrays(gl.TRIANGLES, 0, cached.vertices.length / 2);
+    }
+
+    // Draw stroke
+    if (stroke && cached.strokeVertices.length >= 6) {
+      const strokeColor = typeof stroke.color === "string" ? stroke.color : "#000000";
+      const color = this.cssColorToRGBA(strokeColor);
+      color[3] *= opacity;
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, cached.strokeVertices, gl.STATIC_DRAW);
+      gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...color);
+      gl.uniform1f(gl.getUniformLocation(this.shapeProgram!, "u_rotation"), rotation);
+      gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_rotationCenter"), centerX, centerY);
+      gl.drawArrays(gl.TRIANGLES, 0, cached.strokeVertices.length / 2);
+    }
   }
 
   private drawDisc(x: number, y: number, radius: number, gl: WebGLRenderingContext): void {
@@ -931,6 +1100,7 @@ export class WebGLRenderer {
     gl.bufferData(gl.ARRAY_BUFFER, floatVertices, gl.STATIC_DRAW);
 
     this.resetRotation();
+    gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
 
     gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
   }
@@ -958,6 +1128,7 @@ export class WebGLRenderer {
     const gl = this.gl;
     gl.uniform1f(gl.getUniformLocation(this.shapeProgram!, "u_rotation"), 0);
     gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_rotationCenter"), 0, 0);
+    gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
   }
 
   private getRotatedCorners(shape: Shape): { x: number; y: number }[] {
@@ -1013,6 +1184,9 @@ export class WebGLRenderer {
           y: centerY + (corner.x - centerX) * sin + (corner.y - centerY) * cos,
         }));
       }
+      default:
+        // For text, polygon, polyline, image - return empty corners
+        return [];
     }
   }
 

@@ -1,7 +1,39 @@
 import { useCallback, useMemo, useRef } from "react";
-import { calculateBoundingBox, getShapesInBox, hitTestBoundsHandle, hitTestRotatedElementHandle, calculateSnapAdjustment, getBounds, getSnapPoints, type Bounds, type Point } from "@/core";
+import {
+  type Bounds,
+  calculateBoundingBox,
+  calculateSnapAdjustment,
+  getBounds,
+  getShapesInBox,
+  getSnapPoints,
+  hitTestBoundsHandle,
+  hitTestRotatedElementHandle,
+  type Point,
+} from "@/core";
+import { resizePath } from "@/lib/svg-import";
 import { useCanvasStore } from "@/store";
 import type { BoundingBox, CanvasElement, ResizeHandle, Shape } from "@/types";
+
+// Helper to flatten groups recursively
+function flattenCanvasElements(
+  elements: CanvasElement[],
+  getElementById: (id: string) => CanvasElement | undefined,
+): CanvasElement[] {
+  const result: CanvasElement[] = [];
+
+  const recurse = (els: CanvasElement[]) => {
+    for (const el of els) {
+      if (el.type === "group") {
+        const children = el.childIds.map((id) => getElementById(id)).filter(Boolean) as CanvasElement[];
+        recurse(children);
+      } else {
+        result.push(el);
+      }
+    }
+  };
+  recurse(elements);
+  return result;
+}
 
 // Generate Figma-style SVG cursor for resize handles with rotation
 function createRotatedResizeCursor(angle: number): string {
@@ -117,6 +149,28 @@ function getElementBoundsLocal(element: CanvasElement): { x: number; y: number; 
     }
     case "path":
       return element.bounds;
+    case "text": {
+      const width = element.text.length * element.fontSize * 0.6;
+      const height = element.fontSize * 1.2;
+      return { x: element.x, y: element.y - element.fontSize, width, height };
+    }
+    case "polygon":
+    case "polyline": {
+      if (element.points.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+      let minX = element.points[0].x;
+      let minY = element.points[0].y;
+      let maxX = minX;
+      let maxY = minY;
+      for (const pt of element.points) {
+        minX = Math.min(minX, pt.x);
+        minY = Math.min(minY, pt.y);
+        maxX = Math.max(maxX, pt.x);
+        maxY = Math.max(maxY, pt.y);
+      }
+      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+    case "image":
+      return { x: element.x, y: element.y, width: element.width, height: element.height };
     case "group":
       return { x: 0, y: 0, width: 0, height: 0 };
   }
@@ -203,6 +257,7 @@ export function useCanvasInteractions({
         x2?: number;
         y2?: number;
         bounds?: { x: number; y: number; width: number; height: number; rotation?: number };
+        d?: string;
       }
     >;
     isSingleRotatedElement: boolean;
@@ -391,7 +446,8 @@ export function useCanvasInteractions({
             if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
               handle = hitTestRotatedElementHandle(world.x, world.y, selectedElements[0] as Shape, transform.scale);
             } else {
-              const bounds = calculateBoundingBox(selectedElements);
+              const flattened = flattenCanvasElements(selectedElements, getElementById);
+              const bounds = calculateBoundingBox(flattened);
               if (bounds) {
                 handle = hitTestBoundsHandle(world.x, world.y, bounds, transform.scale);
               }
@@ -405,9 +461,16 @@ export function useCanvasInteractions({
               const elementRotation = isSingleRotatedElement ? selectedElements[0].rotation : 0;
 
               // Get bounds for the element(s)
-              const bounds = isSingleRotatedElement
-                ? getElementBoundsLocal(selectedElements[0])
-                : calculateBoundingBox(selectedElements);
+              let bounds: BoundingBox | null;
+              let flattenedElements: CanvasElement[] = [];
+
+              if (isSingleRotatedElement) {
+                bounds = getElementBoundsLocal(selectedElements[0]);
+                flattenedElements = [selectedElements[0]];
+              } else {
+                flattenedElements = flattenCanvasElements(selectedElements, getElementById);
+                bounds = calculateBoundingBox(flattenedElements);
+              }
 
               if (bounds) {
                 setIsResizing(true, handle);
@@ -431,34 +494,55 @@ export function useCanvasInteractions({
                     bounds?: { x: number; y: number; width: number; height: number; rotation?: number };
                   }
                 >();
-                for (const element of selectedElements) {
-                  const eBounds = getElementBoundsLocal(element);
-                  const entry = {
-                    ...eBounds,
-                    rotation: element.rotation,
-                    type: element.type,
-                    cx: undefined as number | undefined,
-                    cy: undefined as number | undefined,
-                    rx: undefined as number | undefined,
-                    ry: undefined as number | undefined,
-                    x1: undefined as number | undefined,
-                    y1: undefined as number | undefined,
-                    x2: undefined as number | undefined,
-                    y2: undefined as number | undefined,
-                  };
-                  if (element.type === "ellipse") {
-                    entry.cx = element.cx;
-                    entry.cy = element.cy;
-                    entry.rx = element.rx;
-                    entry.ry = element.ry;
-                  } else if (element.type === "line") {
-                    entry.x1 = element.x1;
-                    entry.y1 = element.y1;
-                    entry.x2 = element.x2;
-                    entry.y2 = element.y2;
+                // Helper to collect all elements (including group children)
+                const collectElements = (els: CanvasElement[], map: Map<string, any>) => {
+                  for (const element of els) {
+                    if (element.type === "group") {
+                      // Recursive collection of children
+                      const children = element.childIds
+                        .map((id) => getElementById(id))
+                        .filter(Boolean) as CanvasElement[];
+                      collectElements(children, map);
+                    } else {
+                      // Collect leaf element
+                      const eBounds = getElementBoundsLocal(element);
+                      const entry = {
+                        ...eBounds,
+                        rotation: element.rotation,
+                        type: element.type,
+                        cx: undefined as number | undefined,
+                        cy: undefined as number | undefined,
+                        rx: undefined as number | undefined,
+                        ry: undefined as number | undefined,
+                        x1: undefined as number | undefined,
+                        y1: undefined as number | undefined,
+                        x2: undefined as number | undefined,
+                        y2: undefined as number | undefined,
+                        d: undefined as string | undefined,
+                        // Store parentId to check if it belongs to a group being resized
+                        parentId: element.parentId,
+                      };
+
+                      if (element.type === "ellipse") {
+                        entry.cx = element.cx;
+                        entry.cy = element.cy;
+                        entry.rx = element.rx;
+                        entry.ry = element.ry;
+                      } else if (element.type === "line") {
+                        entry.x1 = element.x1;
+                        entry.y1 = element.y1;
+                        entry.x2 = element.x2;
+                        entry.y2 = element.y2;
+                      } else if (element.type === "path") {
+                        entry.d = element.d;
+                      }
+
+                      map.set(element.id, entry);
+                    }
                   }
-                  originalElements.set(element.id, entry);
-                }
+                };
+
+                collectElements(flattenedElements, originalElements);
                 resizeStartRef.current = {
                   worldX: world.x,
                   worldY: world.y,
@@ -496,55 +580,68 @@ export function useCanvasInteractions({
                 string,
                 { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }
               >();
-              for (const id of elementsToDrag) {
-                const element = getElementById(id);
-                if (element) {
-                  if (element.type === "rect") {
-                    elementsMap.set(id, { x: element.x, y: element.y });
-                  } else if (element.type === "ellipse") {
-                    elementsMap.set(id, { x: 0, y: 0, cx: element.cx, cy: element.cy });
-                  } else if (element.type === "line") {
-                    elementsMap.set(id, { x: 0, y: 0, x1: element.x1, y1: element.y1, x2: element.x2, y2: element.y2 });
-                  } else if (element.type === "path") {
-                    elementsMap.set(id, { x: element.bounds.x, y: element.bounds.y });
+              // Helper to collect all draggable elements (including group children)
+              const collectDraggableElements = (ids: string[], map: Map<string, any>) => {
+                for (const id of ids) {
+                  const element = getElementById(id);
+                  if (!element) continue;
+
+                  if (element.type === "group") {
+                    collectDraggableElements(element.childIds, map);
+                  } else {
+                    if (element.type === "rect") {
+                      map.set(id, { x: element.x, y: element.y });
+                    } else if (element.type === "ellipse") {
+                      map.set(id, { x: 0, y: 0, cx: element.cx, cy: element.cy });
+                    } else if (element.type === "line") {
+                      map.set(id, { x: 0, y: 0, x1: element.x1, y1: element.y1, x2: element.x2, y2: element.y2 });
+                    } else if (element.type === "path") {
+                      map.set(id, { x: element.bounds.x, y: element.bounds.y });
+                    }
                   }
                 }
-              }
+              };
+
+              collectDraggableElements(elementsToDrag, elementsMap);
 
               // Pre-calculate candidates for snapping (everything NOT being dragged)
               // Calculate bounds for each candidate once
-              const snapCandidates = elements
-                   .filter(e => !elementsToDrag.includes(e.id))
-                   .map(e => getBounds(e));
+              const snapCandidates = elements.filter((e) => !elementsToDrag.includes(e.id)).map((e) => getBounds(e));
 
               const snapPoints = elements
-                  .filter(e => !elementsToDrag.includes(e.id))
-                  .flatMap(e => getSnapPoints(e));
+                .filter((e) => !elementsToDrag.includes(e.id))
+                .flatMap((e) => getSnapPoints(e));
 
-              const draggedEls = elements.filter(e => elementsToDrag.includes(e.id));
-              let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+              const draggedEls = elements.filter((e) => elementsToDrag.includes(e.id));
+              let minX = Infinity,
+                minY = Infinity,
+                maxX = -Infinity,
+                maxY = -Infinity;
 
               for (const el of draggedEls) {
-                  const b = getBounds(el);
-                  minX = Math.min(minX, b.minX);
-                  minY = Math.min(minY, b.minY);
-                  maxX = Math.max(maxX, b.maxX);
-                  maxY = Math.max(maxY, b.maxY);
+                const b = getBounds(el);
+                minX = Math.min(minX, b.minX);
+                minY = Math.min(minY, b.minY);
+                maxX = Math.max(maxX, b.maxX);
+                maxY = Math.max(maxY, b.maxY);
               }
 
               const originalBounds: Bounds = {
-                  minX, minY, maxX, maxY,
-                  centerX: (minX + maxX) / 2,
-                  centerY: (minY + maxY) / 2
+                minX,
+                minY,
+                maxX,
+                maxY,
+                centerX: (minX + maxX) / 2,
+                centerY: (minY + maxY) / 2,
               };
 
               dragStartRef.current = {
-                  worldX: world.x,
-                  worldY: world.y,
-                  elements: elementsMap,
-                  snapCandidates,
-                  snapPoints,
-                  originalBounds
+                worldX: world.x,
+                worldY: world.y,
+                elements: elementsMap,
+                snapCandidates,
+                snapPoints,
+                originalBounds,
               };
             }
           }
@@ -596,7 +693,8 @@ export function useCanvasInteractions({
           if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
             handle = hitTestRotatedElementHandle(world.x, world.y, selectedElements[0] as Shape, transform.scale);
           } else {
-            const bounds = calculateBoundingBox(selectedElements);
+            const flattened = flattenCanvasElements(selectedElements, getElementById);
+            const bounds = calculateBoundingBox(flattened);
             if (bounds) {
               handle = hitTestBoundsHandle(world.x, world.y, bounds, transform.scale);
             }
@@ -620,36 +718,40 @@ export function useCanvasInteractions({
         let finalDeltaX = deltaX;
         let finalDeltaY = deltaY;
 
-        if (useCanvasStore.getState().snapToGrid || useCanvasStore.getState().snapToObjects || useCanvasStore.getState().snapToGeometry) {
-             const originalBounds = dragStartRef.current.originalBounds;
-             const snapCandidates = dragStartRef.current.snapCandidates;
-             const snapPoints = dragStartRef.current.snapPoints;
+        if (
+          useCanvasStore.getState().snapToGrid ||
+          useCanvasStore.getState().snapToObjects ||
+          useCanvasStore.getState().snapToGeometry
+        ) {
+          const originalBounds = dragStartRef.current.originalBounds;
+          const snapCandidates = dragStartRef.current.snapCandidates;
+          const snapPoints = dragStartRef.current.snapPoints;
 
-             // Projected bounds
-             const projected: Bounds = {
-                 minX: originalBounds.minX + deltaX,
-                 minY: originalBounds.minY + deltaY,
-                 maxX: originalBounds.maxX + deltaX,
-                 maxY: originalBounds.maxY + deltaY,
-                 centerX: originalBounds.centerX + deltaX,
-                 centerY: originalBounds.centerY + deltaY
-             };
+          // Projected bounds
+          const projected: Bounds = {
+            minX: originalBounds.minX + deltaX,
+            minY: originalBounds.minY + deltaY,
+            maxX: originalBounds.maxX + deltaX,
+            maxY: originalBounds.maxY + deltaY,
+            centerX: originalBounds.centerX + deltaX,
+            centerY: originalBounds.centerY + deltaY,
+          };
 
-             const snapResult = calculateSnapAdjustment(
-                 projected,
-                 snapCandidates,
-                 snapPoints,
-                 useCanvasStore.getState().snapToGrid,
-                 useCanvasStore.getState().snapToObjects,
-                 useCanvasStore.getState().snapToGeometry,
-                 transform.scale
-             );
+          const snapResult = calculateSnapAdjustment(
+            projected,
+            snapCandidates,
+            snapPoints,
+            useCanvasStore.getState().snapToGrid,
+            useCanvasStore.getState().snapToObjects,
+            useCanvasStore.getState().snapToGeometry,
+            transform.scale,
+          );
 
-             finalDeltaX = deltaX + snapResult.x;
-             finalDeltaY = deltaY + snapResult.y;
-             useCanvasStore.getState().setSmartGuides(snapResult.guides);
+          finalDeltaX = deltaX + snapResult.x;
+          finalDeltaY = deltaY + snapResult.y;
+          useCanvasStore.getState().setSmartGuides(snapResult.guides);
         } else {
-             useCanvasStore.getState().setSmartGuides([]);
+          useCanvasStore.getState().setSmartGuides([]);
         }
 
         for (const [id, startPos] of dragStartRef.current.elements) {
@@ -787,6 +889,46 @@ export function useCanvasInteractions({
                 y2: currentY2 + deltaY,
               });
             }
+          } else if (original.type === "path") {
+            // Path resizing - resize bounds proportionally
+            // original.bounds might be undefined if flattened in resizeStartRef, construct it from top-level props
+            const bounds = { x: original.x, y: original.y, width: original.width, height: original.height };
+            const cosNeg = Math.cos(-elementRotation);
+            const sinNeg = Math.sin(-elementRotation);
+
+            const localDeltaX = deltaX * cosNeg - deltaY * sinNeg;
+            const localDeltaY = deltaX * sinNeg + deltaY * cosNeg;
+
+            let newWidth = bounds.width;
+            let newHeight = bounds.height;
+            let newX = bounds.x;
+            let newY = bounds.y;
+
+            if (handle?.includes("e")) {
+              newWidth = bounds.width + localDeltaX;
+            } else if (handle?.includes("w")) {
+              newWidth = bounds.width - localDeltaX;
+              newX = bounds.x + localDeltaX;
+            }
+
+            if (handle?.includes("s")) {
+              newHeight = bounds.height + localDeltaY;
+            } else if (handle?.includes("n")) {
+              newHeight = bounds.height - localDeltaY;
+              newY = bounds.y + localDeltaY;
+            }
+
+            const minSize = 20;
+            newWidth = Math.max(minSize, newWidth);
+            newHeight = Math.max(minSize, newHeight);
+
+            const newBounds = { x: newX, y: newY, width: newWidth, height: newHeight };
+            const newD = resizePath(original.d!, bounds, newBounds);
+
+            updateElement(id, {
+              d: newD,
+              bounds: newBounds,
+            });
           }
         } else {
           // Non-rotated or multi-select: use original axis-aligned logic
@@ -853,14 +995,19 @@ export function useCanvasInteractions({
                 y2: newBoundsY + relY2 * newBoundsHeight,
               });
             } else if (original.type === "path") {
+              const oldBounds = { x: original.x, y: original.y, width: original.width, height: original.height };
+              const newBounds = {
+                ...oldBounds,
+                x: newX,
+                y: newY,
+                width: newW,
+                height: newH,
+              };
+              const newD = resizePath(original.d!, oldBounds, newBounds);
+
               updateElement(id, {
-                bounds: {
-                  ...original.bounds, // Preserve other path bounds props if any
-                  x: newX,
-                  y: newY,
-                  width: newW,
-                  height: newH,
-                },
+                d: newD,
+                bounds: newBounds,
               });
             }
           }

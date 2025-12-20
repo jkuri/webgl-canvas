@@ -32,18 +32,9 @@ export const SHAPE_COLORS_CSS: Record<ShapeColorName, string> = {
 
 export const SHAPE_COLOR_NAMES = Object.keys(SHAPE_COLORS) as ShapeColorName[];
 
-export function getRandomShapeColor(): RGBAColor {
-  const names = SHAPE_COLOR_NAMES;
-  return SHAPE_COLORS[names[Math.floor(Math.random() * names.length)]];
-}
-
 export function getRandomShapeColorCSS(): string {
   const names = SHAPE_COLOR_NAMES;
   return SHAPE_COLORS_CSS[names[Math.floor(Math.random() * names.length)]];
-}
-
-export function rgbaToCSS(color: RGBAColor): string {
-  return `rgba(${Math.round(color[0] * 255)}, ${Math.round(color[1] * 255)}, ${Math.round(color[2] * 255)}, ${color[3]})`;
 }
 
 export function cssToRGBA(css: string): RGBAColor {

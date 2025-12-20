@@ -136,6 +136,25 @@ function elementToSVG(element: CanvasElement, allElements: CanvasElement[], inde
       return `${indent}<line x1="${element.x1}" y1="${element.y1}" x2="${element.x2}" y2="${element.y2}"${getFillStroke(element)}${transform}/>`;
     case "path":
       return `${indent}<path d="${element.d}"${getFillStroke(element)}${transform}/>`;
+    case "text": {
+      const fontWeight =
+        element.fontWeight && element.fontWeight !== "normal" ? ` font-weight="${element.fontWeight}"` : "";
+      const textAnchor =
+        element.textAnchor && element.textAnchor !== "start" ? ` text-anchor="${element.textAnchor}"` : "";
+      return `${indent}<text x="${element.x}" y="${element.y}" font-family="${element.fontFamily}" font-size="${element.fontSize}"${fontWeight}${textAnchor}${getFillStroke(element)}${transform}>${element.text}</text>`;
+    }
+    case "polygon": {
+      const points = element.points.map((p) => `${p.x},${p.y}`).join(" ");
+      return `${indent}<polygon points="${points}"${getFillStroke(element)}${transform}/>`;
+    }
+    case "polyline": {
+      const points = element.points.map((p) => `${p.x},${p.y}`).join(" ");
+      return `${indent}<polyline points="${points}"${getFillStroke(element)}${transform}/>`;
+    }
+    case "image": {
+      const preserveAspect = element.preserveAspectRatio ? ` preserveAspectRatio="${element.preserveAspectRatio}"` : "";
+      return `${indent}<image x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" href="${element.href}"${preserveAspect}${transform}/>`;
+    }
     case "group": {
       const children = element.childIds
         .map((id) => allElements.find((e) => e.id === id))

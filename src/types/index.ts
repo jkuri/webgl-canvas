@@ -1,7 +1,112 @@
-// SVG-style color types
-export type Fill = string | null; // CSS color or null for no fill
-export type Stroke = {
+// SVG Gradient Stop
+export interface GradientStop {
+  offset: number; // 0-1
   color: string;
+  opacity?: number;
+}
+
+// SVG Linear Gradient
+export interface LinearGradient {
+  type: "linearGradient";
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  stops: GradientStop[];
+  gradientUnits?: "userSpaceOnUse" | "objectBoundingBox";
+  gradientTransform?: string;
+}
+
+// SVG Radial Gradient
+export interface RadialGradient {
+  type: "radialGradient";
+  id: string;
+  cx: number;
+  cy: number;
+  r: number;
+  fx?: number;
+  fy?: number;
+  stops: GradientStop[];
+  gradientUnits?: "userSpaceOnUse" | "objectBoundingBox";
+  gradientTransform?: string;
+}
+
+// SVG Pattern
+export interface SVGPattern {
+  type: "pattern";
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  patternUnits?: "userSpaceOnUse" | "objectBoundingBox";
+  patternContentUnits?: "userSpaceOnUse" | "objectBoundingBox";
+  patternTransform?: string;
+  viewBox?: string;
+  // Pattern content stored as raw SVG for now
+  content?: string;
+}
+
+// SVG Filter (stored for export fidelity)
+export interface SVGFilter {
+  type: "filter";
+  id: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  filterUnits?: "userSpaceOnUse" | "objectBoundingBox";
+  // Raw SVG content for filters (too complex to fully parse)
+  content: string;
+}
+
+// SVG ClipPath
+export interface SVGClipPath {
+  type: "clipPath";
+  id: string;
+  clipPathUnits?: "userSpaceOnUse" | "objectBoundingBox";
+  // Raw SVG content
+  content: string;
+}
+
+// SVG Mask
+export interface SVGMask {
+  type: "mask";
+  id: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  maskUnits?: "userSpaceOnUse" | "objectBoundingBox";
+  maskContentUnits?: "userSpaceOnUse" | "objectBoundingBox";
+  // Raw SVG content
+  content: string;
+}
+
+// SVG Symbol (for <use> references)
+export interface SVGSymbol {
+  type: "symbol";
+  id: string;
+  viewBox?: string;
+  // Raw SVG content
+  content: string;
+}
+
+// SVG Definitions Registry
+export interface SVGDefs {
+  gradients: Map<string, LinearGradient | RadialGradient>;
+  patterns: Map<string, SVGPattern>;
+  filters: Map<string, SVGFilter>;
+  clipPaths: Map<string, SVGClipPath>;
+  masks: Map<string, SVGMask>;
+  symbols: Map<string, SVGSymbol>;
+}
+
+// SVG-style color types - can reference gradient/pattern by ID
+export type Fill = string | { ref: string; type: "gradient" | "pattern" } | null;
+export type Stroke = {
+  color: string | { ref: string; type: "gradient" };
   width: number;
   dashArray?: number[]; // e.g., [5, 5]
   lineCap?: "butt" | "round" | "square";
@@ -62,6 +167,67 @@ export interface PathElement extends BaseElement {
     width: number;
     height: number;
   };
+  // Cached parsed path commands and vertices for rendering
+  _cachedVertices?: Float32Array;
+  _cachedFillVertices?: Float32Array;
+}
+
+// Text element (SVG text)
+export interface TextElement extends BaseElement {
+  type: "text";
+  x: number;
+  y: number;
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  fontWeight?: "normal" | "bold" | number;
+  textAnchor?: "start" | "middle" | "end";
+  // Computed bounds for hit testing (updated when text changes)
+  bounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+// Polygon shape (SVG polygon - closed path)
+export interface PolygonElement extends BaseElement {
+  type: "polygon";
+  points: { x: number; y: number }[];
+  // Cached bounds for hit testing
+  bounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+// Polyline shape (SVG polyline - open path)
+export interface PolylineElement extends BaseElement {
+  type: "polyline";
+  points: { x: number; y: number }[];
+  // Cached bounds for hit testing
+  bounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+// Image element (SVG image)
+export interface ImageElement extends BaseElement {
+  type: "image";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  href: string; // data URL or external URL
+  preserveAspectRatio?: "none" | "xMidYMid" | "xMinYMin" | "xMaxYMax";
+  // Cached texture for WebGL rendering
+  _texture?: WebGLTexture;
 }
 
 // Group container (SVG g)
@@ -72,7 +238,15 @@ export interface GroupElement extends Omit<BaseElement, "fill" | "stroke"> {
 }
 
 // Union types
-export type Shape = RectElement | EllipseElement | LineElement | PathElement;
+export type Shape =
+  | RectElement
+  | EllipseElement
+  | LineElement
+  | PathElement
+  | TextElement
+  | PolygonElement
+  | PolylineElement
+  | ImageElement;
 export type CanvasElement = Shape | GroupElement;
 export type ElementType = CanvasElement["type"];
 
@@ -133,6 +307,34 @@ export function getElementBounds(element: CanvasElement): BoundingBox {
     }
     case "path":
       return element.bounds;
+    case "text":
+      // Use cached bounds or estimate from font size
+      if (element.bounds) return element.bounds;
+      return {
+        x: element.x,
+        y: element.y - element.fontSize,
+        width: element.text.length * element.fontSize * 0.6, // Rough estimate
+        height: element.fontSize * 1.2,
+      };
+    case "polygon":
+    case "polyline": {
+      // Use cached bounds or calculate from points
+      if (element.bounds) return element.bounds;
+      if (element.points.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+      let minX = element.points[0].x;
+      let minY = element.points[0].y;
+      let maxX = minX;
+      let maxY = minY;
+      for (const pt of element.points) {
+        minX = Math.min(minX, pt.x);
+        minY = Math.min(minY, pt.y);
+        maxX = Math.max(maxX, pt.x);
+        maxY = Math.max(maxY, pt.y);
+      }
+      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+    case "image":
+      return { x: element.x, y: element.y, width: element.width, height: element.height };
     case "group":
       // Groups don't have intrinsic bounds - computed from children
       return { x: 0, y: 0, width: 0, height: 0 };
@@ -146,4 +348,41 @@ export function getElementCenter(element: CanvasElement): { x: number; y: number
     return { x: element.cx, y: element.cy };
   }
   return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+}
+
+/**
+ * Extract a color string from a Fill value.
+ * Returns the color string if it's a simple color, or a default if it's a gradient/pattern reference.
+ */
+export function getFillColor(fill: Fill, defaultColor = "#000000"): string | null {
+  if (fill === null) return null;
+  if (typeof fill === "string") return fill;
+  // Gradient/pattern reference - return default for now (renderer doesn't support gradients yet)
+  return defaultColor;
+}
+
+/**
+ * Extract a color string from a Stroke's color value.
+ * Returns the color string if it's a simple color, or a default if it's a gradient reference.
+ */
+export function getStrokeColor(color: string | { ref: string; type: "gradient" }, defaultColor = "#000000"): string {
+  if (typeof color === "string") return color;
+  // Gradient reference - return default for now
+  return defaultColor;
+}
+
+/**
+ * Check if a Fill is a gradient/pattern reference
+ */
+export function isFillReference(fill: Fill): fill is { ref: string; type: "gradient" | "pattern" } {
+  return fill !== null && typeof fill === "object" && "ref" in fill;
+}
+
+/**
+ * Check if a stroke color is a gradient reference
+ */
+export function isStrokeColorReference(
+  color: string | { ref: string; type: "gradient" },
+): color is { ref: string; type: "gradient" } {
+  return typeof color === "object" && "ref" in color;
 }

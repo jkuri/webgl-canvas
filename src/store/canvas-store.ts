@@ -78,6 +78,9 @@ interface CanvasActions {
   toggleGroupExpanded: (groupId: string) => void;
   renameElement: (id: string, name: string) => void;
 
+  // Import action
+  importElements: (elements: CanvasElement[]) => void;
+
   // Selection actions
   setSelectedIds: (ids: string[]) => void;
   selectAll: () => void;
@@ -132,7 +135,15 @@ function generateElementName(type: CanvasElement["type"], elements: CanvasElemen
           ? "Line"
           : type === "path"
             ? "Path"
-            : "Group";
+            : type === "text"
+              ? "Text"
+              : type === "polygon"
+                ? "Polygon"
+                : type === "polyline"
+                  ? "Polyline"
+                  : type === "image"
+                    ? "Image"
+                    : "Group";
   const count = elements.filter((e) => e.type === type).length + 1;
   return `${prefix} ${count}`;
 }
@@ -240,7 +251,9 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
   deleteSelected: () => {
     const state = get();
-    state.selectedIds.forEach((id) => { state.deleteElement(id); });
+    state.selectedIds.forEach((id) => {
+      state.deleteElement(id);
+    });
   },
 
   duplicateSelected: () => {
@@ -257,14 +270,19 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
         // Offset slightly
         if (copy.type === "rect" || copy.type === "line" || copy.type === "path") {
-
-            if ('x' in copy) copy.x += 20;
-            if ('y' in copy) copy.y += 20;
-            if ('x1' in copy) { copy.x1 += 20; copy.x2 += 20; }
-            if ('y1' in copy) { copy.y1 += 20; copy.y2 += 20; }
+          if ("x" in copy) copy.x += 20;
+          if ("y" in copy) copy.y += 20;
+          if ("x1" in copy) {
+            copy.x1 += 20;
+            copy.x2 += 20;
+          }
+          if ("y1" in copy) {
+            copy.y1 += 20;
+            copy.y2 += 20;
+          }
         } else if (copy.type === "ellipse") {
-             copy.cx += 20;
-             copy.cy += 20;
+          copy.cx += 20;
+          copy.cy += 20;
         }
 
         newElements.push(copy);
@@ -545,6 +563,48 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     set((state) => ({
       elements: state.elements.map((e) => (e.id === id ? { ...e, name } : e)),
     })),
+
+  // Import action
+  importElements: (newElements) =>
+    set((state) => {
+      // If importing multiple elements, group them automatically
+      if (newElements.length > 1) {
+        const groupId = crypto.randomUUID();
+        const groupName = generateElementName("group", state.elements);
+
+        // Create the group element
+        const group: GroupElement = {
+          id: groupId,
+          type: "group",
+          name: groupName,
+          rotation: 0,
+          opacity: 1,
+          childIds: newElements.map((e) => e.id),
+          expanded: false,
+        };
+
+        // Assign parentId to all imported elements
+        const groupedElements = newElements.map((e) => ({
+          ...e,
+          parentId: groupId,
+        }));
+
+        const updatedElements = [...state.elements, ...groupedElements, group];
+
+        return {
+          elements: updatedElements,
+          selectedIds: [groupId], // Select the group
+        };
+      }
+
+      // Single element import - normal behavior
+      const updatedElements = [...state.elements, ...newElements];
+      const newIds = newElements.map((e) => e.id);
+      return {
+        elements: updatedElements,
+        selectedIds: newIds,
+      };
+    }),
 
   // Selection actions
   setSelectedIds: (ids) => set({ selectedIds: ids }),

@@ -92,6 +92,81 @@ export function getRotatedCorners(element: Shape): { x: number; y: number }[] {
         };
       });
     }
+    case "text": {
+      const textWidth = element.text.length * element.fontSize * 0.6;
+      const textHeight = element.fontSize * 1.2;
+      const x = element.x;
+      const y = element.y - element.fontSize;
+      const centerX = x + textWidth / 2;
+      const centerY = y + textHeight / 2;
+      const cos = Math.cos(element.rotation);
+      const sin = Math.sin(element.rotation);
+      return [
+        { x, y },
+        { x: x + textWidth, y },
+        { x: x + textWidth, y: y + textHeight },
+        { x, y: y + textHeight },
+      ].map((corner) => {
+        const dx = corner.x - centerX;
+        const dy = corner.y - centerY;
+        return {
+          x: centerX + dx * cos - dy * sin,
+          y: centerY + dx * sin + dy * cos,
+        };
+      });
+    }
+    case "polygon":
+    case "polyline": {
+      if (element.points.length === 0) return [];
+      const { points, rotation } = element;
+      let minX = points[0].x,
+        minY = points[0].y;
+      let maxX = minX,
+        maxY = minY;
+      for (const pt of points) {
+        minX = Math.min(minX, pt.x);
+        minY = Math.min(minY, pt.y);
+        maxX = Math.max(maxX, pt.x);
+        maxY = Math.max(maxY, pt.y);
+      }
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+      return [
+        { x: minX, y: minY },
+        { x: maxX, y: minY },
+        { x: maxX, y: maxY },
+        { x: minX, y: maxY },
+      ].map((corner) => {
+        const dx = corner.x - centerX;
+        const dy = corner.y - centerY;
+        return {
+          x: centerX + dx * cos - dy * sin,
+          y: centerY + dx * sin + dy * cos,
+        };
+      });
+    }
+    case "image": {
+      const { x, y, width, height, rotation } = element;
+      const centerX = x + width / 2;
+      const centerY = y + height / 2;
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+      return [
+        { x, y },
+        { x: x + width, y },
+        { x: x + width, y: y + height },
+        { x, y: y + height },
+      ].map((corner) => {
+        const dx = corner.x - centerX;
+        const dy = corner.y - centerY;
+        return {
+          x: centerX + dx * cos - dy * sin,
+          y: centerY + dx * sin + dy * cos,
+        };
+      });
+    }
   }
 }
 
@@ -172,6 +247,34 @@ export function hitTestElement(worldX: number, worldY: number, element: CanvasEl
     case "path": {
       // Simple bounding box hit test for paths
       const { x, y, width, height } = element.bounds;
+      return worldX >= x && worldX <= x + width && worldY >= y && worldY <= y + height;
+    }
+    case "text": {
+      const textWidth = element.text.length * element.fontSize * 0.6;
+      const textHeight = element.fontSize * 1.2;
+      const x = element.x;
+      const y = element.y - element.fontSize;
+      return worldX >= x && worldX <= x + textWidth && worldY >= y && worldY <= y + textHeight;
+    }
+    case "polygon":
+    case "polyline": {
+      if (element.points.length === 0) return false;
+      // Point in polygon using ray casting
+      let inside = false;
+      const pts = element.points;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const xi = pts[i].x,
+          yi = pts[i].y;
+        const xj = pts[j].x,
+          yj = pts[j].y;
+        if (yi > worldY !== yj > worldY && worldX < ((xj - xi) * (worldY - yi)) / (yj - yi) + xi) {
+          inside = !inside;
+        }
+      }
+      return inside;
+    }
+    case "image": {
+      const { x, y, width, height } = element;
       return worldX >= x && worldX <= x + width && worldY >= y && worldY <= y + height;
     }
   }
@@ -305,6 +408,7 @@ export function hitTestBoundsHandle(worldX: number, worldY: number, bounds: Boun
   return null;
 }
 
+// Helper to recursively collect shapes from elements (including groups)
 export function calculateBoundingBox(elements: CanvasElement[]): BoundingBox | null {
   const shapes = elements.filter((e) => e.type !== "group" && e.visible !== false) as Shape[];
   if (shapes.length === 0) return null;

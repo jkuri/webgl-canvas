@@ -268,22 +268,14 @@ export function PropertiesPanel() {
           <div className="flex flex-col gap-3 p-3">
             <SectionHeader title="Background" />
             <div className="flex items-center gap-2">
-              <ColorInput
-                className="flex-1"
-                value={canvasBackground}
-                onChange={(hex) => setCanvasBackground(hex)}
-              />
+              <ColorInput className="flex-1" value={canvasBackground} onChange={(hex) => setCanvasBackground(hex)} />
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 text-muted-foreground hover:text-foreground"
                 onClick={() => setCanvasBackgroundVisible(!canvasBackgroundVisible)}
               >
-                {canvasBackgroundVisible ? (
-                  <EyeIcon />
-                ) : (
-                  <HugeiconsIcon icon={ViewOffSlashIcon} className="size-3.5" />
-                )}
+                {canvasBackgroundVisible ? <EyeIcon /> : <HugeiconsIcon icon={ViewOffSlashIcon} className="size-3.5" />}
               </Button>
             </div>
           </div>
@@ -521,7 +513,7 @@ export function PropertiesPanel() {
                 <div className="flex items-center gap-2">
                   <ColorInput
                     className="flex-1"
-                    value={selectedElement.stroke.color}
+                    value={typeof selectedElement.stroke.color === "string" ? selectedElement.stroke.color : "#000000"}
                     opacity={1}
                     onChange={(color) =>
                       updateElement(selectedElement.id, {

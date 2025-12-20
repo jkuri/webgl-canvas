@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getRotatedCorners, hitTestResizeHandle, hitTestShape, WebGLRenderer } from "@/core";
 import { useCanvasControls, useCanvasInteractions } from "@/hooks";
+import { parseSVG, translatePath } from "@/lib/svg-import";
 import { useCanvasStore } from "@/store";
 import type { CanvasElement, Shape } from "@/types";
 import { CanvasContextMenu } from "./canvas-context-menu";
@@ -35,6 +36,32 @@ function getElementBoundsLocal(element: CanvasElement): { x: number; y: number; 
     }
     case "path":
       return element.bounds;
+    case "text":
+      if (element.bounds) return element.bounds;
+      return {
+        x: element.x,
+        y: element.y - element.fontSize,
+        width: element.text.length * element.fontSize * 0.6,
+        height: element.fontSize * 1.2,
+      };
+    case "polygon":
+    case "polyline": {
+      if (element.bounds) return element.bounds;
+      if (element.points.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+      let minX = element.points[0].x;
+      let minY = element.points[0].y;
+      let maxX = minX;
+      let maxY = minY;
+      for (const pt of element.points) {
+        minX = Math.min(minX, pt.x);
+        minY = Math.min(minY, pt.y);
+        maxX = Math.max(maxX, pt.x);
+        maxY = Math.max(maxY, pt.y);
+      }
+      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+    case "image":
+      return { x: element.x, y: element.y, width: element.width, height: element.height };
     case "group":
       return { x: 0, y: 0, width: 0, height: 0 };
   }
@@ -72,6 +99,7 @@ export function WebGLCanvas() {
     ungroupSelected,
     canvasBackground,
     canvasBackgroundVisible,
+    importElements,
   } = useCanvasStore();
 
   const { handlers, actions } = useCanvasControls();
@@ -111,6 +139,97 @@ export function WebGLCanvas() {
     handlers,
     actions,
   });
+
+  // Handle drag and drop for SVG import
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "copy";
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+
+      const file = files[0];
+      if (!file.type.includes("svg") && !file.name.endsWith(".svg")) return;
+
+      try {
+        const content = await file.text();
+        const importedElements = parseSVG(content);
+        if (importedElements.length === 0) return;
+
+        // Get drop position in world coordinates
+        const dropWorld = screenToWorld(e.clientX, e.clientY);
+
+        // Calculate bounding box of all imported elements
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity;
+        for (const el of importedElements) {
+          const bounds = getElementBoundsLocal(el);
+          minX = Math.min(minX, bounds.x);
+          minY = Math.min(minY, bounds.y);
+          maxX = Math.max(maxX, bounds.x + bounds.width);
+          maxY = Math.max(maxY, bounds.y + bounds.height);
+        }
+
+        // Calculate offset to position at drop location
+        const importedCenterX = (minX + maxX) / 2;
+        const importedCenterY = (minY + maxY) / 2;
+        const offsetX = dropWorld.x - importedCenterX;
+        const offsetY = dropWorld.y - importedCenterY;
+
+        // Apply offset to all elements
+        const positionedElements = importedElements.map((el) => {
+          if (el.type === "rect" || el.type === "image") {
+            return { ...el, x: el.x + offsetX, y: el.y + offsetY };
+          }
+          if (el.type === "ellipse") {
+            return { ...el, cx: el.cx + offsetX, cy: el.cy + offsetY };
+          }
+          if (el.type === "line") {
+            return {
+              ...el,
+              x1: el.x1 + offsetX,
+              y1: el.y1 + offsetY,
+              x2: el.x2 + offsetX,
+              y2: el.y2 + offsetY,
+            };
+          }
+          if (el.type === "path") {
+            return {
+              ...el,
+              d: translatePath(el.d, offsetX, offsetY),
+              bounds: { ...el.bounds, x: el.bounds.x + offsetX, y: el.bounds.y + offsetY },
+            };
+          }
+          if (el.type === "polygon" || el.type === "polyline") {
+            return {
+              ...el,
+              points: el.points.map((pt) => ({ x: pt.x + offsetX, y: pt.y + offsetY })),
+            };
+          }
+          if (el.type === "text") {
+            return { ...el, x: el.x + offsetX, y: el.y + offsetY };
+          }
+          return el;
+        });
+
+        importElements(positionedElements);
+      } catch (error) {
+        console.error("Failed to import dropped SVG:", error);
+      }
+    },
+    [screenToWorld, importElements],
+  );
 
   // Initialize WebGL renderer
   useEffect(() => {
@@ -254,6 +373,8 @@ export function WebGLCanvas() {
     container.addEventListener("wheel", handleWheel, { passive: false });
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("contextmenu", preventContextMenu);
+    canvas.addEventListener("dragover", handleDragOver);
+    canvas.addEventListener("drop", handleDrop);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     window.addEventListener("keydown", handleKeyDown);
@@ -263,6 +384,8 @@ export function WebGLCanvas() {
       container.removeEventListener("wheel", handleWheel);
       canvas.removeEventListener("mousedown", handleMouseDown);
       canvas.removeEventListener("contextmenu", preventContextMenu);
+      canvas.removeEventListener("dragover", handleDragOver);
+      canvas.removeEventListener("drop", handleDrop);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("keydown", handleKeyDown);
@@ -273,6 +396,8 @@ export function WebGLCanvas() {
     handleMouseDown,
     handleMouseMove,
     onMouseUp,
+    handleDragOver,
+    handleDrop,
     selectedIds,
     deleteSelected,
     duplicateSelected,
