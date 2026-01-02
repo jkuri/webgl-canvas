@@ -3,7 +3,7 @@ import { getRotatedCorners, hitTestResizeHandle, hitTestShape, WebGLRenderer } f
 import { useCanvasControls, useCanvasInteractions, useHotkeys } from "@/hooks";
 import { parseSVG, translatePath } from "@/lib/svg-import";
 import { useCanvasStore } from "@/store";
-import type { CanvasElement, Shape } from "@/types";
+import type { CanvasElement, GroupElement, Shape } from "@/types";
 import { getElementBounds } from "@/types";
 import { CanvasContextMenu } from "./canvas-context-menu";
 import { CanvasToolbar } from "./canvas-toolbar";
@@ -282,8 +282,28 @@ export function WebGLCanvas() {
     const selectedElements = elements.filter((e) => selectedIds.includes(e.id));
     if (selectedElements.length === 0) return null;
 
-    // For single element, use its actual bounds and rotation
-    if (selectedElements.length === 1) {
+    // Helper to recursively get all non-group elements (flattening groups)
+    const getAllShapes = (els: CanvasElement[]): CanvasElement[] => {
+      const shapes: CanvasElement[] = [];
+      for (const el of els) {
+        if (el.type === "group") {
+          const children = (el as GroupElement).childIds
+            .map((id) => elements.find((e) => e.id === id))
+            .filter(Boolean) as CanvasElement[];
+          shapes.push(...getAllShapes(children));
+        } else {
+          shapes.push(el);
+        }
+      }
+      return shapes;
+    };
+
+    // Get all shapes (flatten groups)
+    const allShapes = getAllShapes(selectedElements);
+    if (allShapes.length === 0) return null;
+
+    // For single non-group element, use its actual bounds and rotation
+    if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
       const element = selectedElements[0];
       if (element.type === "line") {
         const dx = element.x2 - element.x1;
@@ -312,14 +332,13 @@ export function WebGLCanvas() {
       };
     }
 
-    // For multiple elements, calculate axis-aligned bounding box using rotated corners
+    // For groups or multiple elements, calculate axis-aligned bounding box using rotated corners
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
 
-    for (const element of selectedElements) {
-      if (element.type === "group") continue;
+    for (const element of allShapes) {
       const corners = getRotatedCorners(element as Shape);
       for (const corner of corners) {
         minX = Math.min(minX, corner.x);

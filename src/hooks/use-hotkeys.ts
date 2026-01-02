@@ -30,6 +30,11 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
     selectAll,
     getElementById,
     updateElement,
+    bringToFront,
+    sendToBack,
+    bringForward,
+    sendBackward,
+    setElementVisibility,
   } = useCanvasStore();
 
   /**
@@ -207,7 +212,7 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
       }
 
       // --- Group (Cmd+G) ---
-      if (e.code === "KeyG" && (e.metaKey || e.ctrlKey) && !e.shiftKey && selectedIds.length > 1) {
+      if (e.code === "KeyG" && (e.metaKey || e.ctrlKey) && !e.shiftKey && selectedIds.length >= 2) {
         e.preventDefault();
         groupSelected();
       }
@@ -216,6 +221,40 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
       if (e.code === "KeyG" && (e.metaKey || e.ctrlKey) && e.shiftKey && selectedIds.length > 0) {
         e.preventDefault();
         ungroupSelected();
+      }
+
+      // --- Layer ordering ---
+      // Bring to Front (Cmd+])
+      if (e.code === "BracketRight" && (e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
+        e.preventDefault();
+        for (const id of selectedIds) bringToFront(id);
+      }
+
+      // Bring Forward (])
+      if (e.code === "BracketRight" && !e.metaKey && !e.ctrlKey && selectedIds.length > 0) {
+        e.preventDefault();
+        for (const id of selectedIds) bringForward(id);
+      }
+
+      // Send to Back (Cmd+[)
+      if (e.code === "BracketLeft" && (e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
+        e.preventDefault();
+        for (const id of selectedIds) sendToBack(id);
+      }
+
+      // Send Backward ([)
+      if (e.code === "BracketLeft" && !e.metaKey && !e.ctrlKey && selectedIds.length > 0) {
+        e.preventDefault();
+        for (const id of selectedIds) sendBackward(id);
+      }
+
+      // --- Show/Hide (Cmd+Shift+H) ---
+      if (e.code === "KeyH" && (e.metaKey || e.ctrlKey) && e.shiftKey && selectedIds.length > 0) {
+        e.preventDefault();
+        for (const id of selectedIds) {
+          const el = getElementById(id);
+          if (el) setElementVisibility(id, el.visible === false);
+        }
       }
     },
     [
@@ -235,6 +274,12 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
       ungroupSelected,
       moveSelectedElements,
       onCmdChange,
+      bringToFront,
+      sendToBack,
+      bringForward,
+      sendBackward,
+      getElementById,
+      setElementVisibility,
     ],
   );
 

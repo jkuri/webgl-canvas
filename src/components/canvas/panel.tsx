@@ -8,7 +8,7 @@ export function Panel({ children, className, ...props }: PanelProps) {
   return (
     <div
       className={cn(
-        "pointer-events-auto flex h-full w-72 flex-col border-l bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/95",
+        "pointer-events-auto z-50 flex h-full w-72 flex-col border-l bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/95",
         className,
       )}
       onMouseDown={(e) => e.stopPropagation()}

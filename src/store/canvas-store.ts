@@ -57,6 +57,8 @@ interface CanvasActions {
   duplicateSelected: () => string[];
   bringToFront: (id: string) => void;
   sendToBack: (id: string) => void;
+  bringForward: (id: string) => void;
+  sendBackward: (id: string) => void;
 
   // Grouping actions
   groupSelected: () => string | null;
@@ -155,8 +157,8 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
     id: "1",
     type: "rect",
     name: "Rectangle 1",
-    x: 100,
-    y: 100,
+    x: 650,
+    y: 300,
     width: 200,
     height: 150,
     rotation: 0,
@@ -168,8 +170,8 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
     id: "2",
     type: "rect",
     name: "Rectangle 2",
-    x: 450,
-    y: 200,
+    x: 550,
+    y: 500,
     width: 150,
     height: 150,
     rotation: 0,
@@ -181,8 +183,8 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
     id: "3",
     type: "ellipse",
     name: "Ellipse 1",
-    cx: 290,
-    cy: 510,
+    cx: 890,
+    cy: 610,
     rx: 90,
     ry: 60,
     rotation: 0,
@@ -313,6 +315,24 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       if (idx === -1) return state;
       const element = state.elements[idx];
       const newElements = [element, ...state.elements.slice(0, idx), ...state.elements.slice(idx + 1)];
+      return { elements: newElements };
+    }),
+
+  bringForward: (id) =>
+    set((state) => {
+      const idx = state.elements.findIndex((e) => e.id === id);
+      if (idx === -1 || idx === state.elements.length - 1) return state;
+      const newElements = [...state.elements];
+      [newElements[idx], newElements[idx + 1]] = [newElements[idx + 1], newElements[idx]];
+      return { elements: newElements };
+    }),
+
+  sendBackward: (id) =>
+    set((state) => {
+      const idx = state.elements.findIndex((e) => e.id === id);
+      if (idx <= 0) return state;
+      const newElements = [...state.elements];
+      [newElements[idx - 1], newElements[idx]] = [newElements[idx], newElements[idx - 1]];
       return { elements: newElements };
     }),
 

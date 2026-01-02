@@ -10,7 +10,7 @@ export function SmartGuides() {
   if (smartGuides.length === 0) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden">
+    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
       <svg className="h-full w-full">
         <defs>
           {/* Dash pattern for alignment lines */}
