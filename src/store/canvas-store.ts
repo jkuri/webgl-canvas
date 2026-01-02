@@ -21,6 +21,8 @@ interface CanvasState {
   isResizing: boolean;
   isRotating: boolean;
   isMarqueeSelecting: boolean;
+  isEditingText: boolean;
+  editingTextId: string | null;
   hoveredHandle: ResizeHandle;
   activeResizeHandle: ResizeHandle;
 
@@ -108,6 +110,7 @@ interface CanvasActions {
   setIsResizing: (resizing: boolean, handle?: ResizeHandle) => void;
   setIsRotating: (rotating: boolean) => void;
   setIsMarqueeSelecting: (selecting: boolean) => void;
+  setIsEditingText: (editing: boolean, elementId?: string | null) => void;
   setHoveredHandle: (handle: ResizeHandle) => void;
   setActiveResizeHandle: (handle: ResizeHandle) => void;
   setContextMenuTarget: (element: CanvasElement | null) => void;
@@ -208,6 +211,8 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   isResizing: false,
   isRotating: false,
   isMarqueeSelecting: false,
+  isEditingText: false,
+  editingTextId: null,
   hoveredHandle: null,
   activeResizeHandle: null,
   contextMenuTarget: null,
@@ -671,6 +676,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     set({ isResizing: resizing, activeResizeHandle: resizing ? (handle ?? null) : null }),
   setIsRotating: (rotating) => set({ isRotating: rotating }),
   setIsMarqueeSelecting: (selecting) => set({ isMarqueeSelecting: selecting }),
+  setIsEditingText: (editing, elementId) => set({ isEditingText: editing, editingTextId: elementId ?? null }),
   setHoveredHandle: (handle) => set({ hoveredHandle: handle }),
   setActiveResizeHandle: (handle) => set({ activeResizeHandle: handle }),
   setContextMenuTarget: (element) => set({ contextMenuTarget: element }),

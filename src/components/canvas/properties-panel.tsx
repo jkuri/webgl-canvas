@@ -297,6 +297,7 @@ export function PropertiesPanel() {
   const isRect = selectedElement.type === "rect";
   const isEllipse = selectedElement.type === "ellipse";
   const isLine = selectedElement.type === "line";
+  const isText = selectedElement.type === "text";
   const supportsLayout = isRect || isEllipse || isLine;
 
   const updateBounds = (newBounds: Partial<Bounds>) => {
@@ -429,6 +430,101 @@ export function PropertiesPanel() {
                   />
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {selectedElement.type !== "group" && <Separator />}
+
+        {/* Text Properties */}
+        {isText && (
+          <div className="flex flex-col gap-2 p-3">
+            <SectionHeader title="Text" />
+
+            {/* Font Family */}
+            <Select
+              value={(selectedElement as import("@/types").TextElement).fontFamily}
+              onValueChange={(val) => updateElement(selectedElement.id, { fontFamily: val })}
+            >
+              <SelectTrigger className="h-7 w-full text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Inter, sans-serif">Inter</SelectItem>
+                <SelectItem value="Arial, sans-serif">Arial</SelectItem>
+                <SelectItem value="Helvetica, sans-serif">Helvetica</SelectItem>
+                <SelectItem value="Times New Roman, serif">Times New Roman</SelectItem>
+                <SelectItem value="Georgia, serif">Georgia</SelectItem>
+                <SelectItem value="Courier New, monospace">Courier New</SelectItem>
+                <SelectItem value="'Comic Sans MS', cursive">Comic Sans MS</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Font Size, Weight, Line Height - inline row */}
+            <div className="grid grid-cols-3 gap-1">
+              <NumberInput
+                value={(selectedElement as import("@/types").TextElement).fontSize}
+                onChange={(v) => updateElement(selectedElement.id, { fontSize: v })}
+                step={1}
+                className="h-7"
+              />
+              <Select
+                value={String((selectedElement as import("@/types").TextElement).fontWeight || "400")}
+                onValueChange={(val) => updateElement(selectedElement.id, { fontWeight: val })}
+              >
+                <SelectTrigger className="h-7 w-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="100">Thin</SelectItem>
+                  <SelectItem value="200">Extra Light</SelectItem>
+                  <SelectItem value="300">Light</SelectItem>
+                  <SelectItem value="400">Regular</SelectItem>
+                  <SelectItem value="500">Medium</SelectItem>
+                  <SelectItem value="600">Semi Bold</SelectItem>
+                  <SelectItem value="700">Bold</SelectItem>
+                  <SelectItem value="800">Extra Bold</SelectItem>
+                  <SelectItem value="900">Black</SelectItem>
+                </SelectContent>
+              </Select>
+              <NumberInput value={120} onChange={() => {}} step={1} className="h-7" disabled />
+            </div>
+
+            {/* Text Alignment Buttons */}
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => updateElement(selectedElement.id, { textAnchor: "start" })}
+                className={`flex h-7 flex-1 items-center justify-center rounded border text-xs ${
+                  ((selectedElement as import("@/types").TextElement).textAnchor || "start") === "start"
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                Left
+              </button>
+              <button
+                type="button"
+                onClick={() => updateElement(selectedElement.id, { textAnchor: "middle" })}
+                className={`flex h-7 flex-1 items-center justify-center rounded border text-xs ${
+                  ((selectedElement as import("@/types").TextElement).textAnchor || "start") === "middle"
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                Center
+              </button>
+              <button
+                type="button"
+                onClick={() => updateElement(selectedElement.id, { textAnchor: "end" })}
+                className={`flex h-7 flex-1 items-center justify-center rounded border text-xs ${
+                  ((selectedElement as import("@/types").TextElement).textAnchor || "start") === "end"
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                Right
+              </button>
             </div>
           </div>
         )}

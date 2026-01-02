@@ -342,27 +342,29 @@ export function pathToStrokeVertices(commands: PathCommand[], segmentsPerCurve =
  * Uses a simple polygon triangulation (earcut-like algorithm)
  */
 export function pathToFillVertices(commands: PathCommand[], segmentsPerCurve = 16): number[] {
-  // First, flatten the path to a polygon
+  // First, flatten the path to a polygon with proper hole detection
   const polygon: number[] = [];
   const holes: number[] = [];
   let currentX = 0;
   let currentY = 0;
   let startX = 0;
   let startY = 0;
-  let pathStartIndex = 0;
+  let isFirstSubpath = true;
 
   for (const cmd of commands) {
     switch (cmd.type) {
       case "M":
-        if (polygon.length > pathStartIndex + 4) {
-          // Previous subpath is a hole
-          holes.push(pathStartIndex / 2);
+        // Each M command after the first starts a new subpath (hole)
+        if (!isFirstSubpath && polygon.length > 0) {
+          // Register the start of this new subpath as a hole
+          // The hole index is the number of vertices (polygon.length / 2) BEFORE adding the new point
+          holes.push(polygon.length / 2);
         }
+        isFirstSubpath = false;
         currentX = cmd.args[0];
         currentY = cmd.args[1];
         startX = currentX;
         startY = currentY;
-        pathStartIndex = polygon.length;
         polygon.push(currentX, currentY);
         break;
       case "L":
@@ -403,10 +405,8 @@ export function pathToFillVertices(commands: PathCommand[], segmentsPerCurve = 1
   // Triangulate using earcut (handles complex polygons and holes)
   if (polygon.length < 6) return [];
 
-  // Remove the first hole index if it points to the start (it's the main contour)
-  const validHoles = holes.filter((h) => h > 0);
-
-  const indices = earcut(polygon, validHoles.length > 0 ? validHoles : undefined);
+  // Use the collected hole indices directly - earcut expects indices of the first vertex of each hole
+  const indices = earcut(polygon, holes.length > 0 ? holes : undefined);
 
   // Convert triangle indices to flat vertex array
   const vertices: number[] = [];

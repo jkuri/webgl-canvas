@@ -271,7 +271,7 @@ export interface BoundingBox {
   height: number;
 }
 
-export type Tool = "select" | "pan" | "rect" | "ellipse" | "line";
+export type Tool = "select" | "pan" | "rect" | "ellipse" | "line" | "text";
 export type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | null;
 
 // Smart Guide - Figma-style visual indicators

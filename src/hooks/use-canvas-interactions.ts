@@ -262,6 +262,8 @@ export function useCanvasInteractions({
   const marqueeStartRef = useRef<{ worldX: number; worldY: number } | null>(null);
   const initialSelectedIdsRef = useRef<string[]>([]);
   const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const lastClickTimeRef = useRef<number>(0);
+  const lastClickElementRef = useRef<string | null>(null);
 
   // Get the rotation of the currently selected element(s) for cursor
   const selectedRotation = useMemo(() => {
@@ -415,11 +417,18 @@ export function useCanvasInteractions({
           const anyLocked = selectedElements.some((e) => e.locked);
 
           if (!anyLocked) {
-            // For single element, use rotated handle hit test
+            // Check resize handle first
             let handle: ResizeHandle = null;
-            if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
+            if (
+              selectedElements.length === 1 &&
+              selectedElements[0].type !== "group" &&
+              selectedElements[0].type !== "text"
+            ) {
               handle = hitTestRotatedElementHandle(world.x, world.y, selectedElements[0] as Shape, transform.scale);
-            } else {
+            } else if (
+              selectedElements.length > 1 ||
+              (selectedElements.length === 1 && selectedElements[0].type === "group")
+            ) {
               const flattened = flattenCanvasElements(selectedElements, getElementById);
               const bounds = calculateBoundingBox(flattened);
               if (bounds) {
@@ -535,6 +544,21 @@ export function useCanvasInteractions({
         const hit = hitTest(world.x, world.y);
 
         if (hit) {
+          // Detect double-click on text elements
+          const now = Date.now();
+          const isDoubleClick = now - lastClickTimeRef.current < 300 && lastClickElementRef.current === hit.id;
+
+          if (isDoubleClick && hit.type === "text") {
+            // Start editing text
+            useCanvasStore.getState().setIsEditingText(true, hit.id);
+            lastClickTimeRef.current = 0;
+            lastClickElementRef.current = null;
+            return;
+          }
+
+          lastClickTimeRef.current = now;
+          lastClickElementRef.current = hit.id;
+
           const isAlreadySelected = selectedIds.includes(hit.id);
           if (e.shiftKey) {
             setSelectedIds(isAlreadySelected ? selectedIds.filter((id) => id !== hit.id) : [...selectedIds, hit.id]);
@@ -564,7 +588,7 @@ export function useCanvasInteractions({
                   if (element.type === "group") {
                     collectDraggableElements(element.childIds, map);
                   } else {
-                    if (element.type === "rect") {
+                    if (element.type === "rect" || element.type === "image") {
                       map.set(id, { x: element.x, y: element.y });
                     } else if (element.type === "ellipse") {
                       map.set(id, { x: 0, y: 0, cx: element.cx, cy: element.cy });
@@ -572,6 +596,8 @@ export function useCanvasInteractions({
                       map.set(id, { x: 0, y: 0, x1: element.x1, y1: element.y1, x2: element.x2, y2: element.y2 });
                     } else if (element.type === "path") {
                       map.set(id, { x: element.bounds.x, y: element.bounds.y });
+                    } else if (element.type === "text") {
+                      map.set(id, { x: element.x, y: element.y });
                     }
                   }
                 }
@@ -670,9 +696,16 @@ export function useCanvasInteractions({
           const selectedElements = selectedIds.map((id) => getElementById(id)).filter(Boolean) as CanvasElement[];
 
           let handle: ResizeHandle = null;
-          if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
+          if (
+            selectedElements.length === 1 &&
+            selectedElements[0].type !== "group" &&
+            selectedElements[0].type !== "text"
+          ) {
             handle = hitTestRotatedElementHandle(world.x, world.y, selectedElements[0] as Shape, transform.scale);
-          } else {
+          } else if (
+            selectedElements.length > 1 ||
+            (selectedElements.length === 1 && selectedElements[0].type === "group")
+          ) {
             const flattened = flattenCanvasElements(selectedElements, getElementById);
             const bounds = calculateBoundingBox(flattened);
             if (bounds) {
@@ -742,7 +775,7 @@ export function useCanvasInteractions({
           const element = getElementById(id);
           if (!element) continue;
 
-          if (element.type === "rect") {
+          if (element.type === "rect" || element.type === "image") {
             updateElement(id, { x: startPos.x + finalDeltaX, y: startPos.y + finalDeltaY });
           } else if (element.type === "ellipse") {
             updateElement(id, { cx: (startPos.cx ?? 0) + finalDeltaX, cy: (startPos.cy ?? 0) + finalDeltaY });
@@ -761,6 +794,8 @@ export function useCanvasInteractions({
                 y: startPos.y + finalDeltaY,
               },
             });
+          } else if (element.type === "text") {
+            updateElement(id, { x: startPos.x + finalDeltaX, y: startPos.y + finalDeltaY });
           }
         }
       }

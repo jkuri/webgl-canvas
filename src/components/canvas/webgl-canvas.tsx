@@ -12,6 +12,8 @@ import { LayersPanel } from "./layers-panel";
 import { Panel } from "./panel";
 import { PropertiesPanel } from "./properties-panel";
 import { SmartGuides } from "./smart-guides";
+import { TextEditor } from "./text-editor";
+import { TextOverlay } from "./text-overlay";
 
 export function WebGLCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,6 +52,18 @@ export function WebGLCanvas() {
       return {
         x: (screenX - rect.left - transform.x) / transform.scale,
         y: (screenY - rect.top - transform.y) / transform.scale,
+      };
+    },
+    [transform],
+  );
+
+  const worldToScreen = useCallback(
+    (worldX: number, worldY: number) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return { x: 0, y: 0 };
+      return {
+        x: worldX * transform.scale + transform.x + rect.left,
+        y: worldY * transform.scale + transform.y + rect.top,
       };
     },
     [transform],
@@ -324,6 +338,22 @@ export function WebGLCanvas() {
         };
       }
 
+      if (element.type === "text") {
+        // Calculate text bounds for dimension display
+        const textWidth = element.text.length * element.fontSize * 0.6;
+        const textHeight = element.fontSize * 1.2;
+        return {
+          bounds: {
+            x: element.x,
+            y: element.y - textHeight,
+            width: textWidth,
+            height: textHeight,
+          },
+          rotation: element.rotation,
+          isLine: false,
+        };
+      }
+
       const bounds = getElementBounds(element);
       return {
         bounds,
@@ -359,7 +389,9 @@ export function WebGLCanvas() {
     <div ref={containerRef} className="relative h-screen w-full select-none overflow-hidden" style={{ cursor }}>
       <CanvasContextMenu onContextMenu={handleContextMenu}>
         <canvas ref={canvasRef} className="h-full w-full" />
+        <TextOverlay canvasRef={canvasRef.current} transform={transform} />
       </CanvasContextMenu>
+      <TextEditor worldToScreen={worldToScreen} />
       <SmartGuides />
 
       {selectionInfo && (

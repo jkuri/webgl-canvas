@@ -218,6 +218,44 @@ export function CanvasToolbar() {
     });
   };
 
+  const handleAddText = () => {
+    const center = getCenter();
+    const newTextId = crypto.randomUUID();
+    const fontSize = 16;
+    const text = "Text";
+
+    // Calculate initial bounds
+    const textWidth = text.length * fontSize * 0.6;
+    const textHeight = fontSize * 1.2;
+
+    addElement({
+      id: newTextId,
+      type: "text",
+      name: `Text ${elements.filter((e) => e.type === "text").length + 1}`,
+      x: center.x,
+      y: center.y,
+      text,
+      fontSize,
+      fontFamily: "Inter, sans-serif",
+      fontWeight: "normal",
+      textAnchor: "start",
+      rotation: 0,
+      fill: "#000000",
+      stroke: null,
+      opacity: 1,
+      bounds: {
+        x: center.x,
+        y: center.y - textHeight,
+        width: textWidth,
+        height: textHeight,
+      },
+    });
+    // Automatically enter edit mode for new text
+    setTimeout(() => {
+      useCanvasStore.getState().setIsEditingText(true, newTextId);
+    }, 10);
+  };
+
   // Check if any selected element is a group
   const hasGroupSelected = selectedIds.some((id) => {
     const el = elements.find((e) => e.id === id);
@@ -233,6 +271,7 @@ export function CanvasToolbar() {
     { id: "rect", label: "Rect", action: handleAddRect },
     { id: "ellipse", label: "Circle", action: handleAddEllipse },
     { id: "line", label: "Line", action: handleAddLine },
+    { id: "text", label: "Text", action: handleAddText },
   ];
 
   return (

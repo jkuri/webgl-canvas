@@ -319,18 +319,27 @@ export class WebGLRenderer {
       const selectedShapes = this.collectShapes(selectedElements, elements);
 
       if (selectionBox) {
-        // Marquee selection active: only draw outlines, no handles
+        // Marquee selection active: only draw outlines, no handles (skip text)
         for (const shape of selectedShapes) {
-          this.drawShapeOutline(shape, scale);
+          if (shape.type !== "text") {
+            this.drawShapeOutline(shape, scale);
+          }
         }
       } else {
-        if (selectedShapes.length === 1 && selectedElements.length === 1 && selectedElements[0].type !== "group") {
-          // Single shape: draw rotated outline with handles
+        if (
+          selectedShapes.length === 1 &&
+          selectedElements.length === 1 &&
+          selectedElements[0].type !== "group" &&
+          selectedElements[0].type !== "text"
+        ) {
+          // Single shape: draw rotated outline with handles (skip text elements)
           this.drawShapeOutlineWithHandles(selectedShapes[0], scale);
         } else if (selectedShapes.length > 0) {
-          // Multiple shapes or group: draw individual outlines + axis-aligned bounding box
+          // Multiple shapes or group: draw individual outlines + bounding box (skip text)
           for (const shape of selectedShapes) {
-            this.drawShapeOutline(shape, scale);
+            if (shape.type !== "text") {
+              this.drawShapeOutline(shape, scale);
+            }
           }
           const bounds = this.calculateBoundingBox(selectedShapes);
           this.drawBoundingBoxWithHandles(bounds, true, scale);

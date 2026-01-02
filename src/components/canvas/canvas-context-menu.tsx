@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/context-menu";
 import { getRandomShapeColorCSS, SHAPE_COLOR_NAMES, SHAPE_COLORS_CSS, type ShapeColorName } from "@/lib/colors";
 import { downloadSVG, exportToSVG } from "@/lib/svg-export";
+import { convertTextToPath, type TextConversionResult } from "@/lib/text-to-path";
 import { useCanvasStore } from "@/store";
+import type { TextElement } from "@/types";
 
 interface CanvasContextMenuProps {
   children: React.ReactNode;
@@ -185,6 +187,39 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
             {/* Export as SVG */}
             <ContextMenuItem onClick={handleExportSVG}>Export as SVG</ContextMenuItem>
             <ContextMenuSeparator />
+
+            {/* Convert to Outlines for text elements */}
+            {contextMenuTarget.type === "text" && (
+              <>
+                <ContextMenuItem
+                  onClick={async () => {
+                    const result: TextConversionResult = await convertTextToPath(contextMenuTarget as TextElement);
+                    if (result?.group && result.paths) {
+                      const textIdToDelete = contextMenuTarget.id;
+                      const pathIds: string[] = [];
+
+                      // Add all the individual letter paths
+                      for (const path of result.paths) {
+                        addElement(path);
+                        pathIds.push(path.id);
+                      }
+
+                      // Group the paths using the store's group action
+                      useCanvasStore.getState().setSelectedIds(pathIds);
+                      useCanvasStore.getState().groupSelected();
+
+                      // Delete the original text element
+                      setTimeout(() => {
+                        useCanvasStore.getState().deleteElement(textIdToDelete);
+                      }, 50);
+                    }
+                  }}
+                >
+                  Convert to Outlines
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+              </>
+            )}
 
             <ContextMenuItem onClick={deleteSelected} className="text-red-600">
               Delete <ContextMenuShortcut>⌫</ContextMenuShortcut>
