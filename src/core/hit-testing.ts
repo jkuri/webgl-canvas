@@ -281,7 +281,13 @@ export function hitTestElement(worldX: number, worldY: number, element: CanvasEl
 }
 
 // Hit test all elements, returns the topmost hit element
-export function hitTestShape(worldX: number, worldY: number, elements: CanvasElement[]): CanvasElement | null {
+// When deepSelect is true, returns the actual child element instead of its parent group
+export function hitTestShape(
+  worldX: number,
+  worldY: number,
+  elements: CanvasElement[],
+  deepSelect = false,
+): CanvasElement | null {
   // Test in reverse order (top to bottom)
   for (let i = elements.length - 1; i >= 0; i--) {
     const element = elements[i];
@@ -290,8 +296,8 @@ export function hitTestShape(worldX: number, worldY: number, elements: CanvasEle
     if (element.type === "group") continue; // Skip groups
 
     if (hitTestElement(worldX, worldY, element)) {
-      // If element has a parent, return the parent group instead
-      if (element.parentId) {
+      // If element has a parent and we're not in deep select mode, return the parent group instead
+      if (element.parentId && !deepSelect) {
         const parent = elements.find((e) => e.id === element.parentId);
         if (parent) return parent;
       }

@@ -146,7 +146,7 @@ function getRotatedCursor(handle: ResizeHandle, rotation: number): string {
 
 interface UseCanvasInteractionsProps {
   screenToWorld: (screenX: number, screenY: number) => { x: number; y: number };
-  hitTest: (worldX: number, worldY: number) => CanvasElement | null;
+  hitTest: (worldX: number, worldY: number, deepSelect?: boolean) => CanvasElement | null;
   hitTestResizeHandle: (worldX: number, worldY: number, element: CanvasElement) => ResizeHandle;
   handlers: {
     startPan: (e: MouseEvent) => void;
@@ -541,10 +541,17 @@ export function useCanvasInteractions({
           }
         }
 
-        const hit = hitTest(world.x, world.y);
+        // Check if any currently selected element is a child (has parentId)
+        // If so, use deep select to allow clicking on children directly
+        const hasSelectedChild = selectedIds.some((id) => {
+          const el = getElementById(id);
+          return el?.parentId;
+        });
+
+        const hit = hitTest(world.x, world.y, hasSelectedChild);
 
         if (hit) {
-          // Detect double-click on text elements
+          // Detect double-click
           const now = Date.now();
           const isDoubleClick = now - lastClickTimeRef.current < 300 && lastClickElementRef.current === hit.id;
 
@@ -554,6 +561,73 @@ export function useCanvasInteractions({
             lastClickTimeRef.current = 0;
             lastClickElementRef.current = null;
             return;
+          }
+
+          // Double-click on a group: deep select the child element
+          if (isDoubleClick && hit.type === "group") {
+            const deepHit = hitTest(world.x, world.y, true);
+            if (deepHit && deepHit.id !== hit.id) {
+              lastClickTimeRef.current = 0;
+              lastClickElementRef.current = null;
+              setSelectedIds([deepHit.id]);
+
+              // Start dragging the deep-selected element if not locked
+              if (!deepHit.locked) {
+                setIsDragging(true);
+                const elementsMap = new Map<
+                  string,
+                  { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }
+                >();
+
+                if (deepHit.type === "rect" || deepHit.type === "image") {
+                  elementsMap.set(deepHit.id, { x: deepHit.x, y: deepHit.y });
+                } else if (deepHit.type === "ellipse") {
+                  elementsMap.set(deepHit.id, { x: 0, y: 0, cx: deepHit.cx, cy: deepHit.cy });
+                } else if (deepHit.type === "line") {
+                  elementsMap.set(deepHit.id, {
+                    x: 0,
+                    y: 0,
+                    x1: deepHit.x1,
+                    y1: deepHit.y1,
+                    x2: deepHit.x2,
+                    y2: deepHit.y2,
+                  });
+                } else if (deepHit.type === "path") {
+                  elementsMap.set(deepHit.id, { x: deepHit.bounds.x, y: deepHit.bounds.y });
+                } else if (deepHit.type === "text") {
+                  elementsMap.set(deepHit.id, { x: deepHit.x, y: deepHit.y });
+                }
+
+                // Pre-calculate candidates for snapping (everything NOT being dragged)
+                const snapCandidates = elements
+                  .filter((e) => e.id !== deepHit.id && e.type !== "group")
+                  .map((e) => getBounds(e));
+
+                const snapPoints = elements
+                  .filter((e) => e.id !== deepHit.id && e.type !== "group")
+                  .flatMap((e) => getSnapPoints(e));
+
+                const b = getBounds(deepHit);
+                const originalBounds: Bounds = {
+                  minX: b.minX,
+                  minY: b.minY,
+                  maxX: b.maxX,
+                  maxY: b.maxY,
+                  centerX: b.centerX,
+                  centerY: b.centerY,
+                };
+
+                dragStartRef.current = {
+                  worldX: world.x,
+                  worldY: world.y,
+                  elements: elementsMap,
+                  snapCandidates,
+                  snapPoints,
+                  originalBounds,
+                };
+              }
+              return;
+            }
           }
 
           lastClickTimeRef.current = now;

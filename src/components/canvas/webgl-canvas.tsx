@@ -69,7 +69,10 @@ export function WebGLCanvas() {
     [transform],
   );
 
-  const hitTest = useCallback((worldX: number, worldY: number) => hitTestShape(worldX, worldY, elements), [elements]);
+  const hitTest = useCallback(
+    (worldX: number, worldY: number, deepSelect = false) => hitTestShape(worldX, worldY, elements, deepSelect),
+    [elements],
+  );
 
   const hitTestHandle = useCallback(
     (worldX: number, worldY: number, element: CanvasElement) => hitTestResizeHandle(worldX, worldY, element),
