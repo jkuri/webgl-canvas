@@ -31,6 +31,7 @@ export function TextOverlay({ canvasRef, transform }: TextOverlayProps) {
   useEffect(() => {
     if (!overlayRef.current || !canvasRef || !fontsReady) return;
 
+    let mounted = true;
     const overlay = overlayRef.current;
     const ctx = overlay.getContext("2d")!;
 
@@ -42,21 +43,23 @@ export function TextOverlay({ canvasRef, transform }: TextOverlayProps) {
     overlay.style.width = `${rect.width}px`;
     overlay.style.height = `${rect.height}px`;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    const render = async () => {
+      if (!mounted) return;
 
-    // Apply transform
-    ctx.save();
-    ctx.scale(dpr, dpr);
-    ctx.translate(transform.x, transform.y);
-    ctx.scale(transform.scale, transform.scale);
+      // Clear canvas
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-    // Render text elements
-    const textElements = elements.filter((e) => e.type === "text") as TextElement[];
+      // Apply transform BEFORE loop, inside async flow
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.translate(transform.x, transform.y);
+      ctx.scale(transform.scale, transform.scale);
 
-    // Render each text element asynchronously to load fonts
-    const renderTexts = async () => {
+      const textElements = elements.filter((e) => e.type === "text") as TextElement[];
+
       for (const textEl of textElements) {
+        if (!mounted) break;
+
         // Skip if this text is being edited (editor will render it)
         if (isEditingText && editingTextId === textEl.id) {
           continue;
@@ -71,12 +74,15 @@ export function TextOverlay({ canvasRef, transform }: TextOverlayProps) {
         let fonts = loadedFonts.get(fontKey);
 
         if (!fonts) {
+          // This await might yield execution. Scope is preserved.
           const loaded = await getFont(fontFamily, fontWeight || "400");
           if (loaded) {
             fonts = loaded;
             loadedFonts.set(fontKey, fonts);
           }
         }
+
+        if (!mounted) break;
 
         if (!fonts || fonts.length === 0) {
           // Fallback to native text rendering if font loading fails
@@ -117,11 +123,16 @@ export function TextOverlay({ canvasRef, transform }: TextOverlayProps) {
 
         ctx.restore();
       }
+
+      // Restore transform
+      ctx.restore();
     };
 
-    renderTexts();
+    render();
 
-    ctx.restore();
+    return () => {
+      mounted = false;
+    };
   }, [canvasRef, elements, transform, isEditingText, editingTextId, fontsReady]);
 
   return (
