@@ -339,7 +339,21 @@ export function WebGLCanvas() {
       }
 
       if (element.type === "text") {
-        // Calculate text bounds for dimension display
+        // Use stored bounds if available (accurate), fallback to estimation
+        if (element.bounds) {
+          return {
+            bounds: {
+              x: element.x + element.bounds.x,
+              y: element.y + element.bounds.y,
+              width: element.bounds.width,
+              height: element.bounds.height,
+            },
+            rotation: element.rotation,
+            isLine: false,
+          };
+        }
+
+        // Fallback: Calculate text bounds for dimension display
         const textWidth = element.text.length * element.fontSize * 0.6;
         const textHeight = element.fontSize * 1.2;
         return {

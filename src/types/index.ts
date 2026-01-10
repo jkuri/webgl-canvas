@@ -314,8 +314,15 @@ export function getElementBounds(element: CanvasElement): BoundingBox {
     case "path":
       return element.bounds;
     case "text":
-      // Use cached bounds or estimate from font size
-      if (element.bounds) return element.bounds;
+      // Use cached bounds (relative) or estimate from font size
+      if (element.bounds) {
+        return {
+          x: element.x + element.bounds.x,
+          y: element.y + element.bounds.y,
+          width: element.bounds.width,
+          height: element.bounds.height,
+        };
+      }
       return {
         x: element.x,
         y: element.y - element.fontSize,

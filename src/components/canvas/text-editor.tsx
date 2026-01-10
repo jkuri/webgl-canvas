@@ -70,8 +70,8 @@ export function TextEditor({ worldToScreen }: TextEditorProps) {
     // Update text content
     updateElement(textElement.id, { text: newText });
 
-    // Calculate and update bounds (async)
-    const bounds = await calculateTextBounds({ ...textElement, text: newText });
+    // Calculate and update bounds (async) with relative coordinates
+    const bounds = await calculateTextBounds({ ...textElement, text: newText, x: 0, y: 0 });
     updateElement(textElement.id, { bounds });
 
     setIsEditingText(false);

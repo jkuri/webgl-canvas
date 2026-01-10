@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { getAvailableWeights, getFont, getFontAscender } from "@/lib/text-renderer";
+import { calculateTextBounds } from "@/lib/text-to-path";
 import { cn } from "@/lib/utils";
 import { useCanvasStore } from "@/store";
 import type { CanvasElement, LineElement, RectElement, TextElement } from "@/types";
@@ -473,16 +474,38 @@ export function PropertiesPanel() {
                   // newY = oldY + oldAscender - newAscender
                   const newY = Number(y) + (oldAscender - newAscender);
 
+                  // Calculate new bounds
+                  const newBounds = await calculateTextBounds({
+                    ...textEl,
+                    x: 0,
+                    y: 0,
+                    fontFamily: newFontFamily || "Inter, sans-serif",
+                    fontWeight: newWeight as "normal" | "bold" | number,
+                    fontSize,
+                  });
+
                   updateElement(selectedElement.id, {
-                    fontFamily: newFontFamily,
-                    fontWeight: newWeight,
+                    fontFamily: newFontFamily || "Inter, sans-serif",
+                    fontWeight: newWeight as "normal" | "bold" | number,
                     y: newY,
+                    bounds: newBounds,
                   });
                 } else {
                   // Fallback: just update font family and weight
+                  // Fallback: just update font family and weight
+                  const newBounds = await calculateTextBounds({
+                    ...textEl,
+                    x: 0,
+                    y: 0,
+                    fontFamily: newFontFamily || "Inter, sans-serif",
+                    fontWeight: newWeight as "normal" | "bold" | number,
+                    fontSize,
+                  });
+
                   updateElement(selectedElement.id, {
-                    fontFamily: newFontFamily,
+                    fontFamily: newFontFamily || "Inter, sans-serif",
                     fontWeight: newWeight,
+                    bounds: newBounds,
                   });
                 }
               }}
@@ -508,7 +531,15 @@ export function PropertiesPanel() {
             <div className="grid grid-cols-3 gap-1">
               <NumberInput
                 value={(selectedElement as TextElement).fontSize || 16}
-                onChange={(v) => updateElement(selectedElement.id, { fontSize: v })}
+                onChange={async (v) => {
+                  const bounds = await calculateTextBounds({
+                    ...(selectedElement as TextElement),
+                    x: 0,
+                    y: 0,
+                    fontSize: v,
+                  });
+                  updateElement(selectedElement.id, { fontSize: v, bounds });
+                }}
                 step={1}
                 className="h-7"
               />
@@ -531,12 +562,28 @@ export function PropertiesPanel() {
                     const newAscender = getFontAscender(newFont, fontSize);
                     const diff = oldAscender - newAscender;
 
+                    const newBounds = await calculateTextBounds({
+                      ...textEl,
+                      x: 0,
+                      y: 0,
+                      fontWeight: val as "normal" | "bold" | number,
+                      // We don't need to adjust Y in bounds calculation since it's relative 0,0
+                      fontSize,
+                    });
+
                     updateElement(textEl.id, {
                       fontWeight: val,
                       y: Number(textEl.y) + diff,
+                      bounds: newBounds,
                     });
                   } else {
-                    updateElement(textEl.id, { fontWeight: val });
+                    const newBounds = await calculateTextBounds({
+                      ...textEl,
+                      x: 0,
+                      y: 0,
+                      fontWeight: val as "normal" | "bold" | number,
+                    });
+                    updateElement(textEl.id, { fontWeight: val, bounds: newBounds });
                   }
                 }}
               >
