@@ -1,7 +1,6 @@
 import {
   CenterFocusIcon,
   Cursor01Icon,
-  FigmaIcon,
   FourFinger02Icon,
   MinusSignIcon,
   PlusSignIcon,
@@ -9,6 +8,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { CanvasLogo } from "@/components/ui/canvas-logo";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -325,7 +325,7 @@ export function CanvasToolbar() {
         {/* Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex size-8 items-center justify-center rounded-md outline-none ring-offset-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-            <HugeiconsIcon icon={FigmaIcon} className="size-5" />
+            <CanvasLogo className="size-5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="top" sideOffset={10} className="w-56">
             {/* File Submenu */}

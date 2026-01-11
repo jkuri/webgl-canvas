@@ -15,7 +15,11 @@ import { SmartGuides } from "./smart-guides";
 import { TextEditor } from "./text-editor";
 import { TextOverlay } from "./text-overlay";
 
-export function WebGLCanvas() {
+interface WebGLCanvasProps {
+  fontsReady?: boolean;
+}
+
+export function WebGLCanvas({ fontsReady = false }: WebGLCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<WebGLRenderer | null>(null);
@@ -412,7 +416,7 @@ export function WebGLCanvas() {
     <div ref={containerRef} className="relative h-screen w-full select-none overflow-hidden" style={{ cursor }}>
       <CanvasContextMenu onContextMenu={handleContextMenu}>
         <canvas ref={canvasRef} className="h-full w-full" />
-        <TextOverlay canvasRef={canvasRef.current} transform={transform} />
+        <TextOverlay canvasRef={canvasRef.current} transform={transform} fontsReady={fontsReady} />
       </CanvasContextMenu>
       <TextEditor worldToScreen={worldToScreen} />
       <SmartGuides />

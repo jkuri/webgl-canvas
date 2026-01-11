@@ -1,12 +1,13 @@
 import type opentype from "opentype.js";
-import { useEffect, useRef, useState } from "react";
-import { drawTextWithOpenType, getFont, preloadFonts } from "@/lib/text-renderer";
+import { useEffect, useRef } from "react";
+import { drawTextWithOpenType, getFont } from "@/lib/text-renderer";
 import { useCanvasStore } from "@/store";
 import type { TextElement } from "@/types";
 
 interface TextOverlayProps {
   canvasRef: HTMLCanvasElement | null;
   transform: { x: number; y: number; scale: number };
+  fontsReady?: boolean;
 }
 
 // Cache loaded fonts by their key (supports arrays of fonts for composite handling)
@@ -16,17 +17,11 @@ const loadedFonts = new Map<string, opentype.Font[]>();
  * Canvas 2D overlay for rendering text elements
  * Uses OpenType.js for rendering to ensure consistency with outline conversion
  */
-export function TextOverlay({ canvasRef, transform }: TextOverlayProps) {
+export function TextOverlay({ canvasRef, transform, fontsReady = false }: TextOverlayProps) {
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const elements = useCanvasStore((s) => s.elements);
   const isEditingText = useCanvasStore((s) => s.isEditingText);
   const editingTextId = useCanvasStore((s) => s.editingTextId);
-  const [fontsReady, setFontsReady] = useState(false);
-
-  // Preload fonts on mount
-  useEffect(() => {
-    preloadFonts().then(() => setFontsReady(true));
-  }, []);
 
   useEffect(() => {
     if (!overlayRef.current || !canvasRef || !fontsReady) return;
