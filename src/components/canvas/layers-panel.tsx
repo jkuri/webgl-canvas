@@ -17,8 +17,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { List, type RowComponentProps } from "react-window";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -480,6 +481,31 @@ interface FlatItem {
   depth: number;
 }
 
+// Row props for virtualized list
+interface VirtualizedRowProps {
+  flatItems: FlatItem[];
+  handleSelect: (id: string, multiSelect: boolean) => void;
+  toggleGroupExpanded: (id: string) => void;
+}
+
+// Virtualized row component for react-window
+function VirtualizedRow(props: RowComponentProps<VirtualizedRowProps>) {
+  const { index, style, flatItems, handleSelect, toggleGroupExpanded } = props;
+  const item = flatItems[index];
+  if (!item) return <div style={style} />;
+
+  return (
+    <div style={style}>
+      <SortableLayerItem
+        elementId={item.id}
+        depth={item.depth}
+        onSelect={handleSelect}
+        onToggleExpand={toggleGroupExpanded}
+      />
+    </div>
+  );
+}
+
 export function LayersPanel() {
   const elements = useCanvasStore((s) => s.elements);
   const setSelectedIds = useCanvasStore((s) => s.setSelectedIds);
@@ -489,6 +515,22 @@ export function LayersPanel() {
   const moveElement = useCanvasStore((s) => s.moveElement);
 
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const [containerHeight, setContainerHeight] = useState(300);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Measure container height for virtualization
+  const updateContainerHeight = useCallback(() => {
+    if (containerRef.current) {
+      setContainerHeight(containerRef.current.clientHeight);
+    }
+  }, []);
+
+  // Update height on mount and resize
+  useEffect(() => {
+    updateContainerHeight();
+    window.addEventListener("resize", updateContainerHeight);
+    return () => window.removeEventListener("resize", updateContainerHeight);
+  }, [updateContainerHeight]);
 
   // Flatten the tree for Drag and Drop
   const flatItems = useMemo(() => {
@@ -603,29 +645,24 @@ export function LayersPanel() {
       </div>
 
       {/* Layer list */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="custom-scrollbar flex-1 overflow-y-auto overflow-x-hidden py-1">
-          {flatItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground text-xs">
-              <p>No layers</p>
-              <p className="mt-1 opacity-50">Add a shape to start</p>
-            </div>
-          ) : (
-            <SortableContext items={flatItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-              <div className="flex flex-col">
-                {flatItems.map((item) => (
-                  <SortableLayerItem
-                    key={item.id}
-                    elementId={item.id}
-                    depth={item.depth}
-                    onSelect={handleSelect}
-                    onToggleExpand={toggleGroupExpanded}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          )}
-        </div>
+      <div className="flex flex-1 flex-col overflow-hidden" ref={containerRef}>
+        {flatItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground text-xs">
+            <p>No layers</p>
+            <p className="mt-1 opacity-50">Add a shape to start</p>
+          </div>
+        ) : (
+          <SortableContext items={flatItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            <List
+              rowCount={flatItems.length}
+              rowHeight={28}
+              defaultHeight={containerHeight}
+              rowComponent={VirtualizedRow}
+              rowProps={{ flatItems, handleSelect, toggleGroupExpanded }}
+              className="custom-scrollbar"
+            />
+          </SortableContext>
+        )}
       </div>
 
       {createPortal(

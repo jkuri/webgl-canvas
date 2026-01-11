@@ -37,6 +37,7 @@
     "polygon-clipping": "^0.15.7",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-window": "^2.2.4",
     "shadcn": "^3.6.3",
     "svg-pathdata": "^8.0.0",
     "svgson": "^5.3.1",
