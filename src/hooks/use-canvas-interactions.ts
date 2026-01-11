@@ -254,6 +254,8 @@ export function useCanvasInteractions({
         y1?: number;
         x2?: number;
         y2?: number;
+        d?: string;
+        bounds?: { x: number; y: number; width: number; height: number };
       }
     >;
     handle: ResizeHandle;
@@ -330,7 +332,8 @@ export function useCanvasInteractions({
               transform.scale,
             );
           } else {
-            const bounds = calculateBoundingBox(selectedElements);
+            const flattenedElements = flattenCanvasElements(selectedElements, getElementById);
+            const bounds = calculateBoundingBox(flattenedElements);
             if (bounds) {
               clickedHandle = hitTestBoundsHandle(world.x, world.y, bounds, transform.scale);
             }
@@ -340,7 +343,8 @@ export function useCanvasInteractions({
           const isCorner =
             clickedHandle === "nw" || clickedHandle === "ne" || clickedHandle === "se" || clickedHandle === "sw";
           if (isCorner) {
-            const bounds = calculateBoundingBox(selectedElements);
+            const flattenedElements = flattenCanvasElements(selectedElements, getElementById);
+            const bounds = calculateBoundingBox(flattenedElements);
             if (bounds) {
               const centerX = bounds.x + bounds.width / 2;
               const centerY = bounds.y + bounds.height / 2;
@@ -363,10 +367,12 @@ export function useCanvasInteractions({
                   y1?: number;
                   x2?: number;
                   y2?: number;
+                  d?: string;
+                  bounds?: { x: number; y: number; width: number; height: number };
                 }
               >();
 
-              for (const element of selectedElements) {
+              for (const element of flattenedElements) {
                 originalRotations.set(element.id, element.rotation);
                 const eBounds = getElementBounds(element);
                 const entry = {
@@ -381,6 +387,8 @@ export function useCanvasInteractions({
                   y1: undefined as number | undefined,
                   x2: undefined as number | undefined,
                   y2: undefined as number | undefined,
+                  d: undefined as string | undefined,
+                  bounds: undefined as { x: number; y: number; width: number; height: number } | undefined,
                 };
                 if (element.type === "ellipse") {
                   entry.cx = element.cx;
@@ -392,6 +400,9 @@ export function useCanvasInteractions({
                   entry.y1 = element.y1;
                   entry.x2 = element.x2;
                   entry.y2 = element.y2;
+                } else if (element.type === "path") {
+                  entry.d = element.d;
+                  entry.bounds = element.bounds;
                 }
                 originalElements.set(element.id, entry);
               }
@@ -1113,16 +1124,18 @@ export function useCanvasInteractions({
         const deltaAngle = currentAngle - startAngle;
 
         for (const [id, original] of originalElements) {
+          const originalRotation = originalRotations.get(id) ?? 0;
+          const newRotation = originalRotation + deltaAngle;
+
+          const cos = Math.cos(deltaAngle);
+          const sin = Math.sin(deltaAngle);
+
+          const rotatePoint = (x: number, y: number) => ({
+            x: centerX + (x - centerX) * cos - (y - centerY) * sin,
+            y: centerY + (x - centerX) * sin + (y - centerY) * cos,
+          });
+
           if (original.type === "line") {
-            // Rotate line endpoints
-            const cos = Math.cos(deltaAngle);
-            const sin = Math.sin(deltaAngle);
-
-            const rotatePoint = (x: number, y: number) => ({
-              x: centerX + (x - centerX) * cos - (y - centerY) * sin,
-              y: centerY + (x - centerX) * sin + (y - centerY) * cos,
-            });
-
             const p1 = rotatePoint(original.x1!, original.y1!);
             const p2 = rotatePoint(original.x2!, original.y2!);
 
@@ -1131,12 +1144,43 @@ export function useCanvasInteractions({
               y1: p1.y,
               x2: p2.x,
               y2: p2.y,
-              rotation: original.rotation + deltaAngle, // Keep rotation property updated for logic/bounds
+              rotation: newRotation,
             });
-          } else {
-            // Standard rotation for other elements
-            const originalRotation = originalRotations.get(id) ?? 0;
-            updateElement(id, { rotation: originalRotation + deltaAngle });
+          } else if (original.type === "ellipse") {
+            const center = rotatePoint(original.cx!, original.cy!);
+            updateElement(id, {
+              cx: center.x,
+              cy: center.y,
+              rotation: newRotation,
+            });
+          } else if (original.type === "rect" || original.type === "image" || original.type === "text") {
+            // Calculate original center
+            const ox = original.x + original.width / 2;
+            const oy = original.y + original.height / 2;
+            const center = rotatePoint(ox, oy);
+
+            updateElement(id, {
+              x: center.x - original.width / 2,
+              y: center.y - original.height / 2,
+              rotation: newRotation,
+            });
+          } else if (original.type === "path") {
+            // Path rotation requires standard bounds update plus path data rotation or just bounds?
+            // Usually paths are defined by d-string relative to bounds or absolute?
+            // In this app, paths seem to have 'bounds'.
+            // We'll rotate the bounds center.
+            const ox = original.bounds!.x + original.bounds!.width / 2;
+            const oy = original.bounds!.y + original.bounds!.height / 2;
+            const center = rotatePoint(ox, oy);
+
+            updateElement(id, {
+              bounds: {
+                ...original.bounds!,
+                x: center.x - original.bounds!.width / 2,
+                y: center.y - original.bounds!.height / 2,
+              },
+              rotation: newRotation,
+            });
           }
         }
       }
