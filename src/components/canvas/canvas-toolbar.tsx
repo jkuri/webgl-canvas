@@ -1,4 +1,11 @@
-import { Cursor01Icon, FigmaIcon, FourFinger02Icon, MinusSignIcon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import {
+  CenterFocusIcon,
+  Cursor01Icon,
+  FigmaIcon,
+  FourFinger02Icon,
+  MinusSignIcon,
+  PlusSignIcon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +47,7 @@ export function CanvasToolbar() {
   const zoomOut = useCanvasStore((s) => s.zoomOut);
   const zoomTo = useCanvasStore((s) => s.zoomTo);
   const resetView = useCanvasStore((s) => s.resetView);
+  const panToCenter = useCanvasStore((s) => s.panToCenter);
   const groupSelected = useCanvasStore((s) => s.groupSelected);
   const ungroupSelected = useCanvasStore((s) => s.ungroupSelected);
   const snapToGrid = useCanvasStore((s) => s.snapToGrid);
@@ -370,6 +378,7 @@ export function CanvasToolbar() {
                   Zoom to 100% <DropdownMenuShortcut>⌘0</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={resetView}>Fit to Screen</DropdownMenuItem>
+                <DropdownMenuItem onClick={panToCenter}>Center All Elements</DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
@@ -466,6 +475,15 @@ export function CanvasToolbar() {
           </DropdownMenu>
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={zoomIn} title="Zoom In">
             <HugeiconsIcon icon={PlusSignIcon} size={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            onClick={panToCenter}
+            title="Center All Elements"
+          >
+            <HugeiconsIcon icon={CenterFocusIcon} size={16} />
           </Button>
         </div>
       </div>

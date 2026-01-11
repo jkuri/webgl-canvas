@@ -100,6 +100,7 @@ interface CanvasActions {
   zoomOut: () => void;
   zoomTo: (scale: number) => void;
   resetView: () => void;
+  panToCenter: () => void;
 
   // Tool actions
   setActiveTool: (tool: Tool) => void;
@@ -637,6 +638,81 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     })),
 
   resetView: () => set({ transform: { x: 0, y: 0, scale: 1 } }),
+
+  panToCenter: () => {
+    const state = get();
+    if (state.elements.length === 0) return;
+
+    // Calculate bounding box of all elements
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const el of state.elements) {
+      if (el.type === "group") continue; // Skip groups, we'll use their children
+
+      if (el.type === "rect" || el.type === "image") {
+        minX = Math.min(minX, el.x);
+        minY = Math.min(minY, el.y);
+        maxX = Math.max(maxX, el.x + el.width);
+        maxY = Math.max(maxY, el.y + el.height);
+      } else if (el.type === "ellipse") {
+        minX = Math.min(minX, el.cx - el.rx);
+        minY = Math.min(minY, el.cy - el.ry);
+        maxX = Math.max(maxX, el.cx + el.rx);
+        maxY = Math.max(maxY, el.cy + el.ry);
+      } else if (el.type === "line") {
+        minX = Math.min(minX, el.x1, el.x2);
+        minY = Math.min(minY, el.y1, el.y2);
+        maxX = Math.max(maxX, el.x1, el.x2);
+        maxY = Math.max(maxY, el.y1, el.y2);
+      } else if (el.type === "path") {
+        minX = Math.min(minX, el.bounds.x);
+        minY = Math.min(minY, el.bounds.y);
+        maxX = Math.max(maxX, el.bounds.x + el.bounds.width);
+        maxY = Math.max(maxY, el.bounds.y + el.bounds.height);
+      } else if (el.type === "polygon" || el.type === "polyline") {
+        for (const pt of el.points) {
+          minX = Math.min(minX, pt.x);
+          minY = Math.min(minY, pt.y);
+          maxX = Math.max(maxX, pt.x);
+          maxY = Math.max(maxY, pt.y);
+        }
+      } else if (el.type === "text") {
+        if (el.bounds) {
+          minX = Math.min(minX, el.bounds.x);
+          minY = Math.min(minY, el.bounds.y);
+          maxX = Math.max(maxX, el.bounds.x + el.bounds.width);
+          maxY = Math.max(maxY, el.bounds.y + el.bounds.height);
+        } else {
+          // Fallback approximation
+          minX = Math.min(minX, el.x);
+          minY = Math.min(minY, el.y - el.fontSize);
+          maxX = Math.max(maxX, el.x + el.text.length * el.fontSize * 0.6);
+          maxY = Math.max(maxY, el.y);
+        }
+      }
+    }
+
+    // If no valid bounds found, do nothing
+    if (!Number.isFinite(minX) || !Number.isFinite(minY)) return;
+
+    // Calculate center of all elements
+    const contentCenterX = (minX + maxX) / 2;
+    const contentCenterY = (minY + maxY) / 2;
+
+    // Calculate viewport center
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight / 2;
+
+    // Calculate new transform to center content
+    const { scale } = state.transform;
+    const newX = viewportCenterX - contentCenterX * scale;
+    const newY = viewportCenterY - contentCenterY * scale;
+
+    set({ transform: { x: newX, y: newY, scale } });
+  },
 
   // Tool actions
   setActiveTool: (tool) => set({ activeTool: tool }),
