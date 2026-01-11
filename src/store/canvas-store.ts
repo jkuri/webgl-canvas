@@ -129,6 +129,9 @@ interface CanvasActions {
   // Page Actions
   setCanvasBackground: (color: string) => void;
   setCanvasBackgroundVisible: (visible: boolean) => void;
+
+  // Drag and Drop
+  moveElement: (elementId: string, targetId: string | null, position: "before" | "after" | "inside") => void;
 }
 
 // Helper to generate default element names
@@ -746,4 +749,100 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
   setCanvasBackground: (color) => set({ canvasBackground: color }),
   setCanvasBackgroundVisible: (visible) => set({ canvasBackgroundVisible: visible }),
+
+  moveElement: (elementId, targetId, position) =>
+    set((state) => {
+      const elementIndex = state.elements.findIndex((e) => e.id === elementId);
+      if (elementIndex === -1) return state;
+
+      const element = state.elements[elementIndex];
+      const newElements = [...state.elements];
+
+      // Remove from old parent
+      if (element.parentId) {
+        const parentGroupIndex = newElements.findIndex((e) => e.id === element.parentId);
+        if (parentGroupIndex !== -1) {
+          const parentGroup = newElements[parentGroupIndex] as GroupElement;
+          newElements[parentGroupIndex] = {
+            ...parentGroup,
+            childIds: parentGroup.childIds.filter((id) => id !== elementId),
+          };
+        }
+      }
+
+      // Remove from array (temporarily)
+      const currentIndex = newElements.findIndex((e) => e.id === elementId);
+      newElements.splice(currentIndex, 1);
+
+      let newParentId: string | undefined;
+
+      // Determine new parent
+      if (position === "inside" && targetId) {
+        newParentId = targetId;
+      } else if (targetId) {
+        // Find target to get its parent
+        const targetElement = state.elements.find((e) => e.id === targetId);
+        newParentId = targetElement?.parentId;
+      }
+
+      const updatedElement = { ...element, parentId: newParentId };
+
+      // Insert logic
+      if (position === "inside" && targetId) {
+        // Add to group children
+        const groupIndex = newElements.findIndex((e) => e.id === targetId);
+        if (groupIndex !== -1) {
+          const group = newElements[groupIndex] as GroupElement;
+          newElements[groupIndex] = {
+            ...group,
+            childIds: [...group.childIds, elementId],
+          };
+          // For visualization/render order, append to end of list
+          // or just after the group?
+          // If we append to end, it draws on top.
+          newElements.push(updatedElement);
+        } else {
+          // Fallback
+          newElements.push(updatedElement);
+        }
+      } else if (targetId) {
+        // Insert relative to target
+        const targetIndex = newElements.findIndex((e) => e.id === targetId);
+
+        // Handle insertion into sibling group
+        if (newParentId) {
+          const parentGroupIndex = newElements.findIndex((e) => e.id === newParentId);
+          if (parentGroupIndex !== -1) {
+            const parentGroup = newElements[parentGroupIndex] as GroupElement;
+            const siblingIndex = parentGroup.childIds.indexOf(targetId);
+            const newChildIds = [...parentGroup.childIds];
+            if (position === "before") {
+              newChildIds.splice(siblingIndex, 0, elementId);
+            } else {
+              // after
+              newChildIds.splice(siblingIndex + 1, 0, elementId);
+            }
+            newElements[parentGroupIndex] = {
+              ...parentGroup,
+              childIds: newChildIds,
+            };
+          }
+        }
+
+        if (targetIndex !== -1) {
+          if (position === "before") {
+            newElements.splice(targetIndex, 0, updatedElement);
+          } else {
+            newElements.splice(targetIndex + 1, 0, updatedElement);
+          }
+        } else {
+          newElements.push(updatedElement);
+        }
+      } else {
+        // No target (e.g. dropped at root end), just append
+        newElements.push(updatedElement);
+      }
+
+      return { elements: newElements };
+    }),
 }));

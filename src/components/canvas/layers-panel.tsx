@@ -1,4 +1,24 @@
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  type UniqueIdentifier,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { memo, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -40,6 +60,7 @@ interface LayerItemProps {
   isExpanded: boolean;
   onSelect: (id: string, multiSelect: boolean) => void;
   onToggleExpand: (id: string) => void;
+  style?: React.CSSProperties;
 }
 
 // Get icon for element type
@@ -68,7 +89,7 @@ function getTypeIcon(type: string) {
 }
 
 const LayerItem = memo(
-  ({ element, depth, isSelected, isExpanded, onSelect, onToggleExpand }: LayerItemProps) => {
+  ({ element, depth, isSelected, isExpanded, onSelect, onToggleExpand, style }: LayerItemProps) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(element.name);
 
@@ -206,7 +227,7 @@ const LayerItem = memo(
             ? "bg-accent text-accent-foreground"
             : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
         )}
-        style={{ paddingLeft: depth * 12 + 8 }}
+        style={{ paddingLeft: depth * 12 + 8, ...style }}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onKeyDown={(e) => {
@@ -223,6 +244,7 @@ const LayerItem = memo(
               type="button"
               className="flex size-4 items-center justify-center rounded-sm hover:bg-muted-foreground/20"
               onClick={handleToggleExpand}
+              onMouseDown={(e) => e.stopPropagation()} // Prevent drag start when clicking expand
             >
               {isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
             </button>
@@ -241,6 +263,7 @@ const LayerItem = memo(
             onKeyDown={handleKeyDown}
             className="h-6 flex-1 px-1 text-xs"
             autoFocus
+            onMouseDown={(e) => e.stopPropagation()} // Prevent drag start
           />
         ) : (
           <span className="flex-1 truncate font-medium text-xs">{element.name}</span>
@@ -252,6 +275,7 @@ const LayerItem = memo(
             "flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100",
             (!isVisible || isLocked) && "opacity-100",
           )}
+          onMouseDown={(e) => e.stopPropagation()} // Prevent drag start
         >
           <button
             type="button"
@@ -280,106 +304,89 @@ const LayerItem = memo(
     );
 
     return (
-      <>
-        <ContextMenu>
-          <ContextMenuTrigger>{layerContent}</ContextMenuTrigger>
-          <ContextMenuContent className="w-56">
-            {/* Rename */}
-            <ContextMenuItem onClick={handleContextRename}>
-              Rename
-              <ContextMenuShortcut>Enter</ContextMenuShortcut>
+      <ContextMenu>
+        <ContextMenuTrigger>{layerContent}</ContextMenuTrigger>
+        <ContextMenuContent className="w-56">
+          {/* Rename */}
+          <ContextMenuItem onClick={handleContextRename}>
+            Rename
+            <ContextMenuShortcut>Enter</ContextMenuShortcut>
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          {/* Copy/Paste/Duplicate */}
+          <ContextMenuItem onClick={handleContextCopy}>
+            Copy
+            <ContextMenuShortcut>⌘C</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleContextPaste}>
+            Paste
+            <ContextMenuShortcut>⌘V</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleContextDuplicate}>
+            Duplicate
+            <ContextMenuShortcut>⌘D</ContextMenuShortcut>
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          {/* Layer ordering */}
+          <ContextMenuItem onClick={handleContextBringToFront}>
+            Bring to Front
+            <ContextMenuShortcut>⌘]</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleContextBringForward}>
+            Bring Forward
+            <ContextMenuShortcut>]</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleContextSendBackward}>
+            Send Backward
+            <ContextMenuShortcut>[</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleContextSendToBack}>
+            Send to Back
+            <ContextMenuShortcut>⌘[</ContextMenuShortcut>
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          {/* Group/Ungroup */}
+          {isGroup ? (
+            <ContextMenuItem onClick={handleContextUngroup}>
+              Ungroup
+              <ContextMenuShortcut>⌘⇧G</ContextMenuShortcut>
             </ContextMenuItem>
-
-            <ContextMenuSeparator />
-
-            {/* Copy/Paste/Duplicate */}
-            <ContextMenuItem onClick={handleContextCopy}>
-              Copy
-              <ContextMenuShortcut>⌘C</ContextMenuShortcut>
+          ) : (
+            <ContextMenuItem onClick={handleContextGroup}>
+              Group Selection
+              <ContextMenuShortcut>⌘G</ContextMenuShortcut>
             </ContextMenuItem>
-            <ContextMenuItem onClick={handleContextPaste}>
-              Paste
-              <ContextMenuShortcut>⌘V</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleContextDuplicate}>
-              Duplicate
-              <ContextMenuShortcut>⌘D</ContextMenuShortcut>
-            </ContextMenuItem>
+          )}
 
-            <ContextMenuSeparator />
+          <ContextMenuSeparator />
 
-            {/* Layer ordering */}
-            <ContextMenuItem onClick={handleContextBringToFront}>
-              Bring to Front
-              <ContextMenuShortcut>⌘]</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleContextBringForward}>
-              Bring Forward
-              <ContextMenuShortcut>]</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleContextSendBackward}>
-              Send Backward
-              <ContextMenuShortcut>[</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleContextSendToBack}>
-              Send to Back
-              <ContextMenuShortcut>⌘[</ContextMenuShortcut>
-            </ContextMenuItem>
+          {/* Lock/Unlock */}
+          <ContextMenuItem onClick={handleContextLock}>
+            {isLocked ? "Unlock" : "Lock"}
+            <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
+          </ContextMenuItem>
 
-            <ContextMenuSeparator />
+          {/* Show/Hide */}
+          <ContextMenuItem onClick={handleContextVisibility}>
+            {isVisible ? "Hide" : "Show"}
+            <ContextMenuShortcut>⌘⇧H</ContextMenuShortcut>
+          </ContextMenuItem>
 
-            {/* Group/Ungroup */}
-            {isGroup ? (
-              <ContextMenuItem onClick={handleContextUngroup}>
-                Ungroup
-                <ContextMenuShortcut>⌘⇧G</ContextMenuShortcut>
-              </ContextMenuItem>
-            ) : (
-              <ContextMenuItem onClick={handleContextGroup}>
-                Group Selection
-                <ContextMenuShortcut>⌘G</ContextMenuShortcut>
-              </ContextMenuItem>
-            )}
+          <ContextMenuSeparator />
 
-            <ContextMenuSeparator />
-
-            {/* Lock/Unlock */}
-            <ContextMenuItem onClick={handleContextLock}>
-              {isLocked ? "Unlock" : "Lock"}
-              <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
-            </ContextMenuItem>
-
-            {/* Show/Hide */}
-            <ContextMenuItem onClick={handleContextVisibility}>
-              {isVisible ? "Hide" : "Show"}
-              <ContextMenuShortcut>⌘⇧H</ContextMenuShortcut>
-            </ContextMenuItem>
-
-            <ContextMenuSeparator />
-
-            {/* Delete */}
-            <ContextMenuItem onClick={handleContextDelete} className="text-destructive focus:text-destructive">
-              Delete
-              <ContextMenuShortcut>⌫</ContextMenuShortcut>
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-
-        {/* Render children if group is expanded */}
-        {isGroup && isExpanded && (
-          <div>
-            {(element as GroupElement).childIds.map((childId) => (
-              <LayerItemWrapper
-                key={childId}
-                elementId={childId}
-                depth={depth + 1}
-                onSelect={onSelect}
-                onToggleExpand={onToggleExpand}
-              />
-            ))}
-          </div>
-        )}
-      </>
+          {/* Delete */}
+          <ContextMenuItem onClick={handleContextDelete} className="text-destructive focus:text-destructive">
+            Delete
+            <ContextMenuShortcut>⌫</ContextMenuShortcut>
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     );
   },
   (prev, next) => {
@@ -387,6 +394,10 @@ const LayerItem = memo(
     if (prev.isSelected !== next.isSelected) return false;
     if (prev.isExpanded !== next.isExpanded) return false;
     if (prev.depth !== next.depth) return false;
+    // We can't easily rely on style equality for drag transforms since it changes frequently
+    // But dnd-kit handles this via sortable wrapper usually.
+    // However, since we pass style prop now, we should check it?
+    // Actually, style is handled by wrapper, so it's new prop.
 
     const p = prev.element;
     const n = next.element;
@@ -412,33 +423,51 @@ const LayerItem = memo(
 );
 
 // ============================================
-// LAYER ITEM WRAPPER (connects to store)
+// SORTABLE LAYER ITEM WRAPPER
 // ============================================
 
-interface LayerItemWrapperProps {
+interface SortableLayerItemProps {
   elementId: string;
   depth: number;
   onSelect: (id: string, multiSelect: boolean) => void;
   onToggleExpand: (id: string) => void;
 }
 
-const LayerItemWrapper = ({ elementId, depth, onSelect, onToggleExpand }: LayerItemWrapperProps) => {
-  // Subscribe directly to the element from store - this ensures we get updated state
+const SortableLayerItem = ({ elementId, depth, onSelect, onToggleExpand }: SortableLayerItemProps) => {
   const element = useCanvasStore((s) => s.elements.find((e) => e.id === elementId));
   const isSelected = useCanvasStore((s) => s.selectedIds.includes(elementId));
   const isExpanded = useCanvasStore((s) => s.expandedGroupIds.includes(elementId));
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: elementId,
+    data: {
+      type: "layer",
+      element,
+      depth,
+      isGroup: element?.type === "group",
+      isExpanded,
+    },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
   if (!element) return null;
 
   return (
-    <LayerItem
-      element={element}
-      depth={depth}
-      isSelected={isSelected}
-      isExpanded={isExpanded}
-      onSelect={onSelect}
-      onToggleExpand={onToggleExpand}
-    />
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <LayerItem
+        element={element}
+        depth={depth}
+        isSelected={isSelected}
+        isExpanded={isExpanded}
+        onSelect={onSelect}
+        onToggleExpand={onToggleExpand}
+      />
+    </div>
   );
 };
 
@@ -446,14 +475,106 @@ const LayerItemWrapper = ({ elementId, depth, onSelect, onToggleExpand }: LayerI
 // LAYERS PANEL
 // ============================================
 
+interface FlatItem {
+  id: string;
+  depth: number;
+}
+
 export function LayersPanel() {
   const elements = useCanvasStore((s) => s.elements);
   const setSelectedIds = useCanvasStore((s) => s.setSelectedIds);
   const toggleSelection = useCanvasStore((s) => s.toggleSelection);
   const toggleGroupExpanded = useCanvasStore((s) => s.toggleGroupExpanded);
+  const expandedGroupIds = useCanvasStore((s) => s.expandedGroupIds);
+  const moveElement = useCanvasStore((s) => s.moveElement);
 
-  // Filter to top-level elements (no parent)
-  const topLevelElements = useMemo(() => elements.filter((e) => !e.parentId), [elements]);
+  const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+
+  // Flatten the tree for Drag and Drop
+  const flatItems = useMemo(() => {
+    const items: FlatItem[] = [];
+
+    // We want the list to be in visual order (top-level elements, then children if expanded)
+    // The `elements` array might not be in the perfect visual tree order if we just filter.
+    // We need to traverse.
+
+    // Note: Render order is usually "painters algorithm" (last in array = top).
+    // Layers panel usually shows Top element at the Top of the list.
+    // So we need to reverse the render order for the list.
+
+    const traverse = (elementId: string, depth: number) => {
+      items.push({ id: elementId, depth });
+
+      const element = elements.find((e) => e.id === elementId);
+      if (element?.type === "group" && expandedGroupIds.includes(elementId)) {
+        // Use childIds for order
+        // Groups childIds are usually in render order (back to front).
+        // So for the list (front to back), we should reverse childIds.
+        const group = element as GroupElement;
+        const reversedChildren = [...group.childIds].reverse();
+        for (const childId of reversedChildren) {
+          traverse(childId, depth + 1);
+        }
+      }
+    };
+
+    const topLevel = elements.filter((e) => !e.parentId);
+    // Reverse top level for list display (Front -> Back)
+    const reversedTopLevel = [...topLevel].reverse();
+    for (const e of reversedTopLevel) {
+      traverse(e.id, 0);
+    }
+
+    return items;
+  }, [elements, expandedGroupIds]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    if (activeId === overId) return;
+
+    // Determine drop position
+    const oldIndex = flatItems.findIndex((x) => x.id === activeId);
+    const newIndex = flatItems.findIndex((x) => x.id === overId);
+
+    const targetItem = flatItems[newIndex];
+    const targetElement = elements.find((e) => e.id === targetItem.id);
+
+    let position: "before" | "after" | "inside" = "after";
+
+    if (newIndex > oldIndex) {
+      // Moving Down in List -> Moving "Behind" in Render Order (Lower Z-Index)
+      // So we insert BEFORE the target in the Elements Array
+      position = "before";
+
+      // Special case: If target is an expanded group, moving "visual after" (down)
+      // means becoming the first child (visual top of group)
+      if (targetElement?.type === "group" && expandedGroupIds.includes(targetItem.id)) {
+        position = "inside";
+      }
+    } else {
+      // Moving Up in List -> Moving "In Front" in Render Order (Higher Z-Index)
+      // So we insert AFTER the target in the Elements Array
+      position = "after";
+    }
+
+    moveElement(activeId, overId, position);
+  };
 
   const handleSelect = (id: string, multiSelect: boolean) => {
     if (multiSelect) {
@@ -463,8 +584,15 @@ export function LayersPanel() {
     }
   };
 
+  const activeElement = activeId ? elements.find((e) => e.id === activeId) : null;
+
   return (
-    <>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       {/* Header */}
       <div className="flex h-10 items-center justify-between border-b bg-muted/30 px-3">
         <div className="flex items-center gap-2">
@@ -477,26 +605,45 @@ export function LayersPanel() {
       {/* Layer list */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="custom-scrollbar flex-1 overflow-y-auto overflow-x-hidden py-1">
-          {topLevelElements.length === 0 ? (
+          {flatItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground text-xs">
               <p>No layers</p>
               <p className="mt-1 opacity-50">Add a shape to start</p>
             </div>
           ) : (
-            [...topLevelElements]
-              .reverse()
-              .map((element) => (
-                <LayerItemWrapper
-                  key={element.id}
-                  elementId={element.id}
-                  depth={0}
-                  onSelect={handleSelect}
-                  onToggleExpand={toggleGroupExpanded}
-                />
-              ))
+            <SortableContext items={flatItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col">
+                {flatItems.map((item) => (
+                  <SortableLayerItem
+                    key={item.id}
+                    elementId={item.id}
+                    depth={item.depth}
+                    onSelect={handleSelect}
+                    onToggleExpand={toggleGroupExpanded}
+                  />
+                ))}
+              </div>
+            </SortableContext>
           )}
         </div>
       </div>
-    </>
+
+      {createPortal(
+        <DragOverlay>
+          {activeElement ? (
+            <LayerItem
+              element={activeElement}
+              depth={0}
+              isSelected={true}
+              isExpanded={false}
+              onSelect={() => {}}
+              onToggleExpand={() => {}}
+              style={{ opacity: 0.8 }}
+            />
+          ) : null}
+        </DragOverlay>,
+        document.body,
+      )}
+    </DndContext>
   );
 }
