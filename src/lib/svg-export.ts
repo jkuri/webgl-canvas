@@ -1,6 +1,98 @@
 import type { CanvasElement, Shape } from "@/types";
 
-// Calculate bounding box for elements
+// Helper to rotate a point around a center
+function rotatePoint(x: number, y: number, cx: number, cy: number, rotation: number): { x: number; y: number } {
+  if (rotation === 0) return { x, y };
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const dx = x - cx;
+  const dy = y - cy;
+  return {
+    x: cx + dx * cos - dy * sin,
+    y: cy + dx * sin + dy * cos,
+  };
+}
+
+// Get the four corners of an element, accounting for rotation
+function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
+  const rotation = element.rotation || 0;
+
+  switch (element.type) {
+    case "rect":
+    case "image": {
+      const cx = element.x + element.width / 2;
+      const cy = element.y + element.height / 2;
+      const corners = [
+        { x: element.x, y: element.y },
+        { x: element.x + element.width, y: element.y },
+        { x: element.x + element.width, y: element.y + element.height },
+        { x: element.x, y: element.y + element.height },
+      ];
+      return corners.map((c) => rotatePoint(c.x, c.y, cx, cy, rotation));
+    }
+    case "ellipse": {
+      // For ellipse, use the bounding box corners
+      const corners = [
+        { x: element.cx - element.rx, y: element.cy - element.ry },
+        { x: element.cx + element.rx, y: element.cy - element.ry },
+        { x: element.cx + element.rx, y: element.cy + element.ry },
+        { x: element.cx - element.rx, y: element.cy + element.ry },
+      ];
+      return corners.map((c) => rotatePoint(c.x, c.y, element.cx, element.cy, rotation));
+    }
+    case "line": {
+      const cx = (element.x1 + element.x2) / 2;
+      const cy = (element.y1 + element.y2) / 2;
+      return [
+        rotatePoint(element.x1, element.y1, cx, cy, rotation),
+        rotatePoint(element.x2, element.y2, cx, cy, rotation),
+      ];
+    }
+    case "path": {
+      const cx = element.bounds.x + element.bounds.width / 2;
+      const cy = element.bounds.y + element.bounds.height / 2;
+      const corners = [
+        { x: element.bounds.x, y: element.bounds.y },
+        { x: element.bounds.x + element.bounds.width, y: element.bounds.y },
+        { x: element.bounds.x + element.bounds.width, y: element.bounds.y + element.bounds.height },
+        { x: element.bounds.x, y: element.bounds.y + element.bounds.height },
+      ];
+      return corners.map((c) => rotatePoint(c.x, c.y, cx, cy, rotation));
+    }
+    case "text": {
+      // Use stored bounds if available
+      if (element.bounds) {
+        const absX = element.x + element.bounds.x;
+        const absY = element.y + element.bounds.y;
+        const cx = absX + element.bounds.width / 2;
+        const cy = absY + element.bounds.height / 2;
+        const corners = [
+          { x: absX, y: absY },
+          { x: absX + element.bounds.width, y: absY },
+          { x: absX + element.bounds.width, y: absY + element.bounds.height },
+          { x: absX, y: absY + element.bounds.height },
+        ];
+        return corners.map((c) => rotatePoint(c.x, c.y, cx, cy, rotation));
+      }
+      // Fallback estimation
+      const w = element.text.length * element.fontSize * 0.6;
+      const h = element.fontSize * 1.2;
+      return [
+        { x: element.x, y: element.y - h },
+        { x: element.x + w, y: element.y },
+      ];
+    }
+    case "polygon":
+    case "polyline": {
+      // For polygon/polyline, return all points (no rotation transform stored on type)
+      return element.points.map((p) => ({ x: p.x, y: p.y }));
+    }
+    default:
+      return [];
+  }
+}
+
+// Calculate bounding box for elements, accounting for rotation
 function calculateBounds(
   elements: CanvasElement[],
   allElements: CanvasElement[],
@@ -11,42 +103,20 @@ function calculateBounds(
   let maxY = Number.NEGATIVE_INFINITY;
 
   const processElement = (element: CanvasElement) => {
-    switch (element.type) {
-      case "rect": {
-        minX = Math.min(minX, element.x);
-        minY = Math.min(minY, element.y);
-        maxX = Math.max(maxX, element.x + element.width);
-        maxY = Math.max(maxY, element.y + element.height);
-        break;
+    if (element.type === "group") {
+      for (const childId of element.childIds) {
+        const child = allElements.find((e) => e.id === childId);
+        if (child) processElement(child);
       }
-      case "ellipse": {
-        minX = Math.min(minX, element.cx - element.rx);
-        minY = Math.min(minY, element.cy - element.ry);
-        maxX = Math.max(maxX, element.cx + element.rx);
-        maxY = Math.max(maxY, element.cy + element.ry);
-        break;
-      }
-      case "line": {
-        minX = Math.min(minX, element.x1, element.x2);
-        minY = Math.min(minY, element.y1, element.y2);
-        maxX = Math.max(maxX, element.x1, element.x2);
-        maxY = Math.max(maxY, element.y1, element.y2);
-        break;
-      }
-      case "path": {
-        minX = Math.min(minX, element.bounds.x);
-        minY = Math.min(minY, element.bounds.y);
-        maxX = Math.max(maxX, element.bounds.x + element.bounds.width);
-        maxY = Math.max(maxY, element.bounds.y + element.bounds.height);
-        break;
-      }
-      case "group": {
-        for (const childId of element.childIds) {
-          const child = allElements.find((e) => e.id === childId);
-          if (child) processElement(child);
-        }
-        break;
-      }
+      return;
+    }
+
+    const corners = getRotatedCorners(element);
+    for (const corner of corners) {
+      minX = Math.min(minX, corner.x);
+      minY = Math.min(minY, corner.y);
+      maxX = Math.max(maxX, corner.x);
+      maxY = Math.max(maxY, corner.y);
     }
   };
 
