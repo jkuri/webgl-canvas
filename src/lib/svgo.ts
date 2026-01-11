@@ -4,7 +4,7 @@
  * Provides SVG optimization using svgo for cleaner, smaller SVG output.
  */
 
-import { type Config, optimize } from "svgo";
+import { type Config, optimize } from "svgo/browser";
 
 const SVGO_CONFIG: Config = {
   multipass: true,
