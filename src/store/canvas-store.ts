@@ -158,51 +158,9 @@ function generateElementName(type: CanvasElement["type"], elements: CanvasElemen
   return `${prefix} ${count}`;
 }
 
-const DEFAULT_ELEMENTS: CanvasElement[] = [
-  {
-    id: "1",
-    type: "rect",
-    name: "Rectangle 1",
-    x: 650,
-    y: 300,
-    width: 200,
-    height: 150,
-    rotation: 0,
-    fill: "#3B82F6",
-    stroke: null,
-    opacity: 1,
-  },
-  {
-    id: "2",
-    type: "rect",
-    name: "Rectangle 2",
-    x: 550,
-    y: 500,
-    width: 150,
-    height: 150,
-    rotation: 0,
-    fill: "#D946EF",
-    stroke: null,
-    opacity: 1,
-  },
-  {
-    id: "3",
-    type: "ellipse",
-    name: "Ellipse 1",
-    cx: 890,
-    cy: 610,
-    rx: 90,
-    ry: 60,
-    rotation: 0,
-    fill: "#10B981",
-    stroke: null,
-    opacity: 1,
-  },
-];
-
 export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => ({
   // Initial state
-  elements: DEFAULT_ELEMENTS,
+  elements: [],
   selectedIds: [],
   expandedGroupIds: [],
   clipboard: [],
