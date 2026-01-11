@@ -2,6 +2,8 @@
 
 A high-performance, Figma-like canvas editor built with React, TypeScript, and WebGL.
 
+<img width="1983" height="1161" alt="Screenshot 2026-01-11 at 12 47 32" src="https://github.com/user-attachments/assets/e13a00c1-6a9b-4df1-8da3-f96784107d67" />
+
 ## Features
 
 ### Shape Creation
