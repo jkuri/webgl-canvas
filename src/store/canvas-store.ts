@@ -623,19 +623,40 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   setTransform: (transform) => set((state) => ({ transform: { ...state.transform, ...transform } })),
 
   zoomIn: () =>
-    set((state) => ({
-      transform: { ...state.transform, scale: Math.min(state.transform.scale * 1.2, 10) },
-    })),
+    set((state) => {
+      const { x, y, scale } = state.transform;
+      const newScale = Math.min(scale * 1.2, 10);
+      // Zoom around viewport center
+      const viewportCenterX = window.innerWidth / 2;
+      const viewportCenterY = window.innerHeight / 2;
+      const newX = viewportCenterX - (viewportCenterX - x) * (newScale / scale);
+      const newY = viewportCenterY - (viewportCenterY - y) * (newScale / scale);
+      return { transform: { x: newX, y: newY, scale: newScale } };
+    }),
 
   zoomOut: () =>
-    set((state) => ({
-      transform: { ...state.transform, scale: Math.max(state.transform.scale / 1.2, 0.1) },
-    })),
+    set((state) => {
+      const { x, y, scale } = state.transform;
+      const newScale = Math.max(scale / 1.2, 0.1);
+      // Zoom around viewport center
+      const viewportCenterX = window.innerWidth / 2;
+      const viewportCenterY = window.innerHeight / 2;
+      const newX = viewportCenterX - (viewportCenterX - x) * (newScale / scale);
+      const newY = viewportCenterY - (viewportCenterY - y) * (newScale / scale);
+      return { transform: { x: newX, y: newY, scale: newScale } };
+    }),
 
   zoomTo: (scale) =>
-    set((state) => ({
-      transform: { ...state.transform, scale: Math.max(0.1, Math.min(10, scale)) },
-    })),
+    set((state) => {
+      const { x, y, scale: currentScale } = state.transform;
+      const newScale = Math.max(0.1, Math.min(10, scale));
+      // Zoom around viewport center
+      const viewportCenterX = window.innerWidth / 2;
+      const viewportCenterY = window.innerHeight / 2;
+      const newX = viewportCenterX - (viewportCenterX - x) * (newScale / currentScale);
+      const newY = viewportCenterY - (viewportCenterY - y) * (newScale / currentScale);
+      return { transform: { x: newX, y: newY, scale: newScale } };
+    }),
 
   resetView: () => set({ transform: { x: 0, y: 0, scale: 1 } }),
 
