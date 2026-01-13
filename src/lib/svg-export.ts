@@ -218,13 +218,11 @@ function calculateBounds(
     return { x: 0, y: 0, width: 0, height: 0 };
   }
 
-  // Add padding
-  const padding = 10;
   return {
-    x: minX - padding,
-    y: minY - padding,
-    width: maxX - minX + padding * 2,
-    height: maxY - minY + padding * 2,
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
   };
 }
 
