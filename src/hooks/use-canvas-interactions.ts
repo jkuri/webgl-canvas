@@ -526,6 +526,7 @@ export function useCanvasInteractions({
                         x2: undefined as number | undefined,
                         y2: undefined as number | undefined,
                         d: undefined as string | undefined,
+                        bounds: undefined as { x: number; y: number; width: number; height: number } | undefined,
                         // Store parentId to check if it belongs to a group being resized
                         parentId: element.parentId,
                       };
@@ -542,6 +543,7 @@ export function useCanvasInteractions({
                         entry.y2 = element.y2;
                       } else if (element.type === "path") {
                         entry.d = element.d;
+                        entry.bounds = element.bounds;
                       }
 
                       map.set(element.id, entry);
@@ -1008,8 +1010,8 @@ export function useCanvasInteractions({
             }
           } else if (original.type === "path") {
             // Path resizing - resize bounds proportionally
-            // original.bounds might be undefined if flattened in resizeStartRef, construct it from top-level props
-            const bounds = { x: original.x, y: original.y, width: original.width, height: original.height };
+            // PathElement stores bounds in the `bounds` property, not at top-level
+            const bounds = original.bounds || { x: 0, y: 0, width: 0, height: 0 };
             const cosNeg = Math.cos(-elementRotation);
             const sinNeg = Math.sin(-elementRotation);
 
@@ -1112,7 +1114,8 @@ export function useCanvasInteractions({
                 y2: newBoundsY + relY2 * newBoundsHeight,
               });
             } else if (original.type === "path") {
-              const oldBounds = { x: original.x, y: original.y, width: original.width, height: original.height };
+              // PathElement stores bounds in the `bounds` property, not at top-level
+              const oldBounds = original.bounds || { x: 0, y: 0, width: 0, height: 0 };
               const newBounds = {
                 ...oldBounds,
                 x: newX,

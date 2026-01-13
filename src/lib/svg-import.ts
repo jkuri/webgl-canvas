@@ -928,22 +928,38 @@ export function resizePath(
 ): string {
   if (!d) return d;
 
-  // Normalize path to convert Arcs to Cubic Beziers to prevent malformed shapes during non-uniform scaling
-  const commands = parsePath(d);
-  const normalizedD = commands
-    .map((cmd: PathCommand) => {
-      return `${cmd.type} ${cmd.args.join(" ")}`;
-    })
-    .join(" ");
+  // Handle edge cases with zero dimensions to avoid division by zero
+  if (!oldBounds.width || !oldBounds.height) {
+    console.warn("resizePath: oldBounds has zero dimension, returning original path");
+    return d;
+  }
 
-  const scaleX = newBounds.width / oldBounds.width;
-  const scaleY = newBounds.height / oldBounds.height;
+  try {
+    // Normalize path to convert Arcs to Cubic Beziers to prevent malformed shapes during non-uniform scaling
+    const commands = parsePath(d);
+    const normalizedD = commands
+      .map((cmd: PathCommand) => {
+        return `${cmd.type} ${cmd.args.join(" ")}`;
+      })
+      .join(" ");
 
-  return new SVGPathData(normalizedD)
-    .translate(-oldBounds.x, -oldBounds.y)
-    .scale(scaleX, scaleY)
-    .translate(newBounds.x, newBounds.y)
-    .encode();
+    // Skip if normalization produced empty result
+    if (!normalizedD.trim()) {
+      return d;
+    }
+
+    const scaleX = newBounds.width / oldBounds.width;
+    const scaleY = newBounds.height / oldBounds.height;
+
+    return new SVGPathData(normalizedD)
+      .translate(-oldBounds.x, -oldBounds.y)
+      .scale(scaleX, scaleY)
+      .translate(newBounds.x, newBounds.y)
+      .encode();
+  } catch (error) {
+    console.warn("resizePath: Failed to resize path, returning original:", error);
+    return d;
+  }
 }
 
 /**
