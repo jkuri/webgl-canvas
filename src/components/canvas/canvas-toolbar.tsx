@@ -8,7 +8,6 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { CanvasLogo } from "@/components/ui/canvas-logo";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -21,6 +20,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { FoilLogo } from "@/components/ui/foil-logo";
 import { Separator } from "@/components/ui/separator";
 import { canvasHistory } from "@/lib/canvas-history";
 import { getRandomShapeColorCSS } from "@/lib/colors";
@@ -325,7 +325,7 @@ export function CanvasToolbar() {
         {/* Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex size-8 items-center justify-center rounded-md outline-none ring-offset-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-            <CanvasLogo className="size-5" />
+            <FoilLogo className="size-5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="top" sideOffset={10} className="w-56">
             {/* File Submenu */}
