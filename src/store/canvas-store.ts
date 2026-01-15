@@ -338,6 +338,13 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
     if (selectedTopLevel.length < 2) return null;
 
+    // Sort by z-index (position in elements array) to preserve visual stacking order
+    selectedTopLevel.sort((a, b) => {
+      const indexA = state.elements.findIndex((e) => e.id === a);
+      const indexB = state.elements.findIndex((e) => e.id === b);
+      return indexA - indexB;
+    });
+
     const group: GroupElement = {
       id: groupId,
       type: "group",
