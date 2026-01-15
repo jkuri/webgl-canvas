@@ -3,6 +3,7 @@ export {
   getRotatedCorners,
   getShapesInBox,
   hitTestAllElements,
+  hitTestAllTopLevel,
   hitTestBoundsHandle,
   hitTestElement,
   hitTestResizeHandle,

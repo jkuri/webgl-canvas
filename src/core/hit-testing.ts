@@ -349,6 +349,44 @@ export function hitTestAllElements(
   return hits;
 }
 
+// Hit test all top-level elements/groups at a position
+// Returns items with their top-level parent (group or element itself)
+// Used for cycling through overlapping elements that may be in different groups
+export function hitTestAllTopLevel(worldX: number, worldY: number, elements: CanvasElement[]): CanvasElement[] {
+  const hits: CanvasElement[] = [];
+  const seenTopLevel = new Set<string>();
+
+  // Test in reverse order (top to bottom)
+  for (let i = elements.length - 1; i >= 0; i--) {
+    const element = elements[i];
+    if (element.visible === false) continue;
+    if (element.locked) continue;
+    if (element.type === "group") continue; // Skip groups themselves
+
+    if (hitTestElement(worldX, worldY, element)) {
+      // Get the top-level item (the element itself if no parent, or its parent group)
+      const topLevelId = element.parentId || element.id;
+
+      // Only add if we haven't seen this top-level item yet
+      if (!seenTopLevel.has(topLevelId)) {
+        seenTopLevel.add(topLevelId);
+        if (element.parentId) {
+          // Find and add the parent group
+          const parentGroup = elements.find((e) => e.id === element.parentId);
+          if (parentGroup) {
+            hits.push(parentGroup);
+          }
+        } else {
+          // Add the element itself (it's top-level)
+          hits.push(element);
+        }
+      }
+    }
+  }
+
+  return hits;
+}
+
 export function hitTestResizeHandle(worldX: number, worldY: number, element: CanvasElement, scale = 1): ResizeHandle {
   if (element.type === "group") {
     // For groups, compute bounds from children and use axis-aligned hit test

@@ -7,6 +7,7 @@ import {
   getShapesInBox,
   getSnapPoints,
   hitTestAllElements,
+  hitTestAllTopLevel,
   hitTestBoundsHandle,
   hitTestRotatedElementHandle,
   type Point,
@@ -580,7 +581,7 @@ export function useCanvasInteractions({
         if (hit) {
           // Detect double-click
           const now = Date.now();
-          const isDoubleClick = now - lastClickTimeRef.current < 300 && lastClickElementRef.current === hit.id;
+          const isDoubleClick = now - lastClickTimeRef.current < 400 && lastClickElementRef.current === hit.id;
 
           if (isDoubleClick && hit.type === "text") {
             // Start editing text
@@ -590,12 +591,87 @@ export function useCanvasInteractions({
             return;
           }
 
+          // Special case: when a group is already selected and we double-click in its area
+          // (even if another element is on top), deep-select into the group's children
+          const selectedGroup = selectedIds.length === 1 ? getElementById(selectedIds[0]) : null;
+          const isTimeForDoubleClick = now - lastClickTimeRef.current < 400;
+          if (
+            isTimeForDoubleClick &&
+            selectedGroup?.type === "group" &&
+            lastClickElementRef.current === selectedGroup.id
+          ) {
+            // Find children of the selected group at this position (ignores elements from other groups)
+            const groupChildren = hitTestAllElements(world.x, world.y, elements, selectedGroup.id);
+            if (groupChildren.length > 0) {
+              const deepHit = groupChildren[0]; // Topmost child in the group
+              lastClickTimeRef.current = now;
+              lastClickElementRef.current = deepHit.id;
+              setSelectedIds([deepHit.id]);
+
+              // Start dragging the deep-selected element if not locked
+              if (!deepHit.locked) {
+                setIsDragging(true);
+                const elementsMap = new Map<
+                  string,
+                  { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }
+                >();
+
+                if (deepHit.type === "rect" || deepHit.type === "image") {
+                  elementsMap.set(deepHit.id, { x: deepHit.x, y: deepHit.y });
+                } else if (deepHit.type === "ellipse") {
+                  elementsMap.set(deepHit.id, { x: 0, y: 0, cx: deepHit.cx, cy: deepHit.cy });
+                } else if (deepHit.type === "line") {
+                  elementsMap.set(deepHit.id, {
+                    x: 0,
+                    y: 0,
+                    x1: deepHit.x1,
+                    y1: deepHit.y1,
+                    x2: deepHit.x2,
+                    y2: deepHit.y2,
+                  });
+                } else if (deepHit.type === "path") {
+                  elementsMap.set(deepHit.id, { x: deepHit.bounds.x, y: deepHit.bounds.y });
+                } else if (deepHit.type === "text") {
+                  elementsMap.set(deepHit.id, { x: deepHit.x, y: deepHit.y });
+                }
+
+                const snapCandidates = elements
+                  .filter((e) => e.id !== deepHit.id && e.type !== "group")
+                  .map((e) => getBounds(e, elements));
+
+                const snapPoints = elements
+                  .filter((e) => e.id !== deepHit.id && e.type !== "group")
+                  .flatMap((e) => getSnapPoints(e, elements));
+
+                const b = getBounds(deepHit, elements);
+                const originalBounds: Bounds = {
+                  minX: b.minX,
+                  minY: b.minY,
+                  maxX: b.maxX,
+                  maxY: b.maxY,
+                  centerX: b.centerX,
+                  centerY: b.centerY,
+                };
+
+                dragStartRef.current = {
+                  worldX: world.x,
+                  worldY: world.y,
+                  elements: elementsMap,
+                  snapCandidates,
+                  snapPoints,
+                  originalBounds,
+                };
+              }
+              return;
+            }
+          }
+
           // Double-click on a group: deep select the child element
           if (isDoubleClick && hit.type === "group") {
             const deepHit = hitTest(world.x, world.y, true);
             if (deepHit && deepHit.id !== hit.id) {
-              lastClickTimeRef.current = 0;
-              lastClickElementRef.current = null;
+              lastClickTimeRef.current = now;
+              lastClickElementRef.current = deepHit.id;
               setSelectedIds([deepHit.id]);
 
               // Start dragging the deep-selected element if not locked
@@ -657,6 +733,26 @@ export function useCanvasInteractions({
             }
           }
 
+          // Double-click on a top-level element (not a child): cycle through overlapping top-level items
+          // This allows selecting groups/elements underneath other elements
+          if (isDoubleClick && !hasSelectedChild && selectedIds.length === 1 && hit.type !== "group") {
+            const overlappingTopLevel = hitTestAllTopLevel(world.x, world.y, elements);
+
+            if (overlappingTopLevel.length > 1) {
+              // Find current selection in the list
+              const currentIndex = overlappingTopLevel.findIndex((e) => e.id === hit.id);
+
+              // Cycle to the next element (wrap around)
+              const nextIndex = (currentIndex + 1) % overlappingTopLevel.length;
+              const nextElement = overlappingTopLevel[nextIndex];
+
+              lastClickTimeRef.current = now;
+              lastClickElementRef.current = nextElement.id;
+              setSelectedIds([nextElement.id]);
+              return;
+            }
+          }
+
           // Double-click when already inside a group: cycle through overlapping elements
           // This implements Figma-like behavior where double-clicking cycles to elements underneath
           if (isDoubleClick && hasSelectedChild && selectedIds.length === 1) {
@@ -673,8 +769,8 @@ export function useCanvasInteractions({
                 const nextIndex = (currentIndex + 1) % overlappingElements.length;
                 const nextElement = overlappingElements[nextIndex];
 
-                lastClickTimeRef.current = 0;
-                lastClickElementRef.current = null;
+                lastClickTimeRef.current = now;
+                lastClickElementRef.current = nextElement.id;
                 setSelectedIds([nextElement.id]);
 
                 // Start dragging the newly selected element if not locked
