@@ -2,62 +2,34 @@ import { SVGPathData } from "svg-pathdata";
 import type { CanvasElement, Shape } from "@/types";
 import { optimizeSVG } from "./svgo";
 
-// Measure path bounds using SVGPathData (no DOM manipulation needed)
-function measurePathBounds(d: string): { x: number; y: number; width: number; height: number } | null {
+// Measure native path bounds (the actual coordinates in the d string) for calculating translation offset
+function measurePathNativeBounds(d: string): { x: number; y: number } | null {
   if (!d?.trim()) return null;
 
   try {
     const pathData = new SVGPathData(d).toAbs();
     let minX = Infinity;
     let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
 
     for (const cmd of pathData.commands) {
-      // Main point coordinates
       if ("x" in cmd && typeof cmd.x === "number") {
         minX = Math.min(minX, cmd.x);
-        maxX = Math.max(maxX, cmd.x);
       }
       if ("y" in cmd && typeof cmd.y === "number") {
         minY = Math.min(minY, cmd.y);
-        maxY = Math.max(maxY, cmd.y);
       }
-      // Bezier control points
-      if ("x1" in cmd) {
-        minX = Math.min(minX, cmd.x1);
-        maxX = Math.max(maxX, cmd.x1);
-      }
-      if ("y1" in cmd) {
-        minY = Math.min(minY, cmd.y1);
-        maxY = Math.max(maxY, cmd.y1);
-      }
-      if ("x2" in cmd) {
-        minX = Math.min(minX, cmd.x2);
-        maxX = Math.max(maxX, cmd.x2);
-      }
-      if ("y2" in cmd) {
-        minY = Math.min(minY, cmd.y2);
-        maxY = Math.max(maxY, cmd.y2);
-      }
+      if ("x1" in cmd) minX = Math.min(minX, cmd.x1);
+      if ("y1" in cmd) minY = Math.min(minY, cmd.y1);
+      if ("x2" in cmd) minX = Math.min(minX, cmd.x2);
+      if ("y2" in cmd) minY = Math.min(minY, cmd.y2);
     }
 
-    // No valid coordinates found
     if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
       return null;
     }
 
-    const width = maxX - minX;
-    const height = maxY - minY;
-
-    // Filter out empty/degenerate paths
-    if (width === 0 && height === 0) {
-      return null;
-    }
-
-    return { x: minX, y: minY, width, height };
-  } catch (e) {
-    console.warn("Failed to measure path bounds:", e);
+    return { x: minX, y: minY };
+  } catch {
     return null;
   }
 }
@@ -111,9 +83,9 @@ function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
       ];
     }
     case "path": {
-      // Measure true bounds from d attribute
-      const bounds = measurePathBounds(element.d);
-      if (!bounds) return []; // Skip invalid/empty paths
+      // Use element.bounds which stores the actual display position
+      const bounds = element.bounds;
+      if (!bounds || (bounds.width === 0 && bounds.height === 0)) return [];
 
       const cx = bounds.x + bounds.width / 2;
       const cy = bounds.y + bounds.height / 2;
@@ -202,11 +174,18 @@ function calculateBounds(
       return;
     }
 
-    // Update global bounds
-    minX = Math.min(minX, eMinX);
-    minY = Math.min(minY, eMinY);
-    maxX = Math.max(maxX, eMaxX);
-    maxY = Math.max(maxY, eMaxY);
+    // Account for stroke width (strokes extend outside the geometric bounds by half width)
+    let strokePadding = 0;
+    const shape = element as Shape;
+    if (shape.stroke?.width) {
+      strokePadding = shape.stroke.width / 2;
+    }
+
+    // Update global bounds with stroke padding
+    minX = Math.min(minX, eMinX - strokePadding);
+    minY = Math.min(minY, eMinY - strokePadding);
+    maxX = Math.max(maxX, eMaxX + strokePadding);
+    maxY = Math.max(maxY, eMaxY + strokePadding);
   };
 
   for (const element of elements) {
@@ -272,7 +251,8 @@ function getTransform(element: CanvasElement): string {
       cy = (element.y1 + element.y2) / 2;
       break;
     case "path": {
-      const bounds = measurePathBounds(element.d);
+      // Use element.bounds for rotation center
+      const bounds = element.bounds;
       if (bounds) {
         cx = bounds.x + bounds.width / 2;
         cy = bounds.y + bounds.height / 2;
@@ -300,8 +280,28 @@ function elementToSVGOriginal(element: CanvasElement, allElements: CanvasElement
       return `${indent}<ellipse cx="${element.cx}" cy="${element.cy}" rx="${element.rx}" ry="${element.ry}"${getFillStroke(element)}${transform}/>`;
     case "line":
       return `${indent}<line x1="${element.x1}" y1="${element.y1}" x2="${element.x2}" y2="${element.y2}"${getFillStroke(element)}${transform}/>`;
-    case "path":
-      return `${indent}<path d="${element.d}"${getFillStroke(element)}${transform}/>`;
+    case "path": {
+      // Calculate translation offset: paths store display position in bounds,
+      // but the d string has native coordinates that may differ
+      const nativeBounds = measurePathNativeBounds(element.d);
+      let pathTransform = transform;
+      if (nativeBounds && element.bounds) {
+        const dx = element.bounds.x - nativeBounds.x;
+        const dy = element.bounds.y - nativeBounds.y;
+        if (dx !== 0 || dy !== 0) {
+          // Combine translation with any rotation
+          if (element.rotation !== 0) {
+            const degrees = (element.rotation * 180) / Math.PI;
+            const cx = element.bounds.x + element.bounds.width / 2;
+            const cy = element.bounds.y + element.bounds.height / 2;
+            pathTransform = ` transform="translate(${dx.toFixed(2)}, ${dy.toFixed(2)}) rotate(${degrees.toFixed(2)} ${(cx - dx).toFixed(2)} ${(cy - dy).toFixed(2)})"`;
+          } else {
+            pathTransform = ` transform="translate(${dx.toFixed(2)}, ${dy.toFixed(2)})"`;
+          }
+        }
+      }
+      return `${indent}<path d="${element.d}"${getFillStroke(element)}${pathTransform}/>`;
+    }
     case "text": {
       const fontWeight =
         element.fontWeight && element.fontWeight !== "normal" ? ` font-weight="${element.fontWeight}"` : "";
