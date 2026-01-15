@@ -302,8 +302,41 @@ export function hitTestShape(
   elements: CanvasElement[],
   deepSelect = false,
 ): CanvasElement | null {
+  // Helper function to recursively test a group's children
+  // Returns [hitElement, immediateParent] or null if no hit
+  const testGroup = (group: CanvasElement, depth: number): { hit: CanvasElement; parent: CanvasElement } | null => {
+    if (group.type !== "group") return null;
+
+    const children = group.childIds
+      .map((id) => elements.find((e) => e.id === id))
+      .filter((c): c is CanvasElement => c !== undefined && c.visible !== false);
+
+    // Test children in reverse order (top to bottom)
+    for (let j = children.length - 1; j >= 0; j--) {
+      const child = children[j];
+      if (child.locked) continue;
+
+      if (child.type === "group") {
+        // Recursively test nested groups
+        const nestedHit = testGroup(child, depth + 1);
+        if (nestedHit) {
+          // If deep select, return the nested result
+          // Otherwise, return this child group as the hit
+          if (deepSelect) {
+            return nestedHit;
+          }
+          return { hit: child, parent: group };
+        }
+      } else {
+        if (hitTestElement(worldX, worldY, child)) {
+          return { hit: child, parent: group };
+        }
+      }
+    }
+    return null;
+  };
+
   // Build list of top-level items (groups and non-grouped elements) preserving z-order
-  // We need to respect the GROUP's position in the z-order, not individual children
   const topLevelItems: CanvasElement[] = [];
   for (const element of elements) {
     if (element.parentId) continue; // Skip children (they're tested via their parent group)
@@ -317,24 +350,12 @@ export function hitTestShape(
     if (item.locked) continue;
 
     if (item.type === "group") {
-      // For groups, test their children
-      // Children are tested in reverse order within the group
-      const children = item.childIds
-        .map((id) => elements.find((e) => e.id === id))
-        .filter((c): c is CanvasElement => c !== undefined && c.visible !== false);
-
-      // Reverse to test top children first
-      for (let j = children.length - 1; j >= 0; j--) {
-        const child = children[j];
-        if (child.locked) continue;
-        if (child.type === "group") continue; // Nested groups - would need recursion for full support
-
-        if (hitTestElement(worldX, worldY, child)) {
-          if (deepSelect) {
-            return child;
-          }
-          return item; // Return the parent group
+      const result = testGroup(item, 0);
+      if (result) {
+        if (deepSelect) {
+          return result.hit;
         }
+        return item; // Return the top-level group
       }
     } else {
       // Non-group element
@@ -356,18 +377,39 @@ export function hitTestAllElements(
 ): CanvasElement[] {
   const hits: CanvasElement[] = [];
 
+  // Helper to recursively check if a group has any hit children
+  const groupHasHitChild = (group: CanvasElement): boolean => {
+    if (group.type !== "group") return false;
+    for (const childId of group.childIds) {
+      const child = elements.find((e) => e.id === childId);
+      if (!child || child.visible === false) continue;
+      if (child.type === "group") {
+        if (groupHasHitChild(child)) return true;
+      } else {
+        if (hitTestElement(worldX, worldY, child)) return true;
+      }
+    }
+    return false;
+  };
+
   // Test in reverse order (top to bottom)
   for (let i = elements.length - 1; i >= 0; i--) {
     const element = elements[i];
     if (element.visible === false) continue;
     if (element.locked) continue;
-    if (element.type === "group") continue; // Skip groups
 
     // If parentId is specified, only include elements from that group
     if (parentId !== undefined && element.parentId !== parentId) continue;
 
-    if (hitTestElement(worldX, worldY, element)) {
-      hits.push(element);
+    if (element.type === "group") {
+      // Include groups if they have hit children (for deep-select into nested groups)
+      if (groupHasHitChild(element)) {
+        hits.push(element);
+      }
+    } else {
+      if (hitTestElement(worldX, worldY, element)) {
+        hits.push(element);
+      }
     }
   }
 

@@ -598,16 +598,17 @@ export function useCanvasInteractions({
               const isDoubleClick =
                 now - lastClickTimeRef.current < 400 && lastClickElementRef.current === firstSelectedId;
 
-              // Update click tracking BEFORE potential early returns
-              lastClickTimeRef.current = now;
-              lastClickElementRef.current = firstSelectedId;
-
               // If double-clicking on a group, allow deep-select by falling through to normal hit testing
               const selectedGroup = selectedIds.length === 1 ? getElementById(firstSelectedId) : null;
               if (isDoubleClick && selectedGroup?.type === "group") {
                 // Don't start dragging - let the normal double-click handling below find the child
+                // Don't update click tracking here - let downstream handler use the original values
                 // Fall through to regular hit testing
               } else {
+                // Update click tracking for non-double-click-on-group cases
+                lastClickTimeRef.current = now;
+                lastClickElementRef.current = firstSelectedId;
+
                 // Before starting drag, check if there's a different element on top at this position
                 // If so, don't drag the selected element - select the element on top instead
                 const topHit = hitTest(world.x, world.y, hasSelectedChild);
