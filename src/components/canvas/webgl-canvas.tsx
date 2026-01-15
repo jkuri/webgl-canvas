@@ -39,6 +39,7 @@ export function WebGLCanvas({ fontsReady = false }: WebGLCanvasProps) {
     selectionBox,
     canvasBackground,
     canvasBackgroundVisible,
+    isViewMode,
     importElements,
     loadFromStorage,
   } = useCanvasStore();
@@ -418,29 +419,35 @@ export function WebGLCanvas({ fontsReady = false }: WebGLCanvasProps) {
         <canvas ref={canvasRef} className="h-full w-full" />
         <TextOverlay canvasRef={canvasRef.current} transform={transform} fontsReady={fontsReady} />
       </CanvasContextMenu>
-      <TextEditor worldToScreen={worldToScreen} />
-      <SmartGuides />
 
-      {selectionInfo && (
-        <DimensionLabel
-          bounds={selectionInfo.bounds}
-          transform={transform}
-          rotation={selectionInfo.rotation}
-          isLine={selectionInfo.isLine}
-        />
+      {/* Hide all editing controls in view mode */}
+      {!isViewMode && (
+        <>
+          <TextEditor worldToScreen={worldToScreen} />
+          <SmartGuides />
+
+          {selectionInfo && (
+            <DimensionLabel
+              bounds={selectionInfo.bounds}
+              transform={transform}
+              rotation={selectionInfo.rotation}
+              isLine={selectionInfo.isLine}
+            />
+          )}
+
+          <CanvasToolbar />
+
+          {/* Layers Panel */}
+          <Panel className="absolute top-0 bottom-0 left-0 border-r border-l-0">
+            <LayersPanel />
+          </Panel>
+
+          {/* Properties Panel */}
+          <Panel className="absolute top-0 right-0 border-r-0 border-l">
+            <PropertiesPanel />
+          </Panel>
+        </>
       )}
-
-      <CanvasToolbar />
-
-      {/* Layers Panel */}
-      <Panel className="absolute top-0 bottom-0 left-0 border-r border-l-0">
-        <LayersPanel />
-      </Panel>
-
-      {/* Properties Panel */}
-      <Panel className="absolute top-0 right-0 border-r-0 border-l">
-        <PropertiesPanel />
-      </Panel>
     </div>
   );
 }

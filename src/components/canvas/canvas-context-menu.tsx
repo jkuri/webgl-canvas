@@ -41,6 +41,8 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
   const zoomTo = useCanvasStore((s) => s.zoomTo);
   const groupSelected = useCanvasStore((s) => s.groupSelected);
   const ungroupSelected = useCanvasStore((s) => s.ungroupSelected);
+  const setViewMode = useCanvasStore((s) => s.setViewMode);
+  const isViewMode = useCanvasStore((s) => s.isViewMode);
 
   const handleColorChange = (color: string) => {
     if (contextMenuTarget) {
@@ -234,6 +236,13 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
               Delete <ContextMenuShortcut>⌫</ContextMenuShortcut>
             </ContextMenuItem>
           </>
+        ) : isViewMode ? (
+          <>
+            <ContextMenuItem onClick={resetView}>Fit to Screen</ContextMenuItem>
+            <ContextMenuItem onClick={() => zoomTo(1)}>Zoom to 100%</ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => setViewMode(false)}>Switch to Edit Mode</ContextMenuItem>
+          </>
         ) : (
           <>
             {clipboard.length > 0 && (
@@ -250,6 +259,8 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
             <ContextMenuSeparator />
             <ContextMenuItem onClick={resetView}>Fit to Screen</ContextMenuItem>
             <ContextMenuItem onClick={() => zoomTo(1)}>Zoom to 100%</ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => setViewMode(true)}>Switch to View Mode</ContextMenuItem>
           </>
         )}
       </ContextMenuContent>

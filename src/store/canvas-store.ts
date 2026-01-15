@@ -43,6 +43,9 @@ interface CanvasState {
   snapToGeometry: boolean;
   gridSize: number;
   smartGuides: SmartGuide[];
+
+  // View Mode
+  isViewMode: boolean;
 }
 
 interface CanvasActions {
@@ -132,6 +135,9 @@ interface CanvasActions {
   setCanvasBackground: (color: string) => void;
   setCanvasBackgroundVisible: (visible: boolean) => void;
 
+  // View Mode
+  setViewMode: (viewMode: boolean) => void;
+
   // Drag and Drop
   moveElement: (elementId: string, targetId: string | null, position: "before" | "after" | "inside") => void;
 
@@ -198,6 +204,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   snapToGeometry: false,
   gridSize: 10,
   smartGuides: [],
+  isViewMode: false,
 
   // Element actions
   addElement: (element) => set((state) => ({ elements: [...state.elements, element], selectedIds: [element.id] })),
@@ -817,6 +824,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
   setCanvasBackground: (color) => set({ canvasBackground: color }),
   setCanvasBackgroundVisible: (visible) => set({ canvasBackgroundVisible: visible }),
+  setViewMode: (viewMode) => set({ isViewMode: viewMode }),
 
   moveElement: (elementId, targetId, position) =>
     set((state) => {
