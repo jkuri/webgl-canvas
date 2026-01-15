@@ -6,7 +6,17 @@ import {
   PlusSignIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -55,6 +65,8 @@ export function CanvasToolbar() {
   const setSnapToGrid = useCanvasStore((s) => s.setSnapToGrid);
   const setSnapToObjects = useCanvasStore((s) => s.setSnapToObjects);
   const importElements = useCanvasStore((s) => s.importElements);
+
+  const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -331,7 +343,7 @@ export function CanvasToolbar() {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>File</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => useCanvasStore.getState().newProject()}>New Project</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsNewProjectDialogOpen(true)}>New Project</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => jsonInputRef.current?.click()}>Open...</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>Import SVG...</DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -487,6 +499,29 @@ export function CanvasToolbar() {
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={isNewProjectDialogOpen} onOpenChange={setIsNewProjectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create New Project?</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogDescription>
+            This action cannot be undone. Your current project and all its history will be deleted permanently. Make
+            sure you export the current project just in case.
+          </AlertDialogDescription>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                useCanvasStore.getState().newProject();
+                setIsNewProjectDialogOpen(false);
+              }}
+            >
+              Create New Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
