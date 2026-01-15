@@ -309,7 +309,6 @@ export function CanvasToolbar() {
                 canvasBackgroundVisible: data.canvasBackgroundVisible ?? true,
                 transform: data.transform || { x: 0, y: 0, scale: 1 },
               });
-              useCanvasStore.getState().pushHistory();
               useCanvasStore.getState().panToCenter();
             } else {
               console.error("Invalid project file format");

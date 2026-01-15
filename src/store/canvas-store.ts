@@ -1020,8 +1020,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
             canvasBackgroundVisible: data.canvasBackgroundVisible ?? true,
             transform: data.transform || { x: 0, y: 0, scale: 1 },
           });
-          // Push initial state
-          useCanvasStore.getState().pushHistory();
         } else {
           console.error("Invalid project file format");
         }
@@ -1032,3 +1030,25 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     input.click();
   },
 }));
+
+// Auto-save state to IndexedDB whenever elements change (debounced)
+let saveTimeout: number | null = null;
+const DEBOUNCE_MS = 500;
+
+useCanvasStore.subscribe((state, prevState) => {
+  // Only save when elements change (not for UI state changes)
+  if (state.elements !== prevState.elements) {
+    // Debounce the save
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    saveTimeout = window.setTimeout(() => {
+      canvasHistory.push({
+        elements: state.elements,
+        canvasBackground: state.canvasBackground,
+        canvasBackgroundVisible: state.canvasBackgroundVisible,
+      });
+      saveTimeout = null;
+    }, DEBOUNCE_MS);
+  }
+});

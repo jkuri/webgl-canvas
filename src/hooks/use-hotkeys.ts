@@ -167,7 +167,6 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
       if ((e.code === "Delete" || e.code === "Backspace") && selectedIds.length > 0) {
         e.preventDefault();
         deleteSelected();
-        useCanvasStore.getState().pushHistory();
       }
 
       // --- Copy (Cmd+C) ---
@@ -180,14 +179,12 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
       if (e.code === "KeyV" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         paste();
-        useCanvasStore.getState().pushHistory();
       }
 
       // --- Duplicate (Cmd+D) ---
       if (e.code === "KeyD" && (e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
         e.preventDefault();
         duplicateSelected();
-        useCanvasStore.getState().pushHistory();
       }
 
       // --- Select All (Cmd+A) ---
@@ -200,14 +197,12 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
       if (e.code === "KeyH" && e.shiftKey && !e.metaKey && !e.ctrlKey && selectedIds.length > 0) {
         e.preventDefault();
         flipHorizontal();
-        useCanvasStore.getState().pushHistory();
       }
 
       // --- Flip Vertical (Shift+V) ---
       if (e.code === "KeyV" && e.shiftKey && !e.metaKey && !e.ctrlKey && selectedIds.length > 0) {
         e.preventDefault();
         flipVertical();
-        useCanvasStore.getState().pushHistory();
       }
 
       // --- Lock/Unlock (Shift+Cmd+L) ---
@@ -220,14 +215,12 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
       if (e.code === "KeyG" && (e.metaKey || e.ctrlKey) && !e.shiftKey && selectedIds.length >= 2) {
         e.preventDefault();
         groupSelected();
-        useCanvasStore.getState().pushHistory();
       }
 
       // --- Ungroup (Cmd+Shift+G) ---
       if (e.code === "KeyG" && (e.metaKey || e.ctrlKey) && e.shiftKey && selectedIds.length > 0) {
         e.preventDefault();
         ungroupSelected();
-        useCanvasStore.getState().pushHistory();
       }
 
       // --- Layer ordering ---
@@ -235,28 +228,24 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
       if (e.code === "BracketRight" && (e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
         e.preventDefault();
         for (const id of selectedIds) bringToFront(id);
-        useCanvasStore.getState().pushHistory();
       }
 
       // Bring Forward (])
       if (e.code === "BracketRight" && !e.metaKey && !e.ctrlKey && selectedIds.length > 0) {
         e.preventDefault();
         for (const id of selectedIds) bringForward(id);
-        useCanvasStore.getState().pushHistory();
       }
 
       // Send to Back (Cmd+[)
       if (e.code === "BracketLeft" && (e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
         e.preventDefault();
         for (const id of selectedIds) sendToBack(id);
-        useCanvasStore.getState().pushHistory();
       }
 
       // Send Backward ([)
       if (e.code === "BracketLeft" && !e.metaKey && !e.ctrlKey && selectedIds.length > 0) {
         e.preventDefault();
         for (const id of selectedIds) sendBackward(id);
-        useCanvasStore.getState().pushHistory();
       }
 
       // --- Show/Hide (Cmd+Shift+H) ---
