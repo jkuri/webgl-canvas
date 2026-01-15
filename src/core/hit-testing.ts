@@ -302,20 +302,45 @@ export function hitTestShape(
   elements: CanvasElement[],
   deepSelect = false,
 ): CanvasElement | null {
-  // Test in reverse order (top to bottom)
-  for (let i = elements.length - 1; i >= 0; i--) {
-    const element = elements[i];
-    if (element.visible === false) continue;
-    if (element.locked) continue;
-    if (element.type === "group") continue; // Skip groups
+  // Build list of top-level items (groups and non-grouped elements) preserving z-order
+  // We need to respect the GROUP's position in the z-order, not individual children
+  const topLevelItems: CanvasElement[] = [];
+  for (const element of elements) {
+    if (element.parentId) continue; // Skip children (they're tested via their parent group)
+    topLevelItems.push(element);
+  }
 
-    if (hitTestElement(worldX, worldY, element)) {
-      // If element has a parent and we're not in deep select mode, return the parent group instead
-      if (element.parentId && !deepSelect) {
-        const parent = elements.find((e) => e.id === element.parentId);
-        if (parent) return parent;
+  // Test in reverse order (top to bottom in z-order)
+  for (let i = topLevelItems.length - 1; i >= 0; i--) {
+    const item = topLevelItems[i];
+    if (item.visible === false) continue;
+    if (item.locked) continue;
+
+    if (item.type === "group") {
+      // For groups, test their children
+      // Children are tested in reverse order within the group
+      const children = item.childIds
+        .map((id) => elements.find((e) => e.id === id))
+        .filter((c): c is CanvasElement => c !== undefined && c.visible !== false);
+
+      // Reverse to test top children first
+      for (let j = children.length - 1; j >= 0; j--) {
+        const child = children[j];
+        if (child.locked) continue;
+        if (child.type === "group") continue; // Nested groups - would need recursion for full support
+
+        if (hitTestElement(worldX, worldY, child)) {
+          if (deepSelect) {
+            return child;
+          }
+          return item; // Return the parent group
+        }
       }
-      return element;
+    } else {
+      // Non-group element
+      if (hitTestElement(worldX, worldY, item)) {
+        return item;
+      }
     }
   }
   return null;

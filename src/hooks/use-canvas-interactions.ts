@@ -576,6 +576,125 @@ export function useCanvasInteractions({
           return el?.parentId;
         });
 
+        // IMPORTANT: Before doing hit testing, check if we're clicking within the bounds
+        // of the currently selected element(s). If so, start dragging instead of changing selection.
+        // This prevents clicking on a selected group from selecting elements underneath it.
+        if (selectedIds.length > 0 && !hasSelectedChild) {
+          const selectedElements = selectedIds.map((id) => getElementById(id)).filter(Boolean) as CanvasElement[];
+          const flattened = flattenCanvasElements(selectedElements, getElementById);
+          const bounds = calculateBoundingBox(flattened);
+
+          if (bounds) {
+            const isWithinBounds =
+              world.x >= bounds.x &&
+              world.x <= bounds.x + bounds.width &&
+              world.y >= bounds.y &&
+              world.y <= bounds.y + bounds.height;
+
+            if (isWithinBounds) {
+              // Check for double-click to deep-select into groups
+              const now = Date.now();
+              const firstSelectedId = selectedIds[0];
+              const isDoubleClick =
+                now - lastClickTimeRef.current < 400 && lastClickElementRef.current === firstSelectedId;
+
+              // Update click tracking BEFORE potential early returns
+              lastClickTimeRef.current = now;
+              lastClickElementRef.current = firstSelectedId;
+
+              // If double-clicking on a group, allow deep-select by falling through to normal hit testing
+              const selectedGroup = selectedIds.length === 1 ? getElementById(firstSelectedId) : null;
+              if (isDoubleClick && selectedGroup?.type === "group") {
+                // Don't start dragging - let the normal double-click handling below find the child
+                // Fall through to regular hit testing
+              } else {
+                // Before starting drag, check if there's a different element on top at this position
+                // If so, don't drag the selected element - select the element on top instead
+                const topHit = hitTest(world.x, world.y, hasSelectedChild);
+                if (topHit && !selectedIds.includes(topHit.id)) {
+                  // There's a different element on top - fall through to normal selection
+                } else {
+                  // Check if any selected element is locked
+                  const anyLocked = selectedElements.some((e) => e.locked);
+
+                  if (!anyLocked) {
+                    setIsDragging(true);
+                    const elementsMap = new Map<
+                      string,
+                      {
+                        x: number;
+                        y: number;
+                        cx?: number;
+                        cy?: number;
+                        x1?: number;
+                        y1?: number;
+                        x2?: number;
+                        y2?: number;
+                      }
+                    >();
+
+                    // Collect all draggable elements (including group children)
+                    // biome-ignore lint/suspicious/noExplicitAny: complex type
+                    const collectDraggableElements = (ids: string[], map: Map<string, any>) => {
+                      for (const id of ids) {
+                        const element = getElementById(id);
+                        if (!element) continue;
+
+                        if (element.type === "group") {
+                          collectDraggableElements(element.childIds, map);
+                        } else {
+                          if (element.type === "rect" || element.type === "image") {
+                            map.set(id, { x: element.x, y: element.y });
+                          } else if (element.type === "ellipse") {
+                            map.set(id, { x: 0, y: 0, cx: element.cx, cy: element.cy });
+                          } else if (element.type === "line") {
+                            map.set(id, { x: 0, y: 0, x1: element.x1, y1: element.y1, x2: element.x2, y2: element.y2 });
+                          } else if (element.type === "path") {
+                            map.set(id, { x: element.bounds.x, y: element.bounds.y });
+                          } else if (element.type === "text") {
+                            map.set(id, { x: element.x, y: element.y });
+                          }
+                        }
+                      }
+                    };
+
+                    collectDraggableElements(selectedIds, elementsMap);
+
+                    // Get all descendant IDs for snap exclusion
+                    const excludedIds = getDescendantIds(selectedIds, getElementById);
+
+                    const snapCandidates = elements
+                      .filter((e) => !excludedIds.has(e.id) && e.type !== "group")
+                      .map((e) => getBounds(e, elements));
+
+                    const snapPoints = elements
+                      .filter((e) => !excludedIds.has(e.id) && e.type !== "group")
+                      .flatMap((e) => getSnapPoints(e, elements));
+
+                    const originalBounds: Bounds = {
+                      minX: bounds.x,
+                      minY: bounds.y,
+                      maxX: bounds.x + bounds.width,
+                      maxY: bounds.y + bounds.height,
+                      centerX: bounds.x + bounds.width / 2,
+                      centerY: bounds.y + bounds.height / 2,
+                    };
+
+                    dragStartRef.current = {
+                      worldX: world.x,
+                      worldY: world.y,
+                      elements: elementsMap,
+                      snapCandidates,
+                      snapPoints,
+                      originalBounds,
+                    };
+                    return;
+                  }
+                }
+              }
+            }
+          }
+        }
         const hit = hitTest(world.x, world.y, hasSelectedChild);
 
         if (hit) {
