@@ -2,6 +2,9 @@ import { create } from "zustand";
 import { canvasHistory } from "@/lib/canvas-history";
 import type { CanvasElement, GroupElement, ResizeHandle, SmartGuide, Tool, Transform } from "@/types";
 
+// Flag to skip auto-save when restoring from undo/redo
+let isRestoringFromHistory = false;
+
 interface CanvasState {
   // Elements (replaces shapes)
   elements: CanvasElement[];
@@ -942,22 +945,26 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   undo: () => {
     const snapshot = canvasHistory.undo();
     if (snapshot) {
+      isRestoringFromHistory = true;
       set({
         elements: snapshot.elements,
         canvasBackground: snapshot.canvasBackground,
         canvasBackgroundVisible: snapshot.canvasBackgroundVisible,
       });
+      isRestoringFromHistory = false;
     }
   },
 
   redo: () => {
     const snapshot = canvasHistory.redo();
     if (snapshot) {
+      isRestoringFromHistory = true;
       set({
         elements: snapshot.elements,
         canvasBackground: snapshot.canvasBackground,
         canvasBackgroundVisible: snapshot.canvasBackgroundVisible,
       });
+      isRestoringFromHistory = false;
     }
   },
 
@@ -1044,7 +1051,8 @@ const DEBOUNCE_MS = 500;
 
 useCanvasStore.subscribe((state, prevState) => {
   // Only save when elements change (not for UI state changes)
-  if (state.elements !== prevState.elements) {
+  // Skip if we're restoring from undo/redo to avoid clearing the redo stack
+  if (state.elements !== prevState.elements && !isRestoringFromHistory) {
     // Debounce the save
     if (saveTimeout) {
       clearTimeout(saveTimeout);
