@@ -125,6 +125,7 @@ interface BaseElement {
   locked?: boolean;
   visible?: boolean;
   parentId?: string; // Reference to parent group
+  aspectRatioLocked?: boolean;
 }
 
 // Rectangle shape (SVG rect)

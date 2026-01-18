@@ -2,6 +2,7 @@ import { NumberInput } from "@/components/shared/number-input";
 import { Separator } from "@/components/ui/separator";
 import { useCanvasStore } from "@/store";
 import type { ImageElement } from "@/types";
+import { DimensionsSection } from "./dimensions-section";
 import { ExportSection } from "./export-section";
 import { getElementBounds, RotateIcon, SectionHeader } from "./shared";
 
@@ -39,13 +40,7 @@ export function ImageProperties({ element }: ImagePropertiesProps) {
         <Separator />
 
         {/* Layout */}
-        <div className="flex flex-col gap-2">
-          <SectionHeader title="Layout" />
-          <div className="grid grid-cols-2 gap-2">
-            <NumberInput label="W" value={bounds.width} onChange={(v) => updateElement(element.id, { width: v })} />
-            <NumberInput label="H" value={bounds.height} onChange={(v) => updateElement(element.id, { height: v })} />
-          </div>
-        </div>
+        <DimensionsSection element={element} updateElement={updateElement} />
 
         <Separator />
 

@@ -227,6 +227,7 @@ export function useCanvasInteractions({
         x2?: number;
         y2?: number;
         bounds?: { x: number; y: number; width: number; height: number; rotation?: number };
+        aspectRatioLocked?: boolean;
         d?: string;
       }
     >;
@@ -501,6 +502,7 @@ export function useCanvasInteractions({
                     x2?: number;
                     y2?: number;
                     bounds?: { x: number; y: number; width: number; height: number; rotation?: number };
+                    aspectRatioLocked?: boolean;
                   }
                 >();
                 // biome-ignore lint/suspicious/noExplicitAny: complex type
@@ -531,6 +533,7 @@ export function useCanvasInteractions({
                         bounds: undefined as { x: number; y: number; width: number; height: number } | undefined,
                         // Store parentId to check if it belongs to a group being resized
                         parentId: element.parentId,
+                        aspectRatioLocked: element.aspectRatioLocked,
                       };
 
                       if (element.type === "ellipse") {
@@ -1264,6 +1267,30 @@ export function useCanvasInteractions({
             newWidth = Math.max(minSize, newWidth);
             newHeight = Math.max(minSize, newHeight);
 
+            const shouldMaintainRatio = original.aspectRatioLocked || e.shiftKey;
+
+            if (shouldMaintainRatio) {
+              const ratio = original.width / original.height;
+              // Determine which dimension drives the resize
+              let driveByWidth = true;
+
+              if (handle?.length === 1) {
+                // Edge handles
+                if (handle === "n" || handle === "s") driveByWidth = false;
+              } else {
+                // Corner handles - use the larger relative delta
+                if (Math.abs(localDeltaY * ratio) > Math.abs(localDeltaX)) {
+                  driveByWidth = false;
+                }
+              }
+
+              if (driveByWidth) {
+                newHeight = newWidth / ratio;
+              } else {
+                newWidth = newHeight * ratio;
+              }
+            }
+
             const origCenterX = original.x + original.width / 2;
             const origCenterY = original.y + original.height / 2;
             const anchorOffsetX = anchorLocalX - origCenterX;
@@ -1348,6 +1375,43 @@ export function useCanvasInteractions({
             newWidth = Math.max(minSize, newWidth);
             newHeight = Math.max(minSize, newHeight);
 
+            // Aspect ratio lock for paths
+            const shouldMaintainRatio = original.aspectRatioLocked || e.shiftKey;
+
+            if (shouldMaintainRatio) {
+              const ratio = bounds.width / bounds.height;
+              let driveByWidth = true;
+
+              if (handle?.length === 1) {
+                if (handle === "n" || handle === "s") driveByWidth = false;
+              } else {
+                if (Math.abs(localDeltaY * ratio) > Math.abs(localDeltaX)) {
+                  driveByWidth = false;
+                }
+              }
+
+              if (driveByWidth) {
+                newHeight = newWidth / ratio;
+              } else {
+                newWidth = newHeight * ratio;
+              }
+
+              // Re-adjust position based on anchor if size changed due to ratio
+              if (handle?.includes("w")) {
+                newX = bounds.x + bounds.width - newWidth;
+              } else if (!handle?.includes("e")) {
+                // If centered horizontally (e.g. N/S drag), grow from center
+                newX = bounds.x + (bounds.width - newWidth) / 2;
+              }
+
+              if (handle?.includes("n")) {
+                newY = bounds.y + bounds.height - newHeight;
+              } else if (!handle?.includes("s")) {
+                // If centered vertically (e.g. E/W drag), grow from center
+                newY = bounds.y + (bounds.height - newHeight) / 2;
+              }
+            }
+
             const newBounds = { x: newX, y: newY, width: newWidth, height: newHeight };
             const newD = resizePath(original.d!, bounds, newBounds);
 
@@ -1358,24 +1422,66 @@ export function useCanvasInteractions({
           }
         } else {
           // Non-rotated or multi-select: use original axis-aligned logic
+          const shouldMaintainRatio =
+            originalElements.size === 1
+              ? [...originalElements.values()][0].aspectRatioLocked || e.shiftKey
+              : e.shiftKey;
+
           let newBoundsX = originalBounds.x;
           let newBoundsY = originalBounds.y;
           let newBoundsWidth = originalBounds.width;
           let newBoundsHeight = originalBounds.height;
 
+          // Calculate proposed new dimensions
           if (handle?.includes("w")) {
-            newBoundsX = originalBounds.x + deltaX;
             newBoundsWidth = originalBounds.width - deltaX;
-          }
-          if (handle?.includes("e")) {
+            newBoundsX = originalBounds.x + deltaX;
+          } else if (handle?.includes("e")) {
             newBoundsWidth = originalBounds.width + deltaX;
           }
+
           if (handle?.includes("n")) {
-            newBoundsY = originalBounds.y + deltaY;
             newBoundsHeight = originalBounds.height - deltaY;
-          }
-          if (handle?.includes("s")) {
+            newBoundsY = originalBounds.y + deltaY;
+          } else if (handle?.includes("s")) {
             newBoundsHeight = originalBounds.height + deltaY;
+          }
+
+          if (shouldMaintainRatio) {
+            const ratio = originalBounds.width / originalBounds.height;
+            let driveByWidth = true;
+
+            if (handle?.length === 1) {
+              if (handle === "n" || handle === "s") driveByWidth = false;
+            } else {
+              // Use raw delta comparison for axis aligned? Or scaled? Scaled is better.
+              // DeltaX/Y logic here is different from rotated.
+              // Comparing proposed size change is safer.
+              const deltaW = Math.abs(newBoundsWidth - originalBounds.width);
+              const deltaH = Math.abs(newBoundsHeight - originalBounds.height);
+              if (deltaH * ratio > deltaW) {
+                driveByWidth = false;
+              }
+            }
+
+            if (driveByWidth) {
+              newBoundsHeight = newBoundsWidth / ratio;
+            } else {
+              newBoundsWidth = newBoundsHeight * ratio;
+            }
+
+            // Recalculate positions based on new dimensions and handle anchor
+            if (handle?.includes("w")) {
+              newBoundsX = originalBounds.x + originalBounds.width - newBoundsWidth;
+            } else if (!handle?.includes("e")) {
+              newBoundsX = originalBounds.x + (originalBounds.width - newBoundsWidth) / 2;
+            }
+
+            if (handle?.includes("n")) {
+              newBoundsY = originalBounds.y + originalBounds.height - newBoundsHeight;
+            } else if (!handle?.includes("s")) {
+              newBoundsY = originalBounds.y + (originalBounds.height - newBoundsHeight) / 2;
+            }
           }
 
           const minSize = 20;
