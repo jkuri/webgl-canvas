@@ -602,8 +602,16 @@ export function useCanvasInteractions({
                 now - lastClickTimeRef.current < 400 && lastClickElementRef.current === firstSelectedId;
 
               // If double-clicking on a group, allow deep-select by falling through to normal hit testing
-              const selectedGroup = selectedIds.length === 1 ? getElementById(firstSelectedId) : null;
-              if (isDoubleClick && selectedGroup?.type === "group") {
+              const selectedElement = selectedIds.length === 1 ? getElementById(firstSelectedId) : null;
+
+              if (isDoubleClick && selectedElement?.type === "text") {
+                useCanvasStore.getState().setIsEditingText(true, selectedElement.id);
+                lastClickTimeRef.current = 0;
+                lastClickElementRef.current = null;
+                return;
+              }
+
+              if (isDoubleClick && selectedElement?.type === "group") {
                 // Don't start dragging - let the normal double-click handling below find the child
                 // Don't update click tracking here - let downstream handler use the original values
                 // Fall through to regular hit testing

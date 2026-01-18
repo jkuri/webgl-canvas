@@ -264,6 +264,18 @@ export function hitTestElement(worldX: number, worldY: number, element: CanvasEl
       return worldX >= x && worldX <= x + width && worldY >= y && worldY <= y + height;
     }
     case "text": {
+      // Use stored bounds if available (accurate), fallback to estimation
+      if (element.bounds) {
+        const { x, y, width, height } = element.bounds;
+        // element.bounds is relative to element.x/y
+        const absoluteX = element.x + x;
+        const absoluteY = element.y + y;
+        return (
+          worldX >= absoluteX && worldX <= absoluteX + width && worldY >= absoluteY && worldY <= absoluteY + height
+        );
+      }
+
+      // Fallback
       const textWidth = element.text.length * element.fontSize * 0.6;
       const textHeight = element.fontSize * 1.2;
       const x = element.x;

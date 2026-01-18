@@ -35,6 +35,7 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
     bringForward,
     sendBackward,
     setElementVisibility,
+    setIsEditingText,
   } = useCanvasStore();
 
   /**
@@ -139,6 +140,15 @@ export function useHotkeys(options: UseHotkeysOptions = {}) {
       // Escape - clear selection
       if (e.code === "Escape") {
         clearSelection();
+      }
+
+      // Enter - start editing text
+      if (e.code === "Enter" && selectedIds.length === 1) {
+        const element = getElementById(selectedIds[0]);
+        if (element?.type === "text" && !element.locked) {
+          e.preventDefault();
+          setIsEditingText(true, element.id);
+        }
       }
 
       // --- Arrow keys - move selected elements ---
