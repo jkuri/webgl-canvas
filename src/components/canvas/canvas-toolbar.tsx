@@ -390,7 +390,7 @@ export function CanvasToolbar() {
                   Zoom to 100% <DropdownMenuShortcut>⌘0</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={resetView}>Fit to Screen</DropdownMenuItem>
-                <DropdownMenuItem onClick={panToCenter}>Center All Elements</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => panToCenter()}>Center All Elements</DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
@@ -492,7 +492,7 @@ export function CanvasToolbar() {
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-lg"
-            onClick={panToCenter}
+            onClick={() => panToCenter()}
             title="Center All Elements"
           >
             <HugeiconsIcon icon={CenterFocusIcon} size={16} />

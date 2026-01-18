@@ -106,7 +106,7 @@ interface CanvasActions {
   zoomOut: () => void;
   zoomTo: (scale: number) => void;
   resetView: () => void;
-  panToCenter: () => void;
+  panToCenter: (scale?: number, center?: { x: number; y: number }) => void;
 
   // Tool actions
   setActiveTool: (tool: Tool) => void;
@@ -639,46 +639,55 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   // Transform actions
   setTransform: (transform) => set((state) => ({ transform: { ...state.transform, ...transform } })),
 
-  zoomIn: () =>
-    set((state) => {
-      const { x, y, scale } = state.transform;
-      const newScale = Math.min(scale * 1.2, 10);
-      // Zoom around viewport center
-      const viewportCenterX = window.innerWidth / 2;
-      const viewportCenterY = window.innerHeight / 2;
-      const newX = viewportCenterX - (viewportCenterX - x) * (newScale / scale);
-      const newY = viewportCenterY - (viewportCenterY - y) * (newScale / scale);
-      return { transform: { x: newX, y: newY, scale: newScale } };
-    }),
+  zoomIn: () => {
+    const { scale, x, y } = get().transform;
+    const newScale = Math.min(scale * 1.2, 10);
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight / 2;
+    const cx = (viewportCenterX - x) / scale;
+    const cy = (viewportCenterY - y) / scale;
+    get().panToCenter(newScale, { x: cx, y: cy });
+  },
 
-  zoomOut: () =>
-    set((state) => {
-      const { x, y, scale } = state.transform;
-      const newScale = Math.max(scale / 1.2, 0.1);
-      // Zoom around viewport center
-      const viewportCenterX = window.innerWidth / 2;
-      const viewportCenterY = window.innerHeight / 2;
-      const newX = viewportCenterX - (viewportCenterX - x) * (newScale / scale);
-      const newY = viewportCenterY - (viewportCenterY - y) * (newScale / scale);
-      return { transform: { x: newX, y: newY, scale: newScale } };
-    }),
+  zoomOut: () => {
+    const { scale, x, y } = get().transform;
+    const newScale = Math.max(scale / 1.2, 0.1);
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight / 2;
+    const cx = (viewportCenterX - x) / scale;
+    const cy = (viewportCenterY - y) / scale;
+    get().panToCenter(newScale, { x: cx, y: cy });
+  },
 
-  zoomTo: (scale) =>
-    set((state) => {
-      const { x, y, scale: currentScale } = state.transform;
-      const newScale = Math.max(0.1, Math.min(10, scale));
-      // Zoom around viewport center
-      const viewportCenterX = window.innerWidth / 2;
-      const viewportCenterY = window.innerHeight / 2;
-      const newX = viewportCenterX - (viewportCenterX - x) * (newScale / currentScale);
-      const newY = viewportCenterY - (viewportCenterY - y) * (newScale / currentScale);
-      return { transform: { x: newX, y: newY, scale: newScale } };
-    }),
+  zoomTo: (newScale) => {
+    const { scale, x, y } = get().transform;
+    const clampedScale = Math.max(0.1, Math.min(10, newScale));
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight / 2;
+    const cx = (viewportCenterX - x) / scale;
+    const cy = (viewportCenterY - y) / scale;
+    get().panToCenter(clampedScale, { x: cx, y: cy });
+  },
 
-  resetView: () => set({ transform: { x: 0, y: 0, scale: 1 } }),
+  resetView: () => get().panToCenter(),
 
-  panToCenter: () => {
+  panToCenter: (scale, center) => {
     const state = get();
+
+    // If center is provided, use it
+    if (center) {
+      const targetScale = scale ?? state.transform.scale;
+      const viewportCenterX = window.innerWidth / 2;
+      const viewportCenterY = window.innerHeight / 2;
+
+      const newX = viewportCenterX - center.x * targetScale;
+      const newY = viewportCenterY - center.y * targetScale;
+
+      set({ transform: { x: newX, y: newY, scale: targetScale } });
+      return;
+    }
+
+    // Otherwise, calculate center of all elements
     if (state.elements.length === 0) return;
 
     // Calculate bounding box of all elements
@@ -746,11 +755,11 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     const viewportCenterY = window.innerHeight / 2;
 
     // Calculate new transform to center content
-    const { scale } = state.transform;
-    const newX = viewportCenterX - contentCenterX * scale;
-    const newY = viewportCenterY - contentCenterY * scale;
+    const targetScale = scale ?? state.transform.scale;
+    const newX = viewportCenterX - contentCenterX * targetScale;
+    const newY = viewportCenterY - contentCenterY * targetScale;
 
-    set({ transform: { x: newX, y: newY, scale } });
+    set({ transform: { x: newX, y: newY, scale: targetScale } });
   },
 
   // Tool actions
