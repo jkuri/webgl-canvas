@@ -279,30 +279,6 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
                       traverse(el.childIds);
                     } else {
                       // Rotate leaf element position around group center
-                      let _elX = 0;
-                      let _elY = 0;
-
-                      if (el.type === "rect" || el.type === "image" || el.type === "text") {
-                        // These have x,y
-                        // Note: TextElement has x,y but TS might be strict if union includes types without x,y
-                        // Casting or checking type explicitly
-                        _elX = el.x;
-                        _elY = el.y;
-                      } else if (el.type === "ellipse") {
-                        _elX = el.cx;
-                        _elY = el.cy;
-                      } else if (el.type === "line") {
-                        // Line has x1,y1, x2,y2. We can't reduce it to single x,y for generic rotation unless we handle it in the generic block?
-                        // The code BELOW handles Line specifically for updates.
-                        // But we calculate `dx/dy` here for `elUpdate`.
-                        // Wait, the generic block at line 289 sets `x, y` on `elUpdate`.
-                        // But line updates x1,y1 etc.
-                        // The issue is `const dx = el.x - groupCenterX;` assumes `el.x` exists.
-                        // It doesn't for Line/Ellipse/Path.
-                        // We should NOT calculate generic dx/dy logic here if we handle specific types below.
-                        // OR we define "center/position" for each type here.
-                        // Let's refactor: handle specific calculations INSIDE the if/else blocks and remove the generic top-level access.
-                      }
 
                       const elUpdate: Record<string, unknown> = {}; // Initialize empty, populate inside blocks
 
