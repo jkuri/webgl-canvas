@@ -7,6 +7,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRef, useState } from "react";
+import { SettingsDialog } from "@/components/canvas/settings-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +68,7 @@ export function CanvasToolbar() {
   const importElements = useCanvasStore((s) => s.importElements);
 
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -425,8 +427,13 @@ export function CanvasToolbar() {
                 </DropdownMenuCheckboxItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>Settings</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
 
         <Separator orientation="vertical" className="mx-1 h-6" />
 
