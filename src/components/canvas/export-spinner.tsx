@@ -32,7 +32,7 @@ export function ExportSpinner() {
         </div>
 
         <div className="flex flex-col items-center gap-2">
-          <span className="font-medium text-foreground text-sm tracking-wide">Exporting SVG...</span>
+          <span className="font-medium text-foreground text-sm tracking-wide">Exporting...</span>
           <span className="text-muted-foreground text-xs">Please wait while we generate your file</span>
         </div>
       </div>

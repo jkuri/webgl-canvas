@@ -384,17 +384,114 @@ export function startSVGExportProcess(elementsToExport: CanvasElement[]) {
     try {
       const allElements = useCanvasStore.getState().elements;
       const svg = exportToSVG(elementsToExport, allElements);
-
-      let filename = "export";
-      if (elementsToExport.length === 1 && elementsToExport[0].name) {
-        filename = elementsToExport[0].name.replace(/\s+/g, "-").toLowerCase();
-      } else if (elementsToExport.length > 1) {
-        filename = "selection";
-      }
-
+      const filename = getExportFilename(elementsToExport);
       downloadSVG(svg, `${filename}.svg`);
     } finally {
       setIsExporting(false);
     }
   }, 50);
+}
+
+export function startPNGExportProcess(elementsToExport: CanvasElement[]) {
+  if (elementsToExport.length === 0) return;
+
+  const setIsExporting = useCanvasStore.getState().setIsExporting;
+  setIsExporting(true);
+
+  setTimeout(() => {
+    try {
+      const allElements = useCanvasStore.getState().elements;
+      const svg = exportToSVG(elementsToExport, allElements);
+      const filename = getExportFilename(elementsToExport);
+      downloadPNG(svg, `${filename}.png`);
+    } finally {
+      setIsExporting(false);
+    }
+  }, 50);
+}
+
+function getExportFilename(elements: CanvasElement[]): string {
+  if (elements.length === 1 && elements[0].name) {
+    return elements[0].name.replace(/\s+/g, "-").toLowerCase();
+  }
+  if (elements.length > 1) {
+    return "selection";
+  }
+  return "export";
+}
+
+export function downloadPNG(svgContent: string, filename = "export.png"): void {
+  const img = new Image();
+  const blob = new Blob([svgContent], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(img, 0, 0);
+    const pngUrl = canvas.toDataURL("image/png");
+
+    const a = document.createElement("a");
+    a.href = pngUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  img.src = url;
+}
+
+export function startJPGExportProcess(elementsToExport: CanvasElement[]) {
+  if (elementsToExport.length === 0) return;
+
+  const setIsExporting = useCanvasStore.getState().setIsExporting;
+  setIsExporting(true);
+
+  setTimeout(() => {
+    try {
+      const allElements = useCanvasStore.getState().elements;
+      const svg = exportToSVG(elementsToExport, allElements);
+      const filename = getExportFilename(elementsToExport);
+      downloadJPG(svg, `${filename}.jpg`);
+    } finally {
+      setIsExporting(false);
+    }
+  }, 50);
+}
+
+export function downloadJPG(svgContent: string, filename = "export.jpg"): void {
+  const img = new Image();
+  const blob = new Blob([svgContent], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Fill with white background for JPG
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.drawImage(img, 0, 0);
+    const jpgUrl = canvas.toDataURL("image/jpeg", 0.9);
+
+    const a = document.createElement("a");
+    a.href = jpgUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  img.src = url;
 }

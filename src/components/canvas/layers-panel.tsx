@@ -45,10 +45,13 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
-import { startSVGExportProcess } from "@/lib/svg-export";
+import { startJPGExportProcess, startPNGExportProcess, startSVGExportProcess } from "@/lib/svg-export";
 import { cn } from "@/lib/utils";
 import { useCanvasStore } from "@/store";
 import type { CanvasElement, GroupElement } from "@/types";
@@ -165,8 +168,16 @@ const LayerItem = memo(
       setEditName(element.name);
     };
 
-    const handleContextExport = () => {
+    const handleContextExportSVG = () => {
       startSVGExportProcess([element]);
+    };
+
+    const handleContextExportPNG = () => {
+      startPNGExportProcess([element]);
+    };
+
+    const handleContextExportJPG = () => {
+      startJPGExportProcess([element]);
     };
 
     const handleContextDuplicate = () => {
@@ -399,7 +410,14 @@ const LayerItem = memo(
 
           <ContextMenuSeparator />
 
-          <ContextMenuItem onClick={handleContextExport}>Export as SVG</ContextMenuItem>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>Export</ContextMenuSubTrigger>
+            <ContextMenuSubContent>
+              <ContextMenuItem onClick={handleContextExportSVG}>Export as SVG</ContextMenuItem>
+              <ContextMenuItem onClick={handleContextExportPNG}>Export as PNG</ContextMenuItem>
+              <ContextMenuItem onClick={handleContextExportJPG}>Export as JPG</ContextMenuItem>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
 
           <ContextMenuSeparator />
 

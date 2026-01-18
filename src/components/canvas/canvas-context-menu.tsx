@@ -10,7 +10,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { COLOR_PICKER_PRESETS, getRandomShapeColorCSS } from "@/lib/colors";
-import { startSVGExportProcess } from "@/lib/svg-export";
+import { startJPGExportProcess, startPNGExportProcess, startSVGExportProcess } from "@/lib/svg-export";
 import { convertTextToPath, type TextConversionResult } from "@/lib/text-to-path";
 import { useCanvasStore } from "@/store";
 import type { TextElement } from "@/types";
@@ -121,6 +121,20 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
     startSVGExportProcess(selectedElements);
   };
 
+  const handleExportPNG = () => {
+    const selectedElements = elements.filter((e) => selectedIds.includes(e.id));
+    if (selectedElements.length === 0) return;
+
+    startPNGExportProcess(selectedElements);
+  };
+
+  const handleExportJPG = () => {
+    const selectedElements = elements.filter((e) => selectedIds.includes(e.id));
+    if (selectedElements.length === 0) return;
+
+    startJPGExportProcess(selectedElements);
+  };
+
   const isGroup = contextMenuTarget?.type === "group";
 
   return (
@@ -188,8 +202,15 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
             </ContextMenuItem>
             <ContextMenuSeparator />
 
-            {/* Export as SVG */}
-            <ContextMenuItem onClick={handleExportSVG}>Export as SVG</ContextMenuItem>
+            {/* Export */}
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>Export</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                <ContextMenuItem onClick={handleExportSVG}>Export as SVG</ContextMenuItem>
+                <ContextMenuItem onClick={handleExportPNG}>Export as PNG</ContextMenuItem>
+                <ContextMenuItem onClick={handleExportJPG}>Export as JPG</ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
             <ContextMenuSeparator />
 
             {/* Convert to Outlines for text elements */}
