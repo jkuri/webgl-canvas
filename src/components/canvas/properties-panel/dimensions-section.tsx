@@ -9,11 +9,12 @@ import { getElementBounds } from "./utils";
 interface DimensionsSectionProps {
   element: CanvasElement;
   updateElement: (id: string, updates: Record<string, unknown>) => void;
+  bounds?: { width: number; height: number };
 }
 
-export function DimensionsSection({ element, updateElement }: DimensionsSectionProps) {
+export function DimensionsSection({ element, updateElement, bounds: providedBounds }: DimensionsSectionProps) {
   const isLocked = !!element.aspectRatioLocked;
-  const bounds = getElementBounds(element);
+  const bounds = providedBounds ?? getElementBounds(element);
 
   const toggleLock = () => {
     updateElement(element.id, { aspectRatioLocked: !isLocked });

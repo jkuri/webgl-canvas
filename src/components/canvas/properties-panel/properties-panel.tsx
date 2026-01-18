@@ -1,6 +1,15 @@
 import { useCanvasStore } from "@/store";
-import type { EllipseElement, ImageElement, LineElement, PathElement, RectElement, TextElement } from "@/types";
+import type {
+  EllipseElement,
+  GroupElement,
+  ImageElement,
+  LineElement,
+  PathElement,
+  RectElement,
+  TextElement,
+} from "@/types";
 import { EllipseProperties } from "./ellipse-properties";
+import { GroupProperties } from "./group-properties";
 import { ImageProperties } from "./image-properties";
 import { LineProperties } from "./line-properties";
 import { PageProperties } from "./page-properties";
@@ -44,16 +53,7 @@ export function PropertiesPanel() {
     case "image":
       return <ImageProperties element={selectedElement as ImageElement} />;
     case "group":
-      return (
-        <div className="flex h-full flex-col gap-0 text-foreground text-xs">
-          <div className="flex h-10 shrink-0 items-center justify-between border-b px-3 font-medium">
-            <span className="truncate">{selectedElement.name}</span>
-          </div>
-          <div className="flex flex-1 items-center justify-center p-4 text-muted-foreground">
-            <p>Group selected</p>
-          </div>
-        </div>
-      );
+      return <GroupProperties element={selectedElement as GroupElement} />;
     default:
       return <PageProperties />;
   }
