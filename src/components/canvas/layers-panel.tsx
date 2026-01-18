@@ -48,7 +48,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
-import { downloadSVG, exportToSVG } from "@/lib/svg-export";
+import { startSVGExportProcess } from "@/lib/svg-export";
 import { cn } from "@/lib/utils";
 import { useCanvasStore } from "@/store";
 import type { CanvasElement, GroupElement } from "@/types";
@@ -166,9 +166,7 @@ const LayerItem = memo(
     };
 
     const handleContextExport = () => {
-      const allElements = useCanvasStore.getState().elements;
-      const svg = exportToSVG([element], allElements);
-      downloadSVG(svg, `${element.name}.svg`);
+      startSVGExportProcess([element]);
     };
 
     const handleContextDuplicate = () => {

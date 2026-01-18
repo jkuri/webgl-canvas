@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { WebGLCanvas } from "@/components/canvas";
+import { ExportSpinner } from "@/components/canvas/export-spinner";
 import { LoadingOverlay } from "@/components/canvas/loading-overlay";
 import { preloadFonts } from "@/lib/text-renderer";
 
@@ -14,6 +15,7 @@ function App() {
     <>
       <WebGLCanvas isReady={isReady} />
       <LoadingOverlay isLoading={!isReady} />
+      <ExportSpinner />
     </>
   );
 }

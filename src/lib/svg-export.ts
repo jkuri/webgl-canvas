@@ -1,4 +1,5 @@
 import { SVGPathData } from "svg-pathdata";
+import { useCanvasStore } from "@/store";
 import type { CanvasElement, Shape } from "@/types";
 import { optimizeSVG } from "./svgo";
 
@@ -371,4 +372,29 @@ export function downloadSVG(svgContent: string, filename = "export.svg"): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export function startSVGExportProcess(elementsToExport: CanvasElement[]) {
+  if (elementsToExport.length === 0) return;
+
+  const setIsExporting = useCanvasStore.getState().setIsExporting;
+  setIsExporting(true);
+
+  setTimeout(() => {
+    try {
+      const allElements = useCanvasStore.getState().elements;
+      const svg = exportToSVG(elementsToExport, allElements);
+
+      let filename = "export";
+      if (elementsToExport.length === 1 && elementsToExport[0].name) {
+        filename = elementsToExport[0].name.replace(/\s+/g, "-").toLowerCase();
+      } else if (elementsToExport.length > 1) {
+        filename = "selection";
+      }
+
+      downloadSVG(svg, `${filename}.svg`);
+    } finally {
+      setIsExporting(false);
+    }
+  }, 50);
 }

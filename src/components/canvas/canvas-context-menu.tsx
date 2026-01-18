@@ -10,7 +10,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { COLOR_PICKER_PRESETS, getRandomShapeColorCSS } from "@/lib/colors";
-import { downloadSVG, exportToSVG } from "@/lib/svg-export";
+import { startSVGExportProcess } from "@/lib/svg-export";
 import { convertTextToPath, type TextConversionResult } from "@/lib/text-to-path";
 import { useCanvasStore } from "@/store";
 import type { TextElement } from "@/types";
@@ -118,17 +118,7 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
     const selectedElements = elements.filter((e) => selectedIds.includes(e.id));
     if (selectedElements.length === 0) return;
 
-    const svgContent = exportToSVG(selectedElements, elements);
-
-    // Use element name for filename, or "export" as fallback
-    let filename = "export";
-    if (selectedElements.length === 1 && selectedElements[0].name) {
-      filename = selectedElements[0].name.replace(/\s+/g, "-").toLowerCase();
-    } else if (selectedElements.length > 1) {
-      filename = "selection";
-    }
-
-    downloadSVG(svgContent, `${filename}.svg`);
+    startSVGExportProcess(selectedElements);
   };
 
   const isGroup = contextMenuTarget?.type === "group";

@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { downloadSVG, exportToSVG } from "@/lib/svg-export";
-import { useCanvasStore } from "@/store";
+import { startSVGExportProcess } from "@/lib/svg-export";
 import type { CanvasElement } from "@/types";
 import { SectionHeader } from "./shared";
 
@@ -9,12 +8,8 @@ interface ExportSectionProps {
 }
 
 export function ExportSection({ element }: ExportSectionProps) {
-  const elements = useCanvasStore((s) => s.elements);
-
   const handleExportSVG = () => {
-    const svgContent = exportToSVG([element], elements);
-    const filename = `${element.name?.replace(/\s+/g, "-").toLowerCase() || "export"}.svg`;
-    downloadSVG(svgContent, filename);
+    startSVGExportProcess([element]);
   };
 
   return (

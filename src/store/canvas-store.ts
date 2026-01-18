@@ -33,6 +33,9 @@ interface CanvasState {
   // Context menu
   contextMenuTarget: CanvasElement | null;
 
+  // Export state
+  isExporting: boolean;
+
   // Selection box
   selectionBox: { startX: number; startY: number; endX: number; endY: number } | null;
 
@@ -122,6 +125,7 @@ interface CanvasActions {
   setHoveredHandle: (handle: ResizeHandle) => void;
   setActiveResizeHandle: (handle: ResizeHandle) => void;
   setContextMenuTarget: (element: CanvasElement | null) => void;
+  setIsExporting: (isExporting: boolean) => void;
   setSelectionBox: (box: { startX: number; startY: number; endX: number; endY: number } | null) => void;
 
   // Snapping actions
@@ -248,6 +252,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   hoveredHandle: null,
   activeResizeHandle: null,
   contextMenuTarget: null,
+  isExporting: false,
   selectionBox: null,
   canvasBackground: "#F5F5F5",
   canvasBackgroundVisible: true,
@@ -772,6 +777,8 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
         ? state.selectedIds.filter((sid) => sid !== id)
         : [...state.selectedIds, id],
     })),
+
+  setIsExporting: (isExporting) => set({ isExporting }),
 
   // Transform actions
   setTransform: (transform) => set((state) => ({ transform: { ...state.transform, ...transform } })),
