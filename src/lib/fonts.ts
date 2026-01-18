@@ -32,6 +32,142 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
       "/fonts/comic-neue-latin-700-normal.woff"
     ]
   },
+  "Dm Sans": {
+    "100": [
+      "/fonts/dm-sans-latin-100-normal.woff",
+      "/fonts/dm-sans-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/dm-sans-latin-200-normal.woff",
+      "/fonts/dm-sans-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/dm-sans-latin-300-normal.woff",
+      "/fonts/dm-sans-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/dm-sans-latin-400-normal.woff",
+      "/fonts/dm-sans-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/dm-sans-latin-500-normal.woff",
+      "/fonts/dm-sans-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/dm-sans-latin-600-normal.woff",
+      "/fonts/dm-sans-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/dm-sans-latin-700-normal.woff",
+      "/fonts/dm-sans-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/dm-sans-latin-800-normal.woff",
+      "/fonts/dm-sans-latin-ext-800-normal.woff"
+    ],
+    "900": [
+      "/fonts/dm-sans-latin-900-normal.woff",
+      "/fonts/dm-sans-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/dm-sans-latin-400-normal.woff",
+      "/fonts/dm-sans-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/dm-sans-latin-700-normal.woff",
+      "/fonts/dm-sans-latin-ext-700-normal.woff"
+    ]
+  },
+  "Figtree": {
+    "300": [
+      "/fonts/figtree-latin-300-normal.woff",
+      "/fonts/figtree-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/figtree-latin-400-normal.woff",
+      "/fonts/figtree-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/figtree-latin-500-normal.woff",
+      "/fonts/figtree-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/figtree-latin-600-normal.woff",
+      "/fonts/figtree-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/figtree-latin-700-normal.woff",
+      "/fonts/figtree-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/figtree-latin-800-normal.woff",
+      "/fonts/figtree-latin-ext-800-normal.woff"
+    ],
+    "900": [
+      "/fonts/figtree-latin-900-normal.woff",
+      "/fonts/figtree-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/figtree-latin-400-normal.woff",
+      "/fonts/figtree-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/figtree-latin-700-normal.woff",
+      "/fonts/figtree-latin-ext-700-normal.woff"
+    ]
+  },
+  "Fira Code": {
+    "300": [
+      "/fonts/fira-code-latin-300-normal.woff",
+      "/fonts/fira-code-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/fira-code-latin-400-normal.woff",
+      "/fonts/fira-code-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/fira-code-latin-500-normal.woff",
+      "/fonts/fira-code-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/fira-code-latin-600-normal.woff",
+      "/fonts/fira-code-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/fira-code-latin-700-normal.woff",
+      "/fonts/fira-code-latin-ext-700-normal.woff"
+    ],
+    "normal": [
+      "/fonts/fira-code-latin-400-normal.woff",
+      "/fonts/fira-code-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/fira-code-latin-700-normal.woff",
+      "/fonts/fira-code-latin-ext-700-normal.woff"
+    ]
+  },
+  "Fira Mono": {
+    "400": [
+      "/fonts/fira-mono-latin-400-normal.woff",
+      "/fonts/fira-mono-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/fira-mono-latin-500-normal.woff",
+      "/fonts/fira-mono-latin-ext-500-normal.woff"
+    ],
+    "700": [
+      "/fonts/fira-mono-latin-700-normal.woff",
+      "/fonts/fira-mono-latin-ext-700-normal.woff"
+    ],
+    "normal": [
+      "/fonts/fira-mono-latin-400-normal.woff",
+      "/fonts/fira-mono-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/fira-mono-latin-700-normal.woff",
+      "/fonts/fira-mono-latin-ext-700-normal.woff"
+    ]
+  },
   "Geist Sans": {
     "100": [
       "/fonts/geist-sans-latin-100-normal.woff"
@@ -65,6 +201,82 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
     ],
     "bold": [
       "/fonts/geist-sans-latin-700-normal.woff"
+    ]
+  },
+  "Ibm Plex Mono": {
+    "100": [
+      "/fonts/ibm-plex-mono-latin-100-normal.woff",
+      "/fonts/ibm-plex-mono-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/ibm-plex-mono-latin-200-normal.woff",
+      "/fonts/ibm-plex-mono-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/ibm-plex-mono-latin-300-normal.woff",
+      "/fonts/ibm-plex-mono-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/ibm-plex-mono-latin-400-normal.woff",
+      "/fonts/ibm-plex-mono-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/ibm-plex-mono-latin-500-normal.woff",
+      "/fonts/ibm-plex-mono-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/ibm-plex-mono-latin-600-normal.woff",
+      "/fonts/ibm-plex-mono-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/ibm-plex-mono-latin-700-normal.woff",
+      "/fonts/ibm-plex-mono-latin-ext-700-normal.woff"
+    ],
+    "normal": [
+      "/fonts/ibm-plex-mono-latin-400-normal.woff",
+      "/fonts/ibm-plex-mono-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/ibm-plex-mono-latin-700-normal.woff",
+      "/fonts/ibm-plex-mono-latin-ext-700-normal.woff"
+    ]
+  },
+  "Ibm Plex Sans": {
+    "100": [
+      "/fonts/ibm-plex-sans-latin-100-normal.woff",
+      "/fonts/ibm-plex-sans-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/ibm-plex-sans-latin-200-normal.woff",
+      "/fonts/ibm-plex-sans-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/ibm-plex-sans-latin-300-normal.woff",
+      "/fonts/ibm-plex-sans-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/ibm-plex-sans-latin-400-normal.woff",
+      "/fonts/ibm-plex-sans-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/ibm-plex-sans-latin-500-normal.woff",
+      "/fonts/ibm-plex-sans-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/ibm-plex-sans-latin-600-normal.woff",
+      "/fonts/ibm-plex-sans-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/ibm-plex-sans-latin-700-normal.woff",
+      "/fonts/ibm-plex-sans-latin-ext-700-normal.woff"
+    ],
+    "normal": [
+      "/fonts/ibm-plex-sans-latin-400-normal.woff",
+      "/fonts/ibm-plex-sans-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/ibm-plex-sans-latin-700-normal.woff",
+      "/fonts/ibm-plex-sans-latin-ext-700-normal.woff"
     ]
   },
   "Inter": {
@@ -113,6 +325,94 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
       "/fonts/inter-latin-ext-700-normal.woff"
     ]
   },
+  "Jetbrains Mono": {
+    "100": [
+      "/fonts/jetbrains-mono-latin-100-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/jetbrains-mono-latin-200-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/jetbrains-mono-latin-300-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/jetbrains-mono-latin-400-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/jetbrains-mono-latin-500-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/jetbrains-mono-latin-600-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/jetbrains-mono-latin-700-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/jetbrains-mono-latin-800-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-800-normal.woff"
+    ],
+    "normal": [
+      "/fonts/jetbrains-mono-latin-400-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/jetbrains-mono-latin-700-normal.woff",
+      "/fonts/jetbrains-mono-latin-ext-700-normal.woff"
+    ]
+  },
+  "Kanit": {
+    "100": [
+      "/fonts/kanit-latin-100-normal.woff",
+      "/fonts/kanit-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/kanit-latin-200-normal.woff",
+      "/fonts/kanit-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/kanit-latin-300-normal.woff",
+      "/fonts/kanit-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/kanit-latin-400-normal.woff",
+      "/fonts/kanit-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/kanit-latin-500-normal.woff",
+      "/fonts/kanit-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/kanit-latin-600-normal.woff",
+      "/fonts/kanit-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/kanit-latin-700-normal.woff",
+      "/fonts/kanit-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/kanit-latin-800-normal.woff",
+      "/fonts/kanit-latin-ext-800-normal.woff"
+    ],
+    "900": [
+      "/fonts/kanit-latin-900-normal.woff",
+      "/fonts/kanit-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/kanit-latin-400-normal.woff",
+      "/fonts/kanit-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/kanit-latin-700-normal.woff",
+      "/fonts/kanit-latin-ext-700-normal.woff"
+    ]
+  },
   "Lato": {
     "100": [
       "/fonts/lato-latin-100-normal.woff",
@@ -141,6 +441,70 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
     "bold": [
       "/fonts/lato-latin-700-normal.woff",
       "/fonts/lato-latin-ext-700-normal.woff"
+    ]
+  },
+  "Lora": {
+    "400": [
+      "/fonts/lora-latin-400-normal.woff",
+      "/fonts/lora-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/lora-latin-500-normal.woff",
+      "/fonts/lora-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/lora-latin-600-normal.woff",
+      "/fonts/lora-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/lora-latin-700-normal.woff",
+      "/fonts/lora-latin-ext-700-normal.woff"
+    ],
+    "normal": [
+      "/fonts/lora-latin-400-normal.woff",
+      "/fonts/lora-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/lora-latin-700-normal.woff",
+      "/fonts/lora-latin-ext-700-normal.woff"
+    ]
+  },
+  "Manrope": {
+    "200": [
+      "/fonts/manrope-latin-200-normal.woff",
+      "/fonts/manrope-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/manrope-latin-300-normal.woff",
+      "/fonts/manrope-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/manrope-latin-400-normal.woff",
+      "/fonts/manrope-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/manrope-latin-500-normal.woff",
+      "/fonts/manrope-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/manrope-latin-600-normal.woff",
+      "/fonts/manrope-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/manrope-latin-700-normal.woff",
+      "/fonts/manrope-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/manrope-latin-800-normal.woff",
+      "/fonts/manrope-latin-ext-800-normal.woff"
+    ],
+    "normal": [
+      "/fonts/manrope-latin-400-normal.woff",
+      "/fonts/manrope-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/manrope-latin-700-normal.woff",
+      "/fonts/manrope-latin-ext-700-normal.woff"
     ]
   },
   "Montserrat": {
@@ -187,6 +551,48 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
     "bold": [
       "/fonts/montserrat-latin-700-normal.woff",
       "/fonts/montserrat-latin-ext-700-normal.woff"
+    ]
+  },
+  "Mulish": {
+    "200": [
+      "/fonts/mulish-latin-200-normal.woff",
+      "/fonts/mulish-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/mulish-latin-300-normal.woff",
+      "/fonts/mulish-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/mulish-latin-400-normal.woff",
+      "/fonts/mulish-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/mulish-latin-500-normal.woff",
+      "/fonts/mulish-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/mulish-latin-600-normal.woff",
+      "/fonts/mulish-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/mulish-latin-700-normal.woff",
+      "/fonts/mulish-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/mulish-latin-800-normal.woff",
+      "/fonts/mulish-latin-ext-800-normal.woff"
+    ],
+    "900": [
+      "/fonts/mulish-latin-900-normal.woff",
+      "/fonts/mulish-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/mulish-latin-400-normal.woff",
+      "/fonts/mulish-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/mulish-latin-700-normal.woff",
+      "/fonts/mulish-latin-ext-700-normal.woff"
     ]
   },
   "Noto Sans": {
@@ -319,6 +725,40 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
       "/fonts/nunito-sans-latin-ext-700-normal.woff"
     ]
   },
+  "Open Sans": {
+    "300": [
+      "/fonts/open-sans-latin-300-normal.woff",
+      "/fonts/open-sans-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/open-sans-latin-400-normal.woff",
+      "/fonts/open-sans-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/open-sans-latin-500-normal.woff",
+      "/fonts/open-sans-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/open-sans-latin-600-normal.woff",
+      "/fonts/open-sans-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/open-sans-latin-700-normal.woff",
+      "/fonts/open-sans-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/open-sans-latin-800-normal.woff",
+      "/fonts/open-sans-latin-ext-800-normal.woff"
+    ],
+    "normal": [
+      "/fonts/open-sans-latin-400-normal.woff",
+      "/fonts/open-sans-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/open-sans-latin-700-normal.woff",
+      "/fonts/open-sans-latin-ext-700-normal.woff"
+    ]
+  },
   "Oswald": {
     "200": [
       "/fonts/oswald-latin-200-normal.woff",
@@ -351,6 +791,144 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
     "bold": [
       "/fonts/oswald-latin-700-normal.woff",
       "/fonts/oswald-latin-ext-700-normal.woff"
+    ]
+  },
+  "Outfit": {
+    "100": [
+      "/fonts/outfit-latin-100-normal.woff",
+      "/fonts/outfit-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/outfit-latin-200-normal.woff",
+      "/fonts/outfit-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/outfit-latin-300-normal.woff",
+      "/fonts/outfit-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/outfit-latin-400-normal.woff",
+      "/fonts/outfit-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/outfit-latin-500-normal.woff",
+      "/fonts/outfit-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/outfit-latin-600-normal.woff",
+      "/fonts/outfit-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/outfit-latin-700-normal.woff",
+      "/fonts/outfit-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/outfit-latin-800-normal.woff",
+      "/fonts/outfit-latin-ext-800-normal.woff"
+    ],
+    "900": [
+      "/fonts/outfit-latin-900-normal.woff",
+      "/fonts/outfit-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/outfit-latin-400-normal.woff",
+      "/fonts/outfit-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/outfit-latin-700-normal.woff",
+      "/fonts/outfit-latin-ext-700-normal.woff"
+    ]
+  },
+  "Poppins": {
+    "100": [
+      "/fonts/poppins-latin-100-normal.woff",
+      "/fonts/poppins-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/poppins-latin-200-normal.woff",
+      "/fonts/poppins-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/poppins-latin-300-normal.woff",
+      "/fonts/poppins-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/poppins-latin-400-normal.woff",
+      "/fonts/poppins-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/poppins-latin-500-normal.woff",
+      "/fonts/poppins-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/poppins-latin-600-normal.woff",
+      "/fonts/poppins-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/poppins-latin-700-normal.woff",
+      "/fonts/poppins-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/poppins-latin-800-normal.woff",
+      "/fonts/poppins-latin-ext-800-normal.woff"
+    ],
+    "900": [
+      "/fonts/poppins-latin-900-normal.woff",
+      "/fonts/poppins-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/poppins-latin-400-normal.woff",
+      "/fonts/poppins-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/poppins-latin-700-normal.woff",
+      "/fonts/poppins-latin-ext-700-normal.woff"
+    ]
+  },
+  "Public Sans": {
+    "100": [
+      "/fonts/public-sans-latin-100-normal.woff",
+      "/fonts/public-sans-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/public-sans-latin-200-normal.woff",
+      "/fonts/public-sans-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/public-sans-latin-300-normal.woff",
+      "/fonts/public-sans-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/public-sans-latin-400-normal.woff",
+      "/fonts/public-sans-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/public-sans-latin-500-normal.woff",
+      "/fonts/public-sans-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/public-sans-latin-600-normal.woff",
+      "/fonts/public-sans-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/public-sans-latin-700-normal.woff",
+      "/fonts/public-sans-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/public-sans-latin-800-normal.woff",
+      "/fonts/public-sans-latin-ext-800-normal.woff"
+    ],
+    "900": [
+      "/fonts/public-sans-latin-900-normal.woff",
+      "/fonts/public-sans-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/public-sans-latin-400-normal.woff",
+      "/fonts/public-sans-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/public-sans-latin-700-normal.woff",
+      "/fonts/public-sans-latin-ext-700-normal.woff"
     ]
   },
   "Raleway": {
@@ -445,6 +1023,16 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
       "/fonts/roboto-latin-ext-700-normal.woff"
     ]
   },
+  "Roboto Flex": {
+    "400": [
+      "/fonts/roboto-flex-latin-400-normal.woff",
+      "/fonts/roboto-flex-latin-ext-400-normal.woff"
+    ],
+    "normal": [
+      "/fonts/roboto-flex-latin-400-normal.woff",
+      "/fonts/roboto-flex-latin-ext-400-normal.woff"
+    ]
+  },
   "Roboto Mono": {
     "100": [
       "/fonts/roboto-mono-latin-100-normal.woff",
@@ -483,6 +1071,52 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
       "/fonts/roboto-mono-latin-ext-700-normal.woff"
     ]
   },
+  "Roboto Slab": {
+    "100": [
+      "/fonts/roboto-slab-latin-100-normal.woff",
+      "/fonts/roboto-slab-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/roboto-slab-latin-200-normal.woff",
+      "/fonts/roboto-slab-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/roboto-slab-latin-300-normal.woff",
+      "/fonts/roboto-slab-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/roboto-slab-latin-400-normal.woff",
+      "/fonts/roboto-slab-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/roboto-slab-latin-500-normal.woff",
+      "/fonts/roboto-slab-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/roboto-slab-latin-600-normal.woff",
+      "/fonts/roboto-slab-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/roboto-slab-latin-700-normal.woff",
+      "/fonts/roboto-slab-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/roboto-slab-latin-800-normal.woff",
+      "/fonts/roboto-slab-latin-ext-800-normal.woff"
+    ],
+    "900": [
+      "/fonts/roboto-slab-latin-900-normal.woff",
+      "/fonts/roboto-slab-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/roboto-slab-latin-400-normal.woff",
+      "/fonts/roboto-slab-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/roboto-slab-latin-700-normal.woff",
+      "/fonts/roboto-slab-latin-ext-700-normal.woff"
+    ]
+  },
   "Rubik": {
     "300": [
       "/fonts/rubik-latin-300-normal.woff",
@@ -519,6 +1153,130 @@ export const FONT_FILES: Record<string, Record<string, string[]>> = {
     "bold": [
       "/fonts/rubik-latin-700-normal.woff",
       "/fonts/rubik-latin-ext-700-normal.woff"
+    ]
+  },
+  "Source Sans Pro": {
+    "200": [
+      "/fonts/source-sans-pro-latin-200-normal.woff",
+      "/fonts/source-sans-pro-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/source-sans-pro-latin-300-normal.woff",
+      "/fonts/source-sans-pro-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/source-sans-pro-latin-400-normal.woff",
+      "/fonts/source-sans-pro-latin-ext-400-normal.woff"
+    ],
+    "600": [
+      "/fonts/source-sans-pro-latin-600-normal.woff",
+      "/fonts/source-sans-pro-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/source-sans-pro-latin-700-normal.woff",
+      "/fonts/source-sans-pro-latin-ext-700-normal.woff"
+    ],
+    "900": [
+      "/fonts/source-sans-pro-latin-900-normal.woff",
+      "/fonts/source-sans-pro-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/source-sans-pro-latin-400-normal.woff",
+      "/fonts/source-sans-pro-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/source-sans-pro-latin-700-normal.woff",
+      "/fonts/source-sans-pro-latin-ext-700-normal.woff"
+    ]
+  },
+  "Ubuntu": {
+    "300": [
+      "/fonts/ubuntu-latin-300-normal.woff",
+      "/fonts/ubuntu-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/ubuntu-latin-400-normal.woff",
+      "/fonts/ubuntu-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/ubuntu-latin-500-normal.woff",
+      "/fonts/ubuntu-latin-ext-500-normal.woff"
+    ],
+    "700": [
+      "/fonts/ubuntu-latin-700-normal.woff",
+      "/fonts/ubuntu-latin-ext-700-normal.woff"
+    ],
+    "normal": [
+      "/fonts/ubuntu-latin-400-normal.woff",
+      "/fonts/ubuntu-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/ubuntu-latin-700-normal.woff",
+      "/fonts/ubuntu-latin-ext-700-normal.woff"
+    ]
+  },
+  "Ubuntu Mono": {
+    "400": [
+      "/fonts/ubuntu-mono-latin-400-normal.woff",
+      "/fonts/ubuntu-mono-latin-ext-400-normal.woff"
+    ],
+    "700": [
+      "/fonts/ubuntu-mono-latin-700-normal.woff",
+      "/fonts/ubuntu-mono-latin-ext-700-normal.woff"
+    ],
+    "normal": [
+      "/fonts/ubuntu-mono-latin-400-normal.woff",
+      "/fonts/ubuntu-mono-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/ubuntu-mono-latin-700-normal.woff",
+      "/fonts/ubuntu-mono-latin-ext-700-normal.woff"
+    ]
+  },
+  "Work Sans": {
+    "100": [
+      "/fonts/work-sans-latin-100-normal.woff",
+      "/fonts/work-sans-latin-ext-100-normal.woff"
+    ],
+    "200": [
+      "/fonts/work-sans-latin-200-normal.woff",
+      "/fonts/work-sans-latin-ext-200-normal.woff"
+    ],
+    "300": [
+      "/fonts/work-sans-latin-300-normal.woff",
+      "/fonts/work-sans-latin-ext-300-normal.woff"
+    ],
+    "400": [
+      "/fonts/work-sans-latin-400-normal.woff",
+      "/fonts/work-sans-latin-ext-400-normal.woff"
+    ],
+    "500": [
+      "/fonts/work-sans-latin-500-normal.woff",
+      "/fonts/work-sans-latin-ext-500-normal.woff"
+    ],
+    "600": [
+      "/fonts/work-sans-latin-600-normal.woff",
+      "/fonts/work-sans-latin-ext-600-normal.woff"
+    ],
+    "700": [
+      "/fonts/work-sans-latin-700-normal.woff",
+      "/fonts/work-sans-latin-ext-700-normal.woff"
+    ],
+    "800": [
+      "/fonts/work-sans-latin-800-normal.woff",
+      "/fonts/work-sans-latin-ext-800-normal.woff"
+    ],
+    "900": [
+      "/fonts/work-sans-latin-900-normal.woff",
+      "/fonts/work-sans-latin-ext-900-normal.woff"
+    ],
+    "normal": [
+      "/fonts/work-sans-latin-400-normal.woff",
+      "/fonts/work-sans-latin-ext-400-normal.woff"
+    ],
+    "bold": [
+      "/fonts/work-sans-latin-700-normal.woff",
+      "/fonts/work-sans-latin-ext-700-normal.woff"
     ]
   }
 };
