@@ -4,7 +4,8 @@ import { useCanvasStore } from "@/store";
 import type { ImageElement } from "@/types";
 import { DimensionsSection } from "./dimensions-section";
 import { ExportSection } from "./export-section";
-import { getElementBounds, RotateIcon, SectionHeader } from "./shared";
+import { RotateIcon, SectionHeader } from "./shared";
+import { getElementBounds } from "./utils";
 
 interface ImagePropertiesProps {
   element: ImageElement;

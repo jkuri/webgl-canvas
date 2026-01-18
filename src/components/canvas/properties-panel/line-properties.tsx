@@ -3,8 +3,9 @@ import { Separator } from "@/components/ui/separator";
 import { useCanvasStore } from "@/store";
 import type { LineElement } from "@/types";
 import { ExportSection } from "./export-section";
-import { getElementBounds, RotateIcon, SectionHeader } from "./shared";
+import { RotateIcon, SectionHeader } from "./shared";
 import { StrokeSection } from "./stroke-section";
+import { getElementBounds } from "./utils";
 
 interface LinePropertiesProps {
   element: LineElement;

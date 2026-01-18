@@ -3,7 +3,8 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { NumberInput } from "@/components/shared/number-input";
 import { Button } from "@/components/ui/button";
 import type { CanvasElement } from "@/types";
-import { getElementBounds, SectionHeader } from "./shared";
+import { SectionHeader } from "./shared";
+import { getElementBounds } from "./utils";
 
 interface DimensionsSectionProps {
   element: CanvasElement;

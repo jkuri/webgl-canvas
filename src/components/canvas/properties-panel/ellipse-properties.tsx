@@ -4,8 +4,9 @@ import { useCanvasStore } from "@/store";
 import type { EllipseElement } from "@/types";
 import { ExportSection } from "./export-section";
 import { FillSection } from "./fill-section";
-import { getElementBounds, RotateIcon, SectionHeader } from "./shared";
+import { RotateIcon, SectionHeader } from "./shared";
 import { StrokeSection } from "./stroke-section";
+import { getElementBounds } from "./utils";
 
 interface EllipsePropertiesProps {
   element: EllipseElement;
