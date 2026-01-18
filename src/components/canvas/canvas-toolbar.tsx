@@ -258,7 +258,7 @@ export function CanvasToolbar() {
       y: center.y,
       text,
       fontSize,
-      fontFamily: "Inter, sans-serif",
+      fontFamily: "Inter",
       fontWeight: "normal",
       textAnchor: "start",
       rotation: 0,

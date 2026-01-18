@@ -1,6 +1,7 @@
 import { NumberInput } from "@/components/shared/number-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { FONT_FILES } from "@/lib/fonts";
 import { getAvailableWeights, getFont, getFontAscender } from "@/lib/text-renderer";
 import { calculateTextBounds } from "@/lib/text-to-path";
 import { useCanvasStore } from "@/store";
@@ -29,19 +30,19 @@ export function TextProperties({ element }: TextPropertiesProps) {
 
           {/* Font Family */}
           <Select
-            value={element.fontFamily || "Inter, sans-serif"}
+            value={element.fontFamily || "Inter"}
             onValueChange={async (newFontFamily) => {
               const { fontSize, fontFamily: oldFontFamily, fontWeight, y } = element;
               const oldWeight = String(fontWeight || "400");
 
-              const availableWeights = getAvailableWeights(newFontFamily || "Inter, sans-serif");
+              const availableWeights = getAvailableWeights(newFontFamily || "Inter");
               let newWeight = oldWeight;
               if (!availableWeights.includes(newWeight)) {
                 newWeight = availableWeights.includes("400") ? "400" : availableWeights[0] || "400";
               }
 
               const oldFonts = await getFont(oldFontFamily, oldWeight);
-              const newFonts = await getFont(newFontFamily || "Inter, sans-serif", newWeight);
+              const newFonts = await getFont(newFontFamily || "Inter", newWeight);
               const oldFont = oldFonts?.[0];
               const newFont = newFonts?.[0];
 
@@ -54,13 +55,13 @@ export function TextProperties({ element }: TextPropertiesProps) {
                   ...element,
                   x: 0,
                   y: 0,
-                  fontFamily: newFontFamily || "Inter, sans-serif",
+                  fontFamily: newFontFamily || "Inter",
                   fontWeight: newWeight as "normal" | "bold" | number,
                   fontSize,
                 });
 
                 updateElement(element.id, {
-                  fontFamily: newFontFamily || "Inter, sans-serif",
+                  fontFamily: newFontFamily || "Inter",
                   fontWeight: newWeight as "normal" | "bold" | number,
                   y: newY,
                   bounds: newBounds,
@@ -70,13 +71,13 @@ export function TextProperties({ element }: TextPropertiesProps) {
                   ...element,
                   x: 0,
                   y: 0,
-                  fontFamily: newFontFamily || "Inter, sans-serif",
+                  fontFamily: newFontFamily || "Inter",
                   fontWeight: newWeight as "normal" | "bold" | number,
                   fontSize,
                 });
 
                 updateElement(element.id, {
-                  fontFamily: newFontFamily || "Inter, sans-serif",
+                  fontFamily: newFontFamily || "Inter",
                   fontWeight: newWeight,
                   bounds: newBounds,
                 });
@@ -87,16 +88,11 @@ export function TextProperties({ element }: TextPropertiesProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Inter, sans-serif">Inter</SelectItem>
-              <SelectItem value="Roboto, sans-serif">Roboto</SelectItem>
-              <SelectItem value="Lato, sans-serif">Lato</SelectItem>
-              <SelectItem value="Geist Sans, sans-serif">Geist</SelectItem>
-              <SelectItem value="Noto Sans, sans-serif">Noto Sans</SelectItem>
-              <SelectItem value="Oswald, sans-serif">Oswald</SelectItem>
-              <SelectItem value="Raleway, sans-serif">Raleway</SelectItem>
-              <SelectItem value="Nunito, sans-serif">Nunito</SelectItem>
-              <SelectItem value="Nunito Sans, sans-serif">Nunito Sans</SelectItem>
-              <SelectItem value="Rubik, sans-serif">Rubik</SelectItem>
+              {Object.keys(FONT_FILES).map((fontFamily) => (
+                <SelectItem key={fontFamily} value={fontFamily}>
+                  {fontFamily}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -123,7 +119,7 @@ export function TextProperties({ element }: TextPropertiesProps) {
                 if (val === oldWeight) return;
 
                 const currentFonts = await getFont(element.fontFamily, oldWeight);
-                const newFonts = await getFont(element.fontFamily || "Inter, sans-serif", val || "400");
+                const newFonts = await getFont(element.fontFamily || "Inter", val || "400");
                 const currentFont = currentFonts?.[0];
                 const newFont = newFonts?.[0];
 
@@ -161,7 +157,7 @@ export function TextProperties({ element }: TextPropertiesProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {getAvailableWeights(element.fontFamily || "Inter, sans-serif").map((w: string) => {
+                {getAvailableWeights(element.fontFamily || "Inter").map((w: string) => {
                   const labels: Record<string, string> = {
                     "100": "Thin",
                     "200": "Extra Light",
