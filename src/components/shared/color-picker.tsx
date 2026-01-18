@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { NumberInput } from "@/components/shared/number-input";
 import { Input } from "@/components/ui/input";
 import { COLOR_PICKER_PRESETS } from "@/lib/colors";
 import { cn } from "@/lib/utils";
@@ -300,29 +301,28 @@ export function ColorPicker({ color, onChange, className, opacity = 1, onOpacity
       </div>
 
       <div className="flex gap-2">
-        <div className="flex flex-1 items-center gap-2 rounded-md border bg-background px-2 py-1">
+        <div className="flex flex-1 items-center gap-2 rounded-md border bg-input/20 px-2 py-1">
           <span className="text-[10px] text-muted-foreground">Hex</span>
           <Input
-            className="h-5 border-0 p-0 text-xs focus-visible:ring-0"
+            className="h-5 border-0 bg-transparent p-0 text-xs"
             value={color.toUpperCase()}
             onChange={(e) => onChange(e.target.value)}
             maxLength={7}
           />
         </div>
 
-        <div className="flex w-16 items-center gap-1 rounded-md border bg-background px-2 py-1">
-          <Input
-            className="h-5 border-0 p-0 text-right text-xs focus-visible:ring-0"
+        <div className="flex w-20 items-center gap-1">
+          <NumberInput
+            className="h-7 w-full rounded-md bg-background"
             value={Math.round(opacity * 100)}
-            onChange={(e) => {
-              const val = parseInt(e.target.value, 10);
-              if (!Number.isNaN(val) && onOpacityChange) {
+            onChange={(val) => {
+              if (onOpacityChange) {
                 onOpacityChange(Math.max(0, Math.min(100, val)) / 100);
               }
             }}
-            type="number"
+            suffix="%"
+            step={1}
           />
-          <span className="text-[10px] text-muted-foreground">%</span>
         </div>
       </div>
 

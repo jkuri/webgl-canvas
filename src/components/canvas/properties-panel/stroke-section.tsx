@@ -93,8 +93,10 @@ export function StrokeSection({ element, showMarkers = false }: StrokeSectionPro
               });
             }}
           >
-            <SelectTrigger className="h-7 w-full text-xs">
-              <SelectValue />
+            <SelectTrigger className="w-full text-xs">
+              <SelectValue>
+                {element.stroke.dashArray?.length ? (element.stroke.dashArray[0] === 1 ? "Dotted" : "Dashed") : "Solid"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="solid">Solid</SelectItem>

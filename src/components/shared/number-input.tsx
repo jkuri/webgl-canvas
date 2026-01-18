@@ -9,12 +9,13 @@ interface NumberInputProps {
   onChange: (value: number) => void;
   label?: React.ReactNode;
   icon?: React.ReactNode;
+  suffix?: React.ReactNode;
   className?: string;
   step?: number;
   disabled?: boolean;
 }
 
-export function NumberInput({ value, onChange, label, icon, className, step = 1, disabled }: NumberInputProps) {
+export function NumberInput({ value, onChange, label, icon, suffix, className, step = 1, disabled }: NumberInputProps) {
   const [localValue, setLocalValue] = useState(value.toString());
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -72,8 +73,9 @@ export function NumberInput({ value, onChange, label, icon, className, step = 1,
       <Input
         ref={inputRef}
         className={cn(
-          "h-8 border-transparent bg-muted/50 pr-6 text-xs shadow-none hover:bg-muted focus-visible:ring-1",
+          "h-8 border-input bg-input/20 text-xs shadow-none",
           icon || label ? "pl-8" : "px-2",
+          suffix ? "pr-10" : "pr-6",
           // Hide native internal spinners for various browsers
           "[appearance:textfield]",
           "[&::-webkit-outer-spin-button]:appearance-none",
@@ -87,6 +89,11 @@ export function NumberInput({ value, onChange, label, icon, className, step = 1,
         type="number"
         disabled={disabled}
       />
+      {suffix && (
+        <div className="pointer-events-none absolute right-6 z-10 flex items-center text-muted-foreground">
+          <span className="text-[10px]">{suffix}</span>
+        </div>
+      )}
       <div className="absolute top-1/2 right-1 z-10 flex -translate-y-1/2 flex-col">
         <button
           type="button"
