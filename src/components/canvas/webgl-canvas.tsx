@@ -23,7 +23,7 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<WebGLRenderer | null>(null);
-  const [_isCmdHeld, setIsCmdHeld] = useState(false);
+  const [isCmdHeld, setIsCmdHeld] = useState(false);
 
   const {
     elements,
@@ -285,8 +285,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
   // Check if hovered handle is a corner (for rotation)
   const isCornerHandle =
     hoveredHandle === "nw" || hoveredHandle === "ne" || hoveredHandle === "se" || hoveredHandle === "sw";
-
-  const isCmdHeld = _isCmdHeld;
 
   const cursor = isPanning
     ? "grabbing"

@@ -316,7 +316,8 @@ export class WebGLRenderer {
       }
 
       // Draw selection outlines
-      const selectedElements = elements.filter((e) => selectedIds.includes(e.id));
+      const selectedIdSet = new Set(selectedIds);
+      const selectedElements = elements.filter((e) => selectedIdSet.has(e.id));
       const selectedShapes = this.collectShapes(selectedElements, elements);
 
       if (selectionBox) {
@@ -330,9 +331,7 @@ export class WebGLRenderer {
           this.drawShapeOutlineWithHandles(selectedShapes[0], scale);
         } else if (selectedShapes.length > 0) {
           // Multiple shapes or group: draw individual outlines + bounding box
-          for (const shape of selectedShapes) {
-            this.drawShapeOutline(shape, scale);
-          }
+          this.drawShapesOutlines(selectedShapes, scale);
           const bounds = this.calculateBoundingBox(selectedShapes);
           this.drawBoundingBoxWithHandles(bounds, true, scale);
         }
@@ -1389,6 +1388,68 @@ export class WebGLRenderer {
       for (let i = 0; i < 4; i++) {
         this.drawLineBetweenPoints(corners[i], corners[(i + 1) % 4], borderWidth, scale);
       }
+    }
+  }
+
+  private drawShapesOutlines(shapes: Shape[], scale: number): void {
+    if (shapes.length === 0) return;
+
+    const gl = this.gl;
+    const strokeColor: [number, number, number, number] = [0, 0.6, 1, 1];
+    const borderWidth = 1.5;
+    const adjustedWidth = borderWidth / scale;
+    const halfWidth = adjustedWidth / 2;
+
+    this.resetRotation();
+    gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...strokeColor);
+
+    // Pre-allocate array? It's hard to know exact size because lines are 1 segment, others are 4.
+    // Let's use a standard array and convert to Float32Array at the end, or chunks.
+    const vertices: number[] = [];
+
+    for (const shape of shapes) {
+      const corners = this.getRotatedCorners(shape);
+      const segments: { p1: { x: number; y: number }; p2: { x: number; y: number } }[] = [];
+
+      if (shape.type === "line") {
+        segments.push({ p1: corners[0], p2: corners[1] });
+      } else {
+        for (let i = 0; i < 4; i++) {
+          segments.push({ p1: corners[i], p2: corners[(i + 1) % 4] });
+        }
+      }
+
+      for (const { p1, p2 } of segments) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len === 0) continue;
+
+        const nx = (-dy / len) * halfWidth;
+        const ny = (dx / len) * halfWidth;
+
+        // 6 vertices per segment (2 triangles)
+        vertices.push(
+          p1.x - nx,
+          p1.y - ny,
+          p1.x + nx,
+          p1.y + ny,
+          p2.x - nx,
+          p2.y - ny,
+          p2.x - nx,
+          p2.y - ny,
+          p1.x + nx,
+          p1.y + ny,
+          p2.x + nx,
+          p2.y + ny,
+        );
+      }
+    }
+
+    if (vertices.length > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+      gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
     }
   }
 

@@ -190,6 +190,7 @@ export function useCanvasInteractions({
     setSelectionBox,
     getElementById,
     updateElement,
+    updateElements,
   } = useCanvasStore();
 
   const dragStartRef = useRef<{
@@ -1189,23 +1190,24 @@ export function useCanvasInteractions({
           useCanvasStore.getState().setSmartGuides([]);
         }
 
+        const updates = new Map<string, Record<string, unknown>>();
         for (const [id, startPos] of dragStartRef.current.elements) {
           const element = getElementById(id);
           if (!element) continue;
 
           if (element.type === "rect" || element.type === "image") {
-            updateElement(id, { x: startPos.x + finalDeltaX, y: startPos.y + finalDeltaY });
+            updates.set(id, { x: startPos.x + finalDeltaX, y: startPos.y + finalDeltaY });
           } else if (element.type === "ellipse") {
-            updateElement(id, { cx: (startPos.cx ?? 0) + finalDeltaX, cy: (startPos.cy ?? 0) + finalDeltaY });
+            updates.set(id, { cx: (startPos.cx ?? 0) + finalDeltaX, cy: (startPos.cy ?? 0) + finalDeltaY });
           } else if (element.type === "line") {
-            updateElement(id, {
+            updates.set(id, {
               x1: (startPos.x1 ?? 0) + finalDeltaX,
               y1: (startPos.y1 ?? 0) + finalDeltaY,
               x2: (startPos.x2 ?? 0) + finalDeltaX,
               y2: (startPos.y2 ?? 0) + finalDeltaY,
             });
           } else if (element.type === "path") {
-            updateElement(id, {
+            updates.set(id, {
               bounds: {
                 ...element.bounds,
                 x: startPos.x + finalDeltaX,
@@ -1213,8 +1215,11 @@ export function useCanvasInteractions({
               },
             });
           } else if (element.type === "text") {
-            updateElement(id, { x: startPos.x + finalDeltaX, y: startPos.y + finalDeltaY });
+            updates.set(id, { x: startPos.x + finalDeltaX, y: startPos.y + finalDeltaY });
           }
+        }
+        if (updates.size > 0) {
+          updateElements(updates);
         }
       }
 
@@ -1502,6 +1507,7 @@ export function useCanvasInteractions({
             newBoundsHeight = minSize;
           }
 
+          const updates = new Map<string, Record<string, unknown>>();
           for (const [id, original] of originalElements) {
             const relX = (original.x - originalBounds.x) / originalBounds.width;
             const relY = (original.y - originalBounds.y) / originalBounds.height;
@@ -1514,9 +1520,9 @@ export function useCanvasInteractions({
             const newH = Math.max(1, relH * newBoundsHeight);
 
             if (original.type === "rect") {
-              updateElement(id, { x: newX, y: newY, width: newW, height: newH });
+              updates.set(id, { x: newX, y: newY, width: newW, height: newH });
             } else if (original.type === "ellipse") {
-              updateElement(id, {
+              updates.set(id, {
                 cx: newX + newW / 2,
                 cy: newY + newH / 2,
                 rx: newW / 2,
@@ -1528,7 +1534,7 @@ export function useCanvasInteractions({
               const relX2 = ((original.x2 ?? 0) - originalBounds.x) / originalBounds.width;
               const relY2 = ((original.y2 ?? 0) - originalBounds.y) / originalBounds.height;
 
-              updateElement(id, {
+              updates.set(id, {
                 x1: newBoundsX + relX1 * newBoundsWidth,
                 y1: newBoundsY + relY1 * newBoundsHeight,
                 x2: newBoundsX + relX2 * newBoundsWidth,
@@ -1546,11 +1552,14 @@ export function useCanvasInteractions({
               };
               const newD = resizePath(original.d!, oldBounds, newBounds);
 
-              updateElement(id, {
+              updates.set(id, {
                 d: newD,
                 bounds: newBounds,
               });
             }
+          }
+          if (updates.size > 0) {
+            updateElements(updates);
           }
         }
       }
@@ -1560,6 +1569,7 @@ export function useCanvasInteractions({
         const currentAngle = Math.atan2(world.y - centerY, world.x - centerX);
         const deltaAngle = currentAngle - startAngle;
 
+        const updates = new Map<string, Record<string, unknown>>();
         for (const [id, original] of originalElements) {
           const originalRotation = originalRotations.get(id) ?? 0;
           const newRotation = originalRotation + deltaAngle;
@@ -1576,7 +1586,7 @@ export function useCanvasInteractions({
             const p1 = rotatePoint(original.x1!, original.y1!);
             const p2 = rotatePoint(original.x2!, original.y2!);
 
-            updateElement(id, {
+            updates.set(id, {
               x1: p1.x,
               y1: p1.y,
               x2: p2.x,
@@ -1585,7 +1595,7 @@ export function useCanvasInteractions({
             });
           } else if (original.type === "ellipse") {
             const center = rotatePoint(original.cx!, original.cy!);
-            updateElement(id, {
+            updates.set(id, {
               cx: center.x,
               cy: center.y,
               rotation: newRotation,
@@ -1596,7 +1606,7 @@ export function useCanvasInteractions({
             const oy = original.y + original.height / 2;
             const center = rotatePoint(ox, oy);
 
-            updateElement(id, {
+            updates.set(id, {
               x: center.x - original.width / 2,
               y: center.y - original.height / 2,
               rotation: newRotation,
@@ -1619,7 +1629,7 @@ export function useCanvasInteractions({
 
             if (isSingleElement) {
               // Single element rotation - visual center is the pivot, position stays the same
-              updateElement(id, {
+              updates.set(id, {
                 rotation: newRotation,
               });
             } else {
@@ -1639,7 +1649,7 @@ export function useCanvasInteractions({
               const rotatedOffsetY = anchorToBoundsX * sin + anchorToBoundsY * cos;
 
               // New anchor = new bounds position minus rotated offset
-              updateElement(id, {
+              updates.set(id, {
                 x: newBoundsX - rotatedOffsetX,
                 y: newBoundsY - rotatedOffsetY,
                 rotation: newRotation,
@@ -1654,7 +1664,7 @@ export function useCanvasInteractions({
             const oy = original.bounds!.y + original.bounds!.height / 2;
             const center = rotatePoint(ox, oy);
 
-            updateElement(id, {
+            updates.set(id, {
               bounds: {
                 ...original.bounds!,
                 x: center.x - original.bounds!.width / 2,
@@ -1663,6 +1673,9 @@ export function useCanvasInteractions({
               rotation: newRotation,
             });
           }
+        }
+        if (updates.size > 0) {
+          updateElements(updates);
         }
       }
 
@@ -1711,7 +1724,9 @@ export function useCanvasInteractions({
       getElementById,
       transform.scale,
       setHoveredHandle,
+      setHoveredHandle,
       updateElement,
+      updateElements,
       setSelectionBox,
     ],
   );

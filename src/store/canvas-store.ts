@@ -64,6 +64,7 @@ interface CanvasActions {
   // Element actions
   addElement: (element: CanvasElement) => void;
   updateElement: (id: string, updates: Record<string, unknown>) => void;
+  updateElements: (updates: Map<string, Record<string, unknown>>) => void;
   deleteElement: (id: string) => void;
   deleteSelected: () => void;
   duplicateSelected: () => string[];
@@ -271,6 +272,17 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       elements: state.elements.map((el) => {
         if (el.id === id) {
           return { ...el, ...updates } as CanvasElement;
+        }
+        return el;
+      }),
+    })),
+
+  updateElements: (updates) =>
+    set((state) => ({
+      elements: state.elements.map((el) => {
+        const update = updates.get(el.id);
+        if (update) {
+          return { ...el, ...update } as CanvasElement;
         }
         return el;
       }),
