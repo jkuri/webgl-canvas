@@ -22,6 +22,7 @@ import {
   ArrowRight01Icon,
   CircleIcon,
   Folder01Icon,
+  Folder02Icon,
   Image01Icon,
   Layers01Icon,
   LineIcon,
@@ -66,7 +67,7 @@ interface LayerItemProps {
 }
 
 // Get icon for element type
-function getTypeIcon(type: string) {
+function getTypeIcon(type: string, isExpanded?: boolean) {
   switch (type) {
     case "rect":
       return <HugeiconsIcon icon={SquareIcon} className="size-3.5" />;
@@ -77,7 +78,7 @@ function getTypeIcon(type: string) {
     case "path":
       return <HugeiconsIcon icon={Route01Icon} className="size-3.5" />;
     case "group":
-      return <HugeiconsIcon icon={Folder01Icon} className="size-3.5" />;
+      return <HugeiconsIcon icon={isExpanded ? Folder02Icon : Folder01Icon} className="size-3.5" />;
     case "text":
       return <HugeiconsIcon icon={TextIcon} className="size-3.5" />;
     case "image":
@@ -244,7 +245,7 @@ const LayerItem = memo(
           {isGroup && (
             <button
               type="button"
-              className="flex size-4 items-center justify-center rounded-sm hover:bg-muted-foreground/20"
+              className="flex size-4 items-center justify-center rounded-sm hover:opacity-70 focus:outline-none focus-visible:ring-0"
               onClick={handleToggleExpand}
               onMouseDown={(e) => e.stopPropagation()} // Prevent drag start when clicking expand
             >
@@ -258,7 +259,9 @@ const LayerItem = memo(
         </div>
 
         {/* Type icon */}
-        <span className={cn("mr-2 shrink-0 opacity-70", isSelected && "opacity-100")}>{getTypeIcon(element.type)}</span>
+        <span className={cn("mr-2 shrink-0 opacity-70", isSelected && "opacity-100")}>
+          {getTypeIcon(element.type, isExpanded)}
+        </span>
 
         {/* Name */}
         {isEditing ? (
@@ -277,16 +280,13 @@ const LayerItem = memo(
 
         {/* Action buttons */}
         <div
-          className={cn(
-            "flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100",
-            (!isVisible || isLocked) && "opacity-100",
-          )}
+          className={cn("flex shrink-0 items-center gap-1 transition-opacity", !isSelected && "text-muted-foreground")}
           onMouseDown={(e) => e.stopPropagation()} // Prevent drag start
         >
           <button
             type="button"
             className={cn(
-              "flex size-5 items-center justify-center rounded-sm hover:bg-muted-foreground/20",
+              "flex size-5 items-center justify-center rounded-sm hover:opacity-100 focus:outline-none focus-visible:ring-0",
               !isVisible && "text-muted-foreground",
             )}
             onClick={handleToggleVisibility}
@@ -301,7 +301,7 @@ const LayerItem = memo(
           <button
             type="button"
             className={cn(
-              "flex size-5 items-center justify-center rounded-sm hover:bg-muted-foreground/20",
+              "flex size-5 items-center justify-center rounded-sm hover:opacity-100 focus:outline-none focus-visible:ring-0",
               isLocked && "text-muted-foreground",
             )}
             onClick={handleToggleLock}
