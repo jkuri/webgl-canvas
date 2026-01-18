@@ -230,21 +230,23 @@ export function ColorPicker({ color, onChange, className, opacity = 1, onOpacity
   return (
     <div className={cn("flex w-64 flex-col gap-3", className)}>
       {/* Saturation Area */}
-      <div
-        ref={satRef}
-        className="relative h-40 w-full cursor-crosshair overflow-hidden rounded-md border shadow-sm"
-        style={{ backgroundColor: solidColor }}
-        onMouseDown={(e) => {
-          setIsDraggingSat(true);
-          handleSaturationChange(e);
-        }}
-      >
-        <div className="absolute inset-0 bg-linear-to-r from-white to-transparent" />
-        <div className="absolute inset-0 bg-linear-to-t from-black to-transparent" />
+      <div className="relative h-40 w-full overflow-hidden rounded-md border shadow-sm">
         <div
-          className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-black/20"
-          style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%` }}
-        />
+          ref={satRef}
+          className="h-full w-full cursor-crosshair"
+          style={{ backgroundColor: solidColor }}
+          onMouseDown={(e) => {
+            setIsDraggingSat(true);
+            handleSaturationChange(e);
+          }}
+        >
+          <div className="absolute inset-0 bg-linear-to-r from-white to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black to-transparent" />
+          <div
+            className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-black/20"
+            style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%` }}
+          />
+        </div>
       </div>
 
       <div className="flex gap-3">
