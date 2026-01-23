@@ -24,7 +24,7 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
   const contextMenuTarget = useCanvasStore((s) => s.contextMenuTarget);
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const elements = useCanvasStore((s) => s.elements);
-  const transform = useCanvasStore((s) => s.transform); // Added
+  const transform = useCanvasStore((s) => s.transform);
   const clipboard = useCanvasStore((s) => s.clipboard);
   const deleteSelected = useCanvasStore((s) => s.deleteSelected);
   const duplicateSelected = useCanvasStore((s) => s.duplicateSelected);
@@ -163,7 +163,7 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
             </ContextMenuItem>
             <ContextMenuSeparator />
 
-            {/* Grouping options */}
+            {}
             {selectedIds.length > 1 && (
               <ContextMenuItem onClick={groupSelected}>
                 Group Selection <ContextMenuShortcut>⌘G</ContextMenuShortcut>
@@ -176,7 +176,7 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
             )}
             {(selectedIds.length > 1 || isGroup) && <ContextMenuSeparator />}
 
-            {/* Color change - only for non-group elements */}
+            {}
             {!isGroup && (
               <>
                 <ContextMenuSub>
@@ -202,7 +202,7 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
             </ContextMenuItem>
             <ContextMenuSeparator />
 
-            {/* Export */}
+            {}
             <ContextMenuSub>
               <ContextMenuSubTrigger>Export</ContextMenuSubTrigger>
               <ContextMenuSubContent>
@@ -213,7 +213,7 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
             </ContextMenuSub>
             <ContextMenuSeparator />
 
-            {/* Convert to Outlines for text elements */}
+            {}
             {contextMenuTarget.type === "text" && (
               <>
                 <ContextMenuItem
@@ -223,17 +223,14 @@ export function CanvasContextMenu({ children, onContextMenu }: CanvasContextMenu
                       const textIdToDelete = contextMenuTarget.id;
                       const pathIds: string[] = [];
 
-                      // Add all the individual letter paths
                       for (const path of result.paths) {
                         addElement(path);
                         pathIds.push(path.id);
                       }
 
-                      // Group the paths using the store's group action
                       useCanvasStore.getState().setSelectedIds(pathIds);
                       useCanvasStore.getState().groupSelected();
 
-                      // Delete the original text element
                       setTimeout(() => {
                         useCanvasStore.getState().deleteElement(textIdToDelete);
                       }, 50);

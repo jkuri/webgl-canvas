@@ -22,98 +22,69 @@ class CanvasHistoryManager {
   private redoStack: CanvasSnapshot[] = [];
   private current: CanvasSnapshot | null = null;
 
-  /**
-   * Push a new snapshot to history. Clears redo stack.
-   */
   push(snapshot: Omit<CanvasSnapshot, "timestamp">): void {
     const fullSnapshot: CanvasSnapshot = {
       ...snapshot,
       timestamp: Date.now(),
     };
 
-    // If we have a current state, move it to undo stack
     if (this.current) {
       this.undoStack.push(this.current);
-      // Limit stack size
+
       if (this.undoStack.length > MAX_HISTORY_SIZE) {
         this.undoStack.shift();
       }
     }
 
     this.current = fullSnapshot;
-    this.redoStack = []; // Clear redo on new action
+    this.redoStack = [];
     this.scheduleSave();
   }
 
-  /**
-   * Undo: Move current to redo stack, pop from undo stack
-   */
   undo(): CanvasSnapshot | null {
     if (this.undoStack.length === 0) {
       return null;
     }
 
-    // Move current to redo
     if (this.current) {
       this.redoStack.push(this.current);
     }
 
-    // Pop from undo
     this.current = this.undoStack.pop() || null;
     this.scheduleSave();
     return this.current;
   }
 
-  /**
-   * Redo: Move current to undo stack, pop from redo stack
-   */
   redo(): CanvasSnapshot | null {
     if (this.redoStack.length === 0) {
       return null;
     }
 
-    // Move current to undo
     if (this.current) {
       this.undoStack.push(this.current);
     }
 
-    // Pop from redo
     this.current = this.redoStack.pop() || null;
     this.scheduleSave();
     return this.current;
   }
 
-  /**
-   * Get current snapshot without modifying history
-   */
   getCurrent(): CanvasSnapshot | null {
     return this.current;
   }
 
-  /**
-   * Check if undo is available
-   */
   canUndo(): boolean {
     return this.undoStack.length > 0;
   }
 
-  /**
-   * Check if redo is available
-   */
   canRedo(): boolean {
     return this.redoStack.length > 0;
   }
 
-  /**
-   * Schedule a debounced save to IndexedDB
-   */
   private scheduleSave(): void {
     this.saveToIndexedDB();
   }
 
-  /**
-   * Save history to IndexedDB
-   */
   async saveToIndexedDB(): Promise<void> {
     try {
       const data: HistoryData = {
@@ -127,9 +98,6 @@ class CanvasHistoryManager {
     }
   }
 
-  /**
-   * Load history from IndexedDB
-   */
   async loadFromIndexedDB(): Promise<CanvasSnapshot | null> {
     try {
       const data = await get<HistoryData>(DB_KEY);
@@ -145,9 +113,6 @@ class CanvasHistoryManager {
     return null;
   }
 
-  /**
-   * Clear all history
-   */
   clear(): void {
     this.undoStack = [];
     this.redoStack = [];
@@ -156,5 +121,4 @@ class CanvasHistoryManager {
   }
 }
 
-// Export singleton instance
 export const canvasHistory = new CanvasHistoryManager();

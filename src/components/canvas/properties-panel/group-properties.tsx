@@ -17,7 +17,6 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
   const updateElement = useCanvasStore((s) => s.updateElement);
   const updateElements = useCanvasStore((s) => s.updateElements);
 
-  // Calculate bounds recursively
   const getGroupBounds = (): { x: number; y: number; width: number; height: number } => {
     let minX = Infinity;
     let minY = Infinity;
@@ -57,7 +56,6 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
 
   const bounds = getGroupBounds();
 
-  // Handle Position Change (Move)
   const handleXChange = (newX: number) => {
     const dx = newX - bounds.x;
     moveChildren(dx, 0);
@@ -79,7 +77,6 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
         if (el.type === "group") {
           traverse(el.childIds);
         } else {
-          // Move leaf element
           if (el.type === "rect" || el.type === "image" || el.type === "text") {
             updates.set(id, { x: el.x + dx, y: el.y + dy });
           } else if (el.type === "ellipse") {
@@ -99,10 +96,7 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
     if (updates.size > 0) updateElements(updates);
   };
 
-  // Handle Size Change (Scale)
-  // We intercept updateElement calls from DimensionsSection
   const handleDimensionsUpdate = (id: string, updates: Record<string, unknown>) => {
-    // If it's just meta-data updates like aspect ratio lock, pass through to group
     if ("aspectRatioLocked" in updates && Object.keys(updates).length === 1) {
       updateElement(id, updates);
       return;
@@ -123,7 +117,6 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
       newHeight = Math.max(0.1, updates.height as number);
     }
 
-    // New projected bounds (assuming top-left anchor for now as per properties panel input convention)
     const newBounds = { x: newX, y: newY, width: newWidth, height: newHeight };
     const oldBounds = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
 
@@ -152,9 +145,6 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
     newB: { x: number; y: number; width: number; height: number },
     updates: Map<string, Record<string, unknown>>,
   ) => {
-    // Calculate relative position/size based on bounding box
-    // We handle each type specifically to be safe and correct.
-
     if (el.type === "rect" || el.type === "image") {
       const x = newB.x + ((el.x - oldB.x) / oldB.width) * newB.width;
       const y = newB.y + ((el.y - oldB.y) / oldB.height) * newB.height;
@@ -165,8 +155,6 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
         height: (el.height / oldB.height) * newB.height,
       });
     } else if (el.type === "ellipse") {
-      // Project center
-      // cx is absolute, so (cx - oldB.x) is offset from group left
       const relCx = (el.cx - oldB.x) / oldB.width;
       const relCy = (el.cy - oldB.y) / oldB.height;
 
@@ -234,7 +222,7 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-2">
-        {/* Position */}
+        {}
         <div className="flex flex-col gap-2">
           <SectionHeader title="Position" />
           <div className="grid grid-cols-2 gap-2">
@@ -249,11 +237,9 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
                 const newRotation = (v * Math.PI) / 180;
                 const deltaRotation = newRotation - element.rotation;
 
-                // Update group rotation
                 const updates = new Map<string, Record<string, unknown>>();
                 updates.set(element.id, { rotation: newRotation });
 
-                // Rotate children around group center
                 const groupCenterX = bounds.x + bounds.width / 2;
                 const groupCenterY = bounds.y + bounds.height / 2;
 
@@ -266,21 +252,9 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
                     if (!el) continue;
 
                     if (el.type === "group") {
-                      // Update group rotation recursively?
-                      // Or just rotate its children?
-                      // If we rotate a group, its children need to move.
-                      // The group itself might need its rotation updated if we are tracking nested group rotation.
-                      // BUT `GroupElement.rotation` is usually 0 unless we are specifically using it as a transform.
-                      // Our renderer logic now USES `GroupElement.rotation` for the selection box.
-                      // So we should NOT recursively update `rotation` of nested groups unless we want nested local transforms.
-                      // For now, let's just move children positions.
-                      // Wait, if a nested group is rotated, its local rotation should be preserved (relative to parent).
-                      // We are applying a transform to the TOP level group.
                       traverse(el.childIds);
                     } else {
-                      // Rotate leaf element position around group center
-
-                      const elUpdate: Record<string, unknown> = {}; // Initialize empty, populate inside blocks
+                      const elUpdate: Record<string, unknown> = {};
 
                       if (el.type === "line") {
                         const dx1 = el.x1 - groupCenterX;
@@ -300,9 +274,6 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
                         elUpdate.cy = groupCenterY + dcx * sin + dcy * cos;
                         elUpdate.rotation = el.rotation + deltaRotation;
                       } else if (el.type === "path") {
-                        // For paths, we need to rotate bounds... AND rotation?
-                        // PathElement has `bounds` AND `rotation`.
-                        // Update bounds center
                         const b = el.bounds;
                         const bCx = b.x + b.width / 2;
                         const bCy = b.y + b.height / 2;
@@ -319,42 +290,17 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
                         elUpdate.bounds = { ...b, x: newBoundsX, y: newBoundsY };
                         elUpdate.rotation = el.rotation + deltaRotation;
                       } else if (el.type === "rect" || el.type === "image" || el.type === "text") {
-                        // Rect, Image, Text
-                        // Just update x/y (top-left) ... WAIT.
-                        // Rect x/y is top-left. Rotating around group center means:
-                        // Center of rect moves.
-                        // AND rotation changes.
-
-                        // Using getElementBounds is safer/generalized? No, specific types are better for updates.
-                        // All these types have x, y, width, height properties except text which computes width/height but has x,y.
-                        // TextElement: x, y, rotation. Width/height comes from measurement/bounds.
-                        // But x/y is anchor.
-
                         let w = 0;
                         let h = 0;
 
                         if (el.type === "text") {
-                          // Text rotation is around x,y (anchor) usually?
-                          // getRotatedCorners for text uses bounds width/height.
-                          // Text rotation in renderer is around CENTER of bounds.
-
-                          // We need center of element.
-                          // TextElement bounds might be undefined in type definition but in practice present?
-                          // Types say `bounds?: ...`.
                           if (el.bounds) {
                             w = el.bounds.width;
                             h = el.bounds.height;
                           } else {
-                            // Fallback if no bounds
                             w = 0;
                             h = 0;
                           }
-
-                          // Text x,y is usually bottom-left or top-left depending on implementation,
-                          // but our renderer treats it as top-left of the bounding box roughly (plus ascent).
-                          // Actually, let's assume we rotate the visual center.
-                          // If we don't know bounds, we can't rotate correctly around center.
-                          // But `el.x` and `el.y` are the position.
                         } else {
                           w = el.width;
                           h = el.height;
@@ -388,7 +334,7 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
 
         <Separator />
 
-        {/* Layout */}
+        {}
         <DimensionsSection
           element={element}
           updateElement={handleDimensionsUpdate}
@@ -397,7 +343,7 @@ export function GroupProperties({ element }: GroupPropertiesProps) {
 
         <Separator />
 
-        {/* Appearance */}
+        {}
         <div className="flex flex-col gap-3 p-3">
           <SectionHeader title="Appearance" />
           <div className="grid grid-cols-2 gap-2">

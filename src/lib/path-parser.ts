@@ -1,15 +1,7 @@
-/**
- * SVG Path Parser and Tessellation
- *
- * Uses svg-pathdata npm package for robust SVG path parsing.
- * Tessellates bezier curves into line segments for WebGL rendering.
- */
-
 import earcut from "earcut";
 import polygonClipping from "polygon-clipping";
 import { SVGPathData } from "svg-pathdata";
 
-// Re-export our simplified command types for internal use
 export type PathCommandType = "M" | "L" | "C" | "Q" | "Z";
 
 export interface PathCommand {
@@ -17,20 +9,12 @@ export interface PathCommand {
   args: number[];
 }
 
-/**
- * Parse SVG path `d` attribute into normalized absolute commands
- * All commands are converted to: M (moveto), L (lineto), C (cubic bezier), Q (quadratic bezier), Z (close)
- */
 export function parsePath(d: string): PathCommand[] {
   const commands: PathCommand[] = [];
   if (!d) return commands;
 
   try {
-    // Parse the path and convert to absolute coordinates
-    const pathData = new SVGPathData(d)
-      .toAbs()
-      .normalizeHVZ() // Convert H/V to L, and ensure Z returns to start
-      .normalizeST(); // Convert S to C, T to Q
+    const pathData = new SVGPathData(d).toAbs().normalizeHVZ().normalizeST();
 
     let lastX = 0;
     let lastY = 0;
@@ -80,8 +64,6 @@ export function parsePath(d: string): PathCommand[] {
           lastY = cmd.y;
           break;
         case SVGPathData.ARC: {
-          // Convert arc to cubic bezier approximation
-          // Use lastX, lastY as start point
           const arcBeziers = arcToBeziers(
             lastX,
             lastY,
@@ -104,8 +86,7 @@ export function parsePath(d: string): PathCommand[] {
         }
         case SVGPathData.CLOSE_PATH:
           commands.push({ type: "Z", args: [] });
-          // Typically close path returns to subpath start, but SVGPathData handles geometric closure.
-          // We track positions for consecutive commands.
+
           lastX = subPathStartX;
           lastY = subPathStartY;
           break;
@@ -118,11 +99,9 @@ export function parsePath(d: string): PathCommand[] {
   return commands;
 }
 
-// Check if point P is inside Polygon Ring
-// Ray-casting algorithm
 function isPointInRing(p: [number, number], ring: [number, number][]): boolean {
   let inside = false;
-  // Loop through edges
+
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = ring[i];
     const [xj, yj] = ring[j];
@@ -134,16 +113,11 @@ function isPointInRing(p: [number, number], ring: [number, number][]): boolean {
   return inside;
 }
 
-// Check if Ring A is fully inside Ring B
-// By checking if a point of A is inside B
-// (Assuming rings don't intersect, which tessellation should handle, or we approximate)
 function isRingInside(inner: [number, number][], outer: [number, number][]): boolean {
-  // Use first point of inner ring
   if (inner.length === 0) return false;
   return isPointInRing(inner[0], outer);
 }
 
-// Get area of ring (shoelace formula) - strictly for checking size/sorting
 function getRingArea(ring: [number, number][]): number {
   let area = 0;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -152,13 +126,7 @@ function getRingArea(ring: [number, number][]): number {
   return Math.abs(area / 2);
 }
 
-// Ensure ring is CCW (Positive Area in Shoelace usually)
-// Note: polygon-clipping expects standard GeoJSON winding:
-// Exterior: CCW
-// Holes: CW
 function enforceWinding(ring: [number, number][], desiredCCW: boolean): [number, number][] {
-  // Compute Signed Area using standard formula:
-  // sum (x_i * y_{i+1} - x_{i+1} * y_i)
   let area = 0;
   for (let i = 0; i < ring.length; i++) {
     const j = (i + 1) % ring.length;
@@ -167,40 +135,13 @@ function enforceWinding(ring: [number, number][], desiredCCW: boolean): [number,
   }
   area /= 2;
 
-  // In standard cartesian (Y up): Area > 0 is CCW.
-  // In screen coords (Y down): Y is negative relative to up.
-  // Area > 0 in screen coords usually means CW?
-  // Let's just fix it relative to polygon-clipping.
-  // polygon-clipping treats input as:
-  // "The library assumes ... rings are not self-intersecting ... and have correct winding order... if they are part of MultiPolygon?"
-  // Actually PC is robust to input winding usually.
-
-  // BUT: Earcut strictly requires holes to differ.
-  // Let's force Area > 0 -> CCW?
-  // We will assume:
-  // Exteriors should be CCW.
-  // Holes should be CW.
-
-  // Let's verify: (0,0) -> (1,0) -> (1,1) -> (0,1).
-  // x*y_next: 0*0 + 1*1 + 1*1 + 0*0 = 2
-  // x_next*y: 1*0 + 1*0 + 0*1 + 0*0 = 0
-  // Area = 2/2 = 1. Positive.
-  // This path is: Right, Down, Left. That is CW in screen coords.
-  // So Positive Area = CW in Y-down.
-
-  // So:
-  // Ext (CCW) should have Negative Area?
-  // Holes (CW) should have Positive Area.
-
-  const currentIsCCW = area < 0; // Area < 0 is CCW in Screen Coords.
+  const currentIsCCW = area < 0;
 
   if (desiredCCW !== currentIsCCW) {
     return [...ring].reverse();
   }
   return ring;
 }
-
-// --- Bezier Helpers ---
 
 function arcToBeziers(
   _lastX: number,
@@ -213,11 +154,6 @@ function arcToBeziers(
   _largeArc: boolean,
   _sweep: boolean,
 ): number[][] {
-  // Use a library or standard formula to approximate arc with beziers
-  // Minimal implementation or placeholder if not strictly needed for fonts (OpenType uses quadratic/cubic primarily)
-  // But SVG paths explicitly support ARC.
-  // Converting ARC to BEZIER is complex.
-  // For now, assume common font paths from OpenType.js don't output 'A' commands (they usually convert to bezier).
   return [];
 }
 
@@ -231,9 +167,6 @@ function quadraticBezierPoint(t: number, p0: number, p1: number, p2: number): nu
   return u * u * p0 + 2 * u * t * p1 + t * t * p2;
 }
 
-// --- Tessellation & Triangulation ---
-
-// Convert Path Commands to a list of vertices for STROKE (Line Strip)
 export function pathToStrokeVertices(commands: PathCommand[], segmentsPerCurve = 16): number[] {
   const vertices: number[] = [];
   let currentX = 0;
@@ -272,25 +205,20 @@ export function pathToStrokeVertices(commands: PathCommand[], segmentsPerCurve =
         currentY = cmd.args[3];
         break;
       case "Z":
-        // Close path (line to start) - handled by rendering loop usually
         break;
     }
   }
   return vertices;
 }
 
-// Tessellate path into Vertices for FILL (Triangles) using polygon-clipping and earcut
 export function pathToFillVertices(commands: PathCommand[], segmentsPerCurve = 16): number[] {
-  // 1. Tessellate path commands into separate rings (contours)
   const rings: [number, number][][] = [];
   let currentRing: [number, number][] = [];
   let currentX = 0;
   let currentY = 0;
 
-  // Helper to finish ring
   const closeRing = () => {
     if (currentRing.length > 2) {
-      // Ensure closure (first point equals last point) for polygon-clipping
       const first = currentRing[0];
       const last = currentRing[currentRing.length - 1];
       if (Math.abs(first[0] - last[0]) > 0.001 || Math.abs(first[1] - last[1]) > 0.001) {
@@ -343,33 +271,17 @@ export function pathToFillVertices(commands: PathCommand[], segmentsPerCurve = 1
 
   if (rings.length === 0) return [];
 
-  // 2. Identify Polygons and Holes
-  // We need to group rings into Polygons [Exterior, Hole, Hole...]
-  // Algorithm: Sorting + Containment + Winding Enforcement
-
-  // Sort by area descending
   rings.sort((a, b) => getRingArea(b) - getRingArea(a));
 
-  // Structure: [Exterior, Hole, Hole...]
   const polygons: [number, number][][][] = [];
 
   for (const ring of rings) {
     let placed = false;
 
-    // Check against existing Polygons
     for (const poly of polygons) {
       const exterior = poly[0];
 
-      // Check if inside the exterior of this polygon
       if (isRingInside(ring, exterior)) {
-        // It is inside the exterior.
-        // Is it inside any hole? (Island).
-        // Simplified: If inside Ext, assume it is a Hole for this font glyph case.
-        // (Font glyphs usually don't have overlapping bodies unless unioned).
-
-        // Force Winding: Hole must be CW (Positive Area in Screen Coords).
-        // enforceWinding(ring, false); // false = CW
-
         poly.push(enforceWinding(ring, false));
         placed = true;
         break;
@@ -377,30 +289,21 @@ export function pathToFillVertices(commands: PathCommand[], segmentsPerCurve = 1
     }
 
     if (!placed) {
-      // It is a new Exterior.
-      // Force Winding: Ext must be CCW (Negative Area in Screen Coords).
       polygons.push([enforceWinding(ring, true)]);
     }
   }
 
-  // 3. Compute Union of all polygons using polygon-clipping
-  // This resolves overlaps between adjacent characters (if any) and cleans up geometry.
   let unioned: polygonClipping.MultiPolygon;
   try {
     unioned = polygonClipping.union(polygons);
   } catch {
-    // polygon-clipping can fail on degenerate/complex geometries
-    // Fall back to using the original polygons without union
     console.warn("polygon-clipping union failed, using original polygons");
     unioned = polygons;
   }
 
-  // 4. Triangulate the result
   const allVertices: number[] = [];
 
   for (const poly of unioned) {
-    // poly is [Exterior, Hole, Hole...]
-    // Flatten for earcut
     const flatCoords: number[] = [];
     const holeIndices: number[] = [];
     let _startIndex = 0;
@@ -408,25 +311,16 @@ export function pathToFillVertices(commands: PathCommand[], segmentsPerCurve = 1
     for (let i = 0; i < poly.length; i++) {
       const ring = poly[i];
       if (i > 0) {
-        holeIndices.push(flatCoords.length / 2); // earcut takes index in vertex count? No, index in input array (scalar count or vertex count?)
-        // earcut docs: "holeIndices is an array of the start indexes... in the input array"
-        // If input array is [x0, y0, x1, y1...], index is index in that array.
-        // So it is flatCoords.length.
-        // Wait, earcut checks "dim". If dim=2:
-        // "outer ring is [0...holeIndices[0]]..."
-        // It refers to index in the array.
+        holeIndices.push(flatCoords.length / 2);
       }
 
       for (const [x, y] of ring) {
         flatCoords.push(x, y);
       }
-      // polygon-clipping rings are closed.
+
       _startIndex += ring.length;
     }
 
-    // Adjust holeIndices to correct type (earcut expects number[])
-    // Earcut also requires correctness in holeIndices.
-    // If flatCoords is empty? (degenerate).
     if (flatCoords.length > 0) {
       const indices = earcut(flatCoords, holeIndices, 2);
       for (const i of indices) {

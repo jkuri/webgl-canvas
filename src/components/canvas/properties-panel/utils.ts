@@ -8,7 +8,6 @@ export interface Bounds {
   rotation: number;
 }
 
-// Helper to get bounds from element
 export function getElementBounds(element: CanvasElement): Bounds {
   if (element.type === "rect") {
     return {

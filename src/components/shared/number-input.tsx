@@ -76,7 +76,7 @@ export function NumberInput({ value, onChange, label, icon, suffix, className, s
           "h-8 border-input bg-input/20 text-xs shadow-none",
           icon || label ? "pl-8" : "px-2",
           suffix ? "pr-10" : "pr-6",
-          // Hide native internal spinners for various browsers
+
           "[appearance:textfield]",
           "[&::-webkit-outer-spin-button]:appearance-none",
           "[&::-webkit-inner-spin-button]:appearance-none",

@@ -80,7 +80,6 @@ export function CanvasToolbar() {
     try {
       const importedElements = await importSVGFromFile(file);
       if (importedElements.length > 0) {
-        // Calculate bounding box of all imported elements
         let minX = Infinity;
         let minY = Infinity;
         let maxX = -Infinity;
@@ -115,7 +114,6 @@ export function CanvasToolbar() {
               maxY = Math.max(maxY, pt.y);
             }
           } else if (el.type === "text") {
-            // Approximate text bounds
             minX = Math.min(minX, el.x);
             minY = Math.min(minY, el.y - el.fontSize);
             maxX = Math.max(maxX, el.x + el.text.length * el.fontSize * 0.6);
@@ -123,7 +121,6 @@ export function CanvasToolbar() {
           }
         }
 
-        // Calculate offset to center
         const importedCenterX = (minX + maxX) / 2;
         const importedCenterY = (minY + maxY) / 2;
         const viewCenterX = (window.innerWidth / 2 - transform.x) / transform.scale;
@@ -131,7 +128,6 @@ export function CanvasToolbar() {
         const offsetX = viewCenterX - importedCenterX;
         const offsetY = viewCenterY - importedCenterY;
 
-        // Apply offset to all elements
         const centeredElements = importedElements.map((el) => {
           if (el.type === "rect" || el.type === "image") {
             return { ...el, x: el.x + offsetX, y: el.y + offsetY };
@@ -150,7 +146,7 @@ export function CanvasToolbar() {
           }
           if (el.type === "path") {
             const newD = translatePath(el.d, offsetX, offsetY);
-            // For paths, we need to offset the bounds AND transform the d attribute
+
             return {
               ...el,
               d: newD,
@@ -179,7 +175,6 @@ export function CanvasToolbar() {
       console.error("Failed to import SVG:", error);
     }
 
-    // Reset input so same file can be imported again
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -248,7 +243,6 @@ export function CanvasToolbar() {
     const fontSize = 16;
     const text = "Text";
 
-    // Calculate initial bounds
     const textWidth = text.length * fontSize * 0.6;
     const textHeight = fontSize * 1.2;
 
@@ -274,13 +268,12 @@ export function CanvasToolbar() {
         height: textHeight,
       },
     });
-    // Automatically enter edit mode for new text
+
     setTimeout(() => {
       useCanvasStore.getState().setIsEditingText(true, newTextId);
     }, 10);
   };
 
-  // Check if any selected element is a group
   const hasGroupSelected = selectedIds.some((id) => {
     const el = elements.find((e) => e.id === id);
     return el?.type === "group";
@@ -300,9 +293,9 @@ export function CanvasToolbar() {
 
   return (
     <>
-      {/* Hidden file input for SVG import */}
+      {}
       <input ref={fileInputRef} type="file" accept=".svg,image/svg+xml" className="hidden" onChange={handleImportSVG} />
-      {/* Hidden file input for JSON project import */}
+      {}
       <input
         ref={jsonInputRef}
         type="file"
@@ -330,18 +323,18 @@ export function CanvasToolbar() {
           } catch (error) {
             console.error("Failed to open project:", error);
           }
-          // Reset input so same file can be opened again
+
           e.target.value = "";
         }}
       />
       <div className="fixed bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-xl border bg-background/80 p-1.5 shadow-2xl backdrop-blur-md">
-        {/* Menu */}
+        {}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex size-8 items-center justify-center rounded-md outline-none ring-offset-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
             <FoilLogo className="size-5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="top" sideOffset={10} className="w-56">
-            {/* File Submenu */}
+            {}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>File</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -353,7 +346,7 @@ export function CanvasToolbar() {
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            {/* Edit Submenu */}
+            {}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Edit</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -377,7 +370,7 @@ export function CanvasToolbar() {
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            {/* View Submenu */}
+            {}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>View</DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-48">
@@ -396,7 +389,7 @@ export function CanvasToolbar() {
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            {/* Object Submenu */}
+            {}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Object</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -409,7 +402,7 @@ export function CanvasToolbar() {
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            {/* Preferences Submenu */}
+            {}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Preferences</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -437,7 +430,7 @@ export function CanvasToolbar() {
 
         <Separator orientation="vertical" className="mx-1 h-6" />
 
-        {/* Tools */}
+        {}
         <div className="flex items-center gap-0.5">
           {tools.map((tool) => (
             <Button
@@ -455,7 +448,7 @@ export function CanvasToolbar() {
 
         <Separator orientation="vertical" className="mx-1 h-6" />
 
-        {/* Shapes */}
+        {}
         <div className="flex items-center gap-0.5">
           {shapes.map((shape) => (
             <Button
@@ -473,7 +466,7 @@ export function CanvasToolbar() {
 
         <Separator orientation="vertical" className="mx-1 h-6" />
 
-        {/* Zoom */}
+        {}
         <div className="flex items-center gap-0.5">
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={zoomOut} title="Zoom Out">
             <HugeiconsIcon icon={MinusSignIcon} size={16} />

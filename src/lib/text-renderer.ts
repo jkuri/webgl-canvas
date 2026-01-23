@@ -1,12 +1,8 @@
 import opentype from "opentype.js";
 import { FONT_FILES } from "./fonts";
 
-// Font cache to avoid reloading fonts
 const fontCache = new Map<string, opentype.Font>();
 
-/**
- * Get or load fonts from cache (supports fallback/compound fonts)
- */
 export async function getFont(
   fontFamily: string,
   fontWeight: string | number = "400",
@@ -14,15 +10,12 @@ export async function getFont(
   const fontName = fontFamily.split(",")[0].trim().replace(/['"]/g, "");
   const weight = String(fontWeight);
 
-  // Get font file path (now an array)
   let fontPaths = FONT_FILES[fontName]?.[weight] || FONT_FILES[fontName]?.["400"];
 
   if (!fontPaths || fontPaths.length === 0) {
-    // Fallback to Inter
     fontPaths = FONT_FILES.Inter["400"];
   }
 
-  // Load all
   const loadedFonts: opentype.Font[] = [];
 
   for (const path of fontPaths) {
@@ -43,9 +36,6 @@ export async function getFont(
   return loadedFonts;
 }
 
-/**
- * Iterate over glyphs in text, picking the best font from the list
- */
 export function forEachGlyphCompound(
   fonts: opentype.Font[],
   text: string,
@@ -57,7 +47,7 @@ export function forEachGlyphCompound(
   let currentX = x;
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
-    // Pick font: first one that supports the char (glyph index != 0), or default to first
+
     const font =
       fonts.find((f) => {
         const glyphIndex = f.charToGlyphIndex(char);
@@ -69,7 +59,7 @@ export function forEachGlyphCompound(
 
     if (i > 0) {
       const prevChar = text[i - 1];
-      // Must resolve prev font again to check if same font (kerning assumption)
+
       const prevFont = fonts.find((f) => f.charToGlyphIndex(prevChar) > 0) || fonts[0];
 
       if (prevFont === font) {
@@ -84,10 +74,6 @@ export function forEachGlyphCompound(
   }
 }
 
-/**
- * Draw text on a Canvas 2D context using OpenType.js paths
- * Supports compound fonts
- */
 export function drawTextWithOpenType(
   ctx: CanvasRenderingContext2D,
   fontOrFonts: opentype.Font | opentype.Font[],
@@ -103,11 +89,9 @@ export function drawTextWithOpenType(
   const fonts = Array.isArray(fontOrFonts) ? fontOrFonts : [fontOrFonts];
   if (fonts.length === 0) return;
 
-  // Use the helper to iterate
   forEachGlyphCompound(fonts, text, x, y, fontSize, (glyph, gx, gy, _font) => {
     const path = glyph.getPath(gx, gy, fontSize);
 
-    // Render path
     ctx.beginPath();
     for (const cmd of path.commands) {
       switch (cmd.type) {
@@ -141,9 +125,6 @@ export function drawTextWithOpenType(
   });
 }
 
-/**
- * Get the bounding box of text using OpenType.js
- */
 export function getTextBoundsSync(
   fontOrFonts: opentype.Font | opentype.Font[],
   text: string,
@@ -178,25 +159,16 @@ export function getTextBoundsSync(
   };
 }
 
-/**
- * Get the ascender height for a font at a given size
- */
 export function getFontAscender(font: opentype.Font, fontSize: number): number {
   const scale = fontSize / font.unitsPerEm;
   return font.ascender * scale;
 }
 
-/**
- * Get the descender depth for a font at a given size
- */
 export function getFontDescender(font: opentype.Font, fontSize: number): number {
   const scale = fontSize / font.unitsPerEm;
   return font.descender * scale;
 }
 
-/**
- * Preload fonts to avoid flash of unstyled text
- */
 export async function preloadFonts(): Promise<void> {
   const fontPaths = new Set<string>();
 
@@ -222,9 +194,6 @@ export async function preloadFonts(): Promise<void> {
   );
 }
 
-/**
- * Get available weights for a font family
- */
 export function getAvailableWeights(fontFamily: string): string[] {
   const fontName = fontFamily.split(",")[0].trim().replace(/['"]/g, "");
   const fontMap = FONT_FILES[fontName];

@@ -25,7 +25,7 @@ const VERTEX_SHADER = `
   uniform vec2 u_rotationCenter;
 
   void main() {
-    // Apply local offset then rotation around center
+
     vec2 pos = a_position + u_offset - u_rotationCenter;
     float cosR = cos(u_rotation);
     float sinR = sin(u_rotation);
@@ -75,7 +75,7 @@ const GRID_FRAGMENT_SHADER = `
     if (u_bgVisible > 0.5) {
         bgColor = u_bgColor;
     } else {
-        // Transparency Checkerboard
+
         float size = 10.0;
         vec2 p = floor(worldPos / size);
         float pattern = mod(p.x + p.y, 2.0);
@@ -88,16 +88,16 @@ const GRID_FRAGMENT_SHADER = `
     vec2 gridPos = mod(worldPos, spacing);
     vec2 dist = min(gridPos, spacing - gridPos);
 
-    // Line thickness (1px) aligned to pixel grid roughly
+
     float lineThickness = 1.0 / u_scale;
     float lineY = smoothstep(lineThickness, 0.0, dist.y);
     float lineX = smoothstep(lineThickness, 0.0, dist.x);
     float grid = max(lineX, lineY);
 
-    // Dynamic grid color
-    vec3 gridColor = vec3(0.92); // Light Gray
 
-    // Mix grid on top (only if background color is visible)
+    vec3 gridColor = vec3(0.92);
+
+
     if (u_bgVisible > 0.5) {
         gl_FragColor = vec4(mix(bgColor, gridColor, grid), 1.0);
     } else {
@@ -136,8 +136,7 @@ export class WebGLRenderer {
 
   private pathCache = new Map<string, PathCacheEntry>();
 
-  // Performance: Reusable buffer pool to avoid allocations during rendering
-  private vertexPool12 = new Float32Array(24); // 12 vertices (rectangles, lines)
+  private vertexPool12 = new Float32Array(24);
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -248,10 +247,8 @@ export class WebGLRenderer {
     const { x, y, scale } = transform;
     const dpr = window.devicePixelRatio;
 
-    // Convert bg color
     const bgColor = cssToRGBA(canvasBackground);
 
-    // If visible, use it as clear color (optimization, though shader overwrites)
     if (canvasBackgroundVisible) {
       gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1);
     } else {
@@ -261,9 +258,8 @@ export class WebGLRenderer {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    // Grid
     if (this.gridProgram) {
-      // biome-ignore lint/correctness/useHookAtTopLevel: WebGL method, not React hook
+      // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
       gl.useProgram(this.gridProgram);
       const posLoc = gl.getAttribLocation(this.gridProgram, "a_position");
       gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
@@ -273,16 +269,14 @@ export class WebGLRenderer {
       gl.uniform2f(gl.getUniformLocation(this.gridProgram, "u_translation"), x * dpr, y * dpr);
       gl.uniform1f(gl.getUniformLocation(this.gridProgram, "u_scale"), scale);
 
-      // Background uniforms
       gl.uniform3f(gl.getUniformLocation(this.gridProgram, "u_bgColor"), bgColor[0], bgColor[1], bgColor[2]);
       gl.uniform1f(gl.getUniformLocation(this.gridProgram, "u_bgVisible"), canvasBackgroundVisible ? 1.0 : 0.0);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
-    // Elements
     if (this.shapeProgram) {
-      // biome-ignore lint/correctness/useHookAtTopLevel: WebGL method, not React hook
+      // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
       gl.useProgram(this.shapeProgram);
       const posLoc = gl.getAttribLocation(this.shapeProgram, "a_position");
       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
@@ -293,25 +287,15 @@ export class WebGLRenderer {
       gl.uniform2f(gl.getUniformLocation(this.shapeProgram, "u_offset"), 0, 0);
       gl.uniform1f(gl.getUniformLocation(this.shapeProgram, "u_scale"), scale);
 
-      // Calculate visible bounds (View Frustum Culling)
-      // Convert screen viewport (0,0 to width,height) to world coordinates
       const visibleMinX = -x / scale;
       const visibleMinY = -y / scale;
       const visibleMaxX = (this.canvas.width / dpr - x) / scale;
       const visibleMaxY = (this.canvas.height / dpr - y) / scale;
 
-      // Render elements in order (groups are virtual, render their children)
       for (const element of elements) {
         if (element.visible === false) continue;
-        if (element.parentId) continue; // Skip elements with parents (rendered by parent group)
+        if (element.parentId) continue;
 
-        // Culling Check:
-        // If element has bounds (most do via Rect/Ellipse/Path props or explicit bounds), use them.
-        // If element is a group, we might need to check its children or combined bounds.
-        // For now, simple culling for basic shapes. Groups render children recursively, checking each.
-        // NOTE: renderElement handles recursion, so we should actually apply culling INSIDE renderElement
-        // or duplicate logic here. But wait, renderElement is recursive.
-        // Better to pass visible bounds to renderElement.
         this.renderElement(element, elements, scale, {
           minX: visibleMinX,
           minY: visibleMinY,
@@ -320,29 +304,24 @@ export class WebGLRenderer {
         });
       }
 
-      // Draw selection outlines
       const selectedIdSet = new Set(selectedIds);
       const selectedElements = elements.filter((e) => selectedIdSet.has(e.id));
       const selectedShapes = this.collectShapes(selectedElements, elements);
 
       if (selectionBox) {
-        // Marquee selection active: only draw outlines, no handles
         for (const shape of selectedShapes) {
           this.drawShapeOutline(shape, scale);
         }
       } else {
         if (selectedShapes.length === 1 && selectedElements.length === 1 && selectedElements[0].type !== "group") {
-          // Single shape: draw rotated outline with handles
           this.drawShapeOutlineWithHandles(selectedShapes[0], scale);
         } else if (selectedShapes.length > 0) {
-          // Check if we selected a single group to show rotation handles for it
           if (selectedElements.length === 1 && selectedElements[0].type === "group") {
             const group = selectedElements[0] as GroupElement;
             const obb = this.calculateGroupOBB(selectedShapes, group.rotation);
             this.drawShapesOutlines(selectedShapes, scale);
             this.drawShapeOutlineWithHandles(obb, scale);
           } else {
-            // Multiple shapes or group: draw individual outlines + bounding box
             this.drawShapesOutlines(selectedShapes, scale);
             const bounds = this.calculateBoundingBox(selectedShapes);
             this.drawBoundingBoxWithHandles(bounds, true, scale);
@@ -356,7 +335,6 @@ export class WebGLRenderer {
     }
   }
 
-  // Collect all shapes from elements (expanding groups)
   private collectShapes(elements: CanvasElement[], allElements: CanvasElement[]): Shape[] {
     const shapes: Shape[] = [];
     for (const element of elements) {
@@ -382,18 +360,13 @@ export class WebGLRenderer {
   ): void {
     if (element.visible === false) return;
 
-    // View Frustum Culling
     if (visibleBounds) {
-      // Calculate element bounds
       let ex = 0;
       let ey = 0;
       let ew = 0;
       let eh = 0;
 
       if (element.type === "group") {
-        // For groups, we could calculate combined bounds, but for now just pass check to children
-        // effectively checking each child.
-        // Optimization: Groups often don't have explicit bounds stored.
       } else if (element.type === "rect" || element.type === "image") {
         ex = element.x;
         ey = element.y;
@@ -403,14 +376,11 @@ export class WebGLRenderer {
         const el = element as TextElement;
         ex = el.x;
         ey = el.y;
-        // Text usually needs measurement. Skip culling or asume large bounds?
-        // Safest to SKIP culling for text if we don't know bounds.
-        // However, if we do bounds check:
+
         if (el.bounds) {
           ew = el.bounds.width;
           eh = el.bounds.height;
         } else {
-          // If no bounds, force render (skip culling)
           ex = visibleBounds.minX;
           ey = visibleBounds.minY;
           ew = 1;
@@ -430,8 +400,7 @@ export class WebGLRenderer {
           ew = el.bounds.width;
           eh = el.bounds.height;
         } else {
-          // If no bounds, skip culling (always render)
-          ex = visibleBounds.minX; // Force inside
+          ex = visibleBounds.minX;
           ey = visibleBounds.minY;
           ew = 1;
           eh = 1;
@@ -444,8 +413,6 @@ export class WebGLRenderer {
         eh = Math.abs(el.y2 - el.y1);
       }
 
-      // Perform intersection check (AABB)
-      // Only cull if we calculated valid bounds (width/height > 0 or specific types)
       if (ew > 0 && eh > 0) {
         if (
           ex + ew < visibleBounds.minX ||
@@ -453,7 +420,7 @@ export class WebGLRenderer {
           ey + eh < visibleBounds.minY ||
           ey > visibleBounds.maxY
         ) {
-          return; // Cull (skip rendering)
+          return;
         }
       }
     }
@@ -469,12 +436,9 @@ export class WebGLRenderer {
         this.drawLine(element as LineElement, scale);
         break;
       case "path":
-        // Path rendering would require parsing the d attribute
-        // For now, just draw the bounding box (or path if implemented)
         this.drawPath(element as PathElement);
         break;
       case "group":
-        // Render children
         for (const childId of element.childIds) {
           const child = allElements.find((e) => e.id === childId);
           if (child) {
@@ -489,10 +453,9 @@ export class WebGLRenderer {
     color: string | { ref: string; type: "gradient" | "pattern" } | null,
   ): [number, number, number, number] {
     if (!color) return [0, 0, 0, 0];
-    // Handle gradient/pattern references - use fallback color for now
-    // TODO: Implement gradient/pattern rendering in WebGL
+
     if (typeof color === "object" && "ref" in color) {
-      return [0.5, 0.5, 0.5, 1]; // Gray fallback for gradients/patterns
+      return [0.5, 0.5, 0.5, 1];
     }
     return cssToRGBA(color);
   }
@@ -502,7 +465,6 @@ export class WebGLRenderer {
     const rx = element.rx || 0;
     const ry = element.ry || 0;
 
-    // Use rounded rect logic if radius is significant
     if (rx > 0 || ry > 0) {
       this.drawRoundedRect(element, scale);
       return;
@@ -512,14 +474,12 @@ export class WebGLRenderer {
     const centerX = x + width / 2;
     const centerY = y + height / 2;
 
-    // Reset offset
     gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
 
-    // Draw fill
     if (fill) {
       const color = this.cssColorToRGBA(fill);
       color[3] *= (element.fillOpacity ?? 1) * opacity;
-      // Performance: Use pooled buffer to avoid allocations
+
       const vertices = this.vertexPool12;
       vertices[0] = x;
       vertices[1] = y;
@@ -541,7 +501,6 @@ export class WebGLRenderer {
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
-    // Draw stroke
     if (stroke) {
       const strokeColor = this.cssColorToRGBA(stroke.color);
       strokeColor[3] *= (stroke.opacity ?? 1) * opacity;
@@ -558,27 +517,24 @@ export class WebGLRenderer {
   private drawRoundedRect(element: RectElement, scale: number): void {
     const { x, y, width, height, fill, stroke, rotation, opacity } = element;
     const gl = this.gl;
-    // Clamping radius to half dimension
+
     const r = Math.min(element.rx || 0, width / 2, height / 2);
     const centerX = x + width / 2;
     const centerY = y + height / 2;
 
-    // Dynamic segment count based on zoom level and radius for smooth curves
     const segments = Math.max(16, Math.min(256, Math.ceil(r * scale)));
 
     const color = fill ? this.cssColorToRGBA(fill) : [0, 0, 0, 0];
     color[3] *= (element.fillOpacity ?? 1) * opacity;
 
-    // Define corner centers
     const cNW = { x: x + r, y: y + r };
     const cNE = { x: x + width - r, y: y + r };
     const cSE = { x: x + width - r, y: y + height - r };
     const cSW = { x: x + r, y: y + height - r };
 
-    // Function to generate corner fan vertices
     const getCornerVertices = (cx: number, cy: number, startAngle: number, endAngle: number) => {
       const verts: number[] = [];
-      verts.push(cx, cy); // center of fan
+      verts.push(cx, cy);
       for (let i = 0; i <= segments; i++) {
         const ang = startAngle + (i / segments) * (endAngle - startAngle);
         verts.push(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
@@ -587,16 +543,8 @@ export class WebGLRenderer {
     };
 
     if (fill) {
-      // 1. Central Rect: from x+r to x+width-r (full height)
-      // Actually simpler decomposition:
-      // - Center main rect: (x+r, y) to (x+w-r, y+h)
-      // - Left rect: (x, y+r) to (x+r, y+h-r)
-      // - Right rect: (x+w-r, y+r) to (x+w, y+h-r)
-      // - 4 Corners (fans)
-
       const vRects: number[] = [];
 
-      // Center Block
       const rx = x + r;
       const ry = y;
       const rw = width - 2 * r;
@@ -605,7 +553,6 @@ export class WebGLRenderer {
         vRects.push(rx, ry, rx + rw, ry, rx, ry + rh, rx, ry + rh, rx + rw, ry, rx + rw, ry + rh);
       }
 
-      // Left Block
       const lx = x;
       const ly = y + r;
       const lw = r;
@@ -614,7 +561,6 @@ export class WebGLRenderer {
         vRects.push(lx, ly, lx + lw, ly, lx, ly + lh, lx, ly + lh, lx + lw, ly, lx + lw, ly + lh);
       }
 
-      // Right Block
       const rix = x + width - r;
       const riy = y + r;
       const riw = r;
@@ -623,10 +569,8 @@ export class WebGLRenderer {
         vRects.push(rix, riy, rix + riw, riy, rix, riy + rih, rix, riy + rih, rix + riw, riy, rix + riw, riy + rih);
       }
 
-      // Reset translation
       gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
 
-      // Set up shader for fill
       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vRects), gl.STATIC_DRAW);
       gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), color[0], color[1], color[2], color[3]);
@@ -634,14 +578,7 @@ export class WebGLRenderer {
       gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_rotationCenter"), centerX, centerY);
       gl.drawArrays(gl.TRIANGLES, 0, vRects.length / 2);
 
-      // Now Corners (Triangle Fans)
-      // We need to convert fans to triangles for single draw call or draw individually
-      // Easier to verify with individual draws or one buffer update
-
       const drawFan = (pts: number[]) => {
-        // pts: cx, cy, p0x, p0y, p1x, p1y...
-        // Center is index 0, 1.
-        // Triangles: (0,1), (2,3), (4,5) -> (c, p0, p1)
         const cx = pts[0],
           cy = pts[1];
         const tris: number[] = [];
@@ -654,10 +591,10 @@ export class WebGLRenderer {
         gl.drawArrays(gl.TRIANGLES, 0, tris.length / 2);
       };
 
-      const c1 = getCornerVertices(cNW.x, cNW.y, Math.PI, 1.5 * Math.PI); // NW
-      const c2 = getCornerVertices(cNE.x, cNE.y, 1.5 * Math.PI, 2 * Math.PI); // NE
-      const c3 = getCornerVertices(cSE.x, cSE.y, 0, 0.5 * Math.PI); // SE
-      const c4 = getCornerVertices(cSW.x, cSW.y, 0.5 * Math.PI, Math.PI); // SW
+      const c1 = getCornerVertices(cNW.x, cNW.y, Math.PI, 1.5 * Math.PI);
+      const c2 = getCornerVertices(cNE.x, cNE.y, 1.5 * Math.PI, 2 * Math.PI);
+      const c3 = getCornerVertices(cSE.x, cSE.y, 0, 0.5 * Math.PI);
+      const c4 = getCornerVertices(cSW.x, cSW.y, 0.5 * Math.PI, Math.PI);
 
       drawFan(c1);
       drawFan(c2);
@@ -669,57 +606,32 @@ export class WebGLRenderer {
       const sColor = this.cssColorToRGBA(stroke.color);
       sColor[3] *= (stroke.opacity ?? 1) * opacity;
 
-      // We need to draw lines and arcs.
-      // Unlike fill, we can't use u_rotation easily with drawLineBetweenPoints because it resets rotation?
-      // Wait, update: drawLineBetweenPoints DOES NOT reset rotation if we pass scale?
-      // Actually drawLineBetweenPoints implementation:
-      // gl.bufferData ... gl.drawArrays.
-      // It DOES NOT set uniforms inside itself?
-      // Checking source... it uses global this.shapeProgram but doesn't set u_rotation or u_color?
-      // Wait, let's check drawLineBetweenPoints source again.
-      // ... It generates vertices. It does NOT set uniforms.
-      // So we can set uniforms once!
-
-      // Actually, drawLineBetweenPoints assumes "world" coordinates usually?
-      // But if we set u_rotation, we can pass "local-ish" coordinates (unrotated) and let shader rotate.
-      // However, drawLineBetweenPoints computes thickness normals. If we pass unrotated coords, the thickness might be rotated?
-      // Thickness is scalar. The offset vectors (nx, ny) are computed from dx, dy.
-      // If we use unrotated coords, dx/dy are unrotated. normals are unrotated.
-      // Shader rotates EVERYTHING (pos + normals). So thickness direction rotates with object. Correct.
-
       gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), sColor[0], sColor[1], sColor[2], sColor[3]);
       gl.uniform1f(gl.getUniformLocation(this.shapeProgram!, "u_rotation"), rotation);
       gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_rotationCenter"), centerX, centerY);
 
       const w = stroke.width;
 
-      // Top Line: (x+r, y) -> (x+w-r, y)
       this.drawLineBetweenPoints({ x: x + r, y: y }, { x: x + width - r, y: y }, w, 1);
-      // Bottom Line
+
       this.drawLineBetweenPoints({ x: x + r, y: y + height }, { x: x + width - r, y: y + height }, w, 1);
-      // Left Line
+
       this.drawLineBetweenPoints({ x: x, y: y + r }, { x: x, y: y + height - r }, w, 1);
-      // Right Line
+
       this.drawLineBetweenPoints({ x: x + width, y: y + r }, { x: x + width, y: y + height - r }, w, 1);
 
-      // Now Arcs for corners.
-      // We effectively need to draw a "thick line" arc.
-      // Approximated by small segments with round caps at joints.
       const drawArcStroke = (cx: number, cy: number, start: number, end: number) => {
-        // Use same dynamic segment count as fill
         const halfW = w / 2;
 
-        // Helper to draw a rotated disc (drawDisc resets rotation, so we pre-rotate position)
         const cos = Math.cos(rotation);
         const sin = Math.sin(rotation);
         const drawRotatedDisc = (px: number, py: number, radius: number) => {
-          // Pre-rotate position around center
           const dx = px - centerX;
           const dy = py - centerY;
           const rx = centerX + dx * cos - dy * sin;
           const ry = centerY + dx * sin + dy * cos;
           this.drawDisc(rx, ry, radius, gl);
-          // Restore rotation uniforms for subsequent line drawing
+
           gl.uniform1f(gl.getUniformLocation(this.shapeProgram!, "u_rotation"), rotation);
           gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_rotationCenter"), centerX, centerY);
           gl.uniform4f(
@@ -737,10 +649,10 @@ export class WebGLRenderer {
           const p1 = { x: cx + Math.cos(a1) * r, y: cy + Math.sin(a1) * r };
           const p2 = { x: cx + Math.cos(a2) * r, y: cy + Math.sin(a2) * r };
           this.drawLineBetweenPoints(p1, p2, w, 1);
-          // Draw round caps at joints to fill gaps
+
           drawRotatedDisc(p1.x, p1.y, halfW);
         }
-        // Draw cap at the end point too
+
         const endP = { x: cx + Math.cos(end) * r, y: cy + Math.sin(end) * r };
         drawRotatedDisc(endP.x, endP.y, halfW);
       };
@@ -757,28 +669,24 @@ export class WebGLRenderer {
     const gl = this.gl;
     const segments = Math.max(32, Math.ceil(Math.max(rx, ry) / 2));
 
-    // Draw fill
     if (fill) {
       const color = this.cssColorToRGBA(fill);
       color[3] *= (element.fillOpacity ?? 1) * opacity;
 
-      // Create triangle fan vertices
       const vertices: number[] = [];
       for (let i = 0; i <= segments; i++) {
         const angle = (i / segments) * Math.PI * 2;
         vertices.push(cx + Math.cos(angle) * rx, cy + Math.sin(angle) * ry);
       }
-      // Close the fan
-      vertices.push(cx + rx, cy); // Back to start
 
-      // Convert fan to triangles
+      vertices.push(cx + rx, cy);
+
       const triangleVertices: number[] = [];
       for (let i = 0; i < segments; i++) {
-        // Center point
         triangleVertices.push(cx, cy);
-        // Current point
+
         triangleVertices.push(vertices[i * 2], vertices[i * 2 + 1]);
-        // Next point
+
         triangleVertices.push(vertices[(i + 1) * 2], vertices[(i + 1) * 2 + 1]);
       }
 
@@ -791,7 +699,6 @@ export class WebGLRenderer {
       gl.drawArrays(gl.TRIANGLES, 0, segments * 3);
     }
 
-    // Draw stroke
     if (stroke) {
       const strokeColor = this.cssColorToRGBA(stroke.color);
       strokeColor[3] *= (stroke.opacity ?? 1) * opacity;
@@ -799,20 +706,17 @@ export class WebGLRenderer {
       gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...strokeColor);
       gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
 
-      // Draw ellipse outline as line segments
       const cos = Math.cos(rotation);
       const sin = Math.sin(rotation);
       for (let i = 0; i < segments; i++) {
         const angle1 = (i / segments) * Math.PI * 2;
         const angle2 = ((i + 1) / segments) * Math.PI * 2;
 
-        // Local coordinates
         const lx1 = Math.cos(angle1) * rx;
         const ly1 = Math.sin(angle1) * ry;
         const lx2 = Math.cos(angle2) * rx;
         const ly2 = Math.sin(angle2) * ry;
 
-        // Rotate and translate
         const p1 = {
           x: cx + lx1 * cos - ly1 * sin,
           y: cy + lx1 * sin + ly1 * cos,
@@ -839,18 +743,13 @@ export class WebGLRenderer {
     gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...color);
     gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), 0, 0);
 
-    // Calculate line angle
     const dx = x2 - x1;
     const dy = y2 - y1;
     const angle = Math.atan2(dy, dx);
     const length = Math.sqrt(dx * dx + dy * dy);
 
-    // Marker size
     const markerSize = Math.max(stroke.width * 3, 10);
-    // Adjustment to shorten line so it doesn't overlap with marker
-    // We want the line to stop at the "base" of the marker
-    // For arrow (open), we want the line to go all the way to the tip (or close to it)
-    // For filled shapes (triangle, circle, etc), we want it to stop at the base
+
     let startOffset = 0;
     let endOffset = 0;
 
@@ -874,7 +773,6 @@ export class WebGLRenderer {
         y: y2 - sin * endOffset,
       };
 
-      // Draw main line
       if (stroke.dashArray && stroke.dashArray.length > 0) {
         this.drawDashedLine(adjustedStart, adjustedEnd, stroke.width, stroke.dashArray);
       } else {
@@ -882,9 +780,7 @@ export class WebGLRenderer {
       }
     }
 
-    // Draw markers
     if (markerStart && markerStart !== "none") {
-      // For start marker, angle is opposite to line direction
       this.drawMarker(x1, y1, angle + Math.PI, stroke.width, scale, markerStart);
     }
     if (markerEnd && markerEnd !== "none") {
@@ -911,7 +807,6 @@ export class WebGLRenderer {
     while (currentDist < len) {
       const dashLen = dashArray[index % dashArray.length];
       if (index % 2 === 0) {
-        // Dash
         const drawLen = Math.min(dashLen, len - currentDist);
         const p1 = {
           x: start.x + dirX * currentDist,
@@ -952,24 +847,17 @@ export class WebGLRenderer {
     };
 
     if (type === "arrow") {
-      // Arrow shape (open V-shape stroke) with rounded tip and caps
-      // Tip at (0,0), base points at (-size, -halfSize) and (-size, halfSize)
-
       const pTip = { x: 0, y: 0 };
       const pTop = { x: -size, y: -halfSize };
       const pBot = { x: -size, y: halfSize };
 
-      // Transform all points
       const vTip = transform(pTip);
       const vTop = transform(pTop);
       const vBot = transform(pBot);
 
-      // Draw the two legs
       this.drawLineBetweenPoints(vTop, vTip, lineWidth, 1);
       this.drawLineBetweenPoints(vBot, vTip, lineWidth, 1);
 
-      // Draw rounded caps and join
-      // We simulate rounded corners by drawing circles at the vertices
       const radius = lineWidth / 2;
       this.drawDisc(vTip.x, vTip.y, radius, gl);
       this.drawDisc(vTop.x, vTop.y, radius, gl);
@@ -977,8 +865,6 @@ export class WebGLRenderer {
 
       return;
     } else if (type === "triangle") {
-      // Equilateral triangle
-      //  0,0 is tip. Base is back.
       const p1 = { x: 0, y: 0 };
       const p2 = { x: -size, y: -halfSize };
       const p3 = { x: -size, y: halfSize };
@@ -995,10 +881,9 @@ export class WebGLRenderer {
       const v3 = transform(p3);
       vertices = new Float32Array([v1.x, v1.y, v2.x, v2.y, v3.x, v3.y]);
     } else if (type === "circle" || type === "round") {
-      // Approximate circle with 16 segments
       const segments = 16;
       const radius = halfSize;
-      const center = { x: -radius, y: 0 }; // Center back so tip touches point
+      const center = { x: -radius, y: 0 };
       const circleVerts = [];
       for (let i = 0; i < segments; i++) {
         const a1 = (i / segments) * Math.PI * 2;
@@ -1020,7 +905,7 @@ export class WebGLRenderer {
       const v2 = transform(p2);
       const v3 = transform(p3);
       const v4 = transform(p4);
-      // 2 triangles
+
       vertices = new Float32Array([v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, v1.x, v1.y, v3.x, v3.y, v4.x, v4.y]);
     } else if (type === "square") {
       const p1 = { x: 0, y: -halfSize };
@@ -1033,7 +918,6 @@ export class WebGLRenderer {
       const v3 = transform(p3);
       const v4 = transform(p4);
 
-      // 2 triangles
       vertices = new Float32Array([v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, v1.x, v1.y, v3.x, v3.y, v4.x, v4.y]);
     } else {
       vertices = new Float32Array([]);
@@ -1057,16 +941,13 @@ export class WebGLRenderer {
     const centerX = x + width / 2;
     const centerY = y + height / 2;
 
-    // Check cache
     let cached = this.pathCache.get(id);
 
-    // Invalidate if d changed
     if (cached && cached.d !== d) {
       cached = undefined;
     }
 
     if (!cached) {
-      // Parse path commands
       const commands = parsePath(d);
       if (commands.length === 0) return;
 
@@ -1077,17 +958,14 @@ export class WebGLRenderer {
         fillVertices = fill ? new Float32Array(pathToFillVertices(commands)) : new Float32Array(0);
         strokeVertices = stroke ? new Float32Array(pathToStrokeVertices(commands, stroke.width)) : new Float32Array(0);
       } catch (e) {
-        // Path parsing can fail for complex/degenerate geometries
         console.warn("Failed to parse path:", id, e);
         fillVertices = new Float32Array(0);
         strokeVertices = new Float32Array(0);
       }
 
-      // Calculate native bounds from vertices
       let minX = Infinity;
       let minY = Infinity;
-      // Sample vertices to find min X/Y.
-      // Note: fillVertices is [x, y, x, y...].
+
       const samples = fillVertices.length > 0 ? fillVertices : strokeVertices;
       if (samples.length > 0) {
         for (let i = 0; i < samples.length; i += 2) {
@@ -1108,12 +986,10 @@ export class WebGLRenderer {
       this.pathCache.set(id, cached);
     }
 
-    // Calculate translation delta
     const dx = element.bounds.x - cached.nativeBounds.x;
     const dy = element.bounds.y - cached.nativeBounds.y;
     gl.uniform2f(gl.getUniformLocation(this.shapeProgram!, "u_offset"), dx, dy);
 
-    // Draw fill
     if (fill && cached.vertices.length >= 6) {
       const color = this.cssColorToRGBA(fill);
       color[3] *= (element.fillOpacity ?? 1) * opacity;
@@ -1126,7 +1002,6 @@ export class WebGLRenderer {
       gl.drawArrays(gl.TRIANGLES, 0, cached.vertices.length / 2);
     }
 
-    // Draw stroke
     if (stroke && cached.strokeVertices.length >= 6) {
       const strokeColor = typeof stroke.color === "string" ? stroke.color : "#000000";
       const color = this.cssColorToRGBA(strokeColor);
@@ -1187,11 +1062,6 @@ export class WebGLRenderer {
   }
 
   private calculateGroupOBB(shapes: Shape[], rotation: number): RectElement {
-    // 1. Rotate all corners by -rotation around (0,0) to align with axes
-    // 2. Find min/max bounds (Aligned Bounding Box)
-    // 3. Create RectElement with these dimensions, rotated by +rotation
-    // Note: We rotate around (0,0) because we don't know the group center yet.
-
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
@@ -1203,7 +1073,6 @@ export class WebGLRenderer {
     for (const shape of shapes) {
       const corners = this.getRotatedCorners(shape);
       for (const corner of corners) {
-        // Rotate around (0,0)
         const rx = corner.x * cos - corner.y * sin;
         const ry = corner.x * sin + corner.y * cos;
 
@@ -1217,21 +1086,14 @@ export class WebGLRenderer {
     const width = maxX - minX;
     const height = maxY - minY;
 
-    // The center of the aligned box is (minX + w/2, minY + h/2)
     const alignedCenterX = minX + width / 2;
     const alignedCenterY = minY + height / 2;
 
-    // Rotate the center back to world space
     const cosBack = Math.cos(rotation);
     const sinBack = Math.sin(rotation);
 
     const worldCenterX = alignedCenterX * cosBack - alignedCenterY * sinBack;
     const worldCenterY = alignedCenterX * sinBack + alignedCenterY * cosBack;
-
-    // The RectElement takes x,y as top-left corner.
-    // But getRotatedCorners rotates around center (x+w/2, y+h/2).
-    // So if we set x/y such that centerX/Y matches worldCenterX/Y, we are good.
-    // x + w/2 = worldCenterX => x = worldCenterX - w/2
 
     return {
       type: "rect",
@@ -1316,21 +1178,19 @@ export class WebGLRenderer {
 
         const textShape = shape as TextElement;
 
-        // Use stored bounds if available, otherwise estimate
         if (textShape.bounds) {
           width = textShape.bounds.width;
           height = textShape.bounds.height;
-          // bounds are relative to x,y
+
           boundsX = textShape.x + textShape.bounds.x;
           boundsY = textShape.y + textShape.bounds.y;
         } else {
           width = textShape.text.length * textShape.fontSize * 0.6;
           height = textShape.fontSize * 1.2;
           boundsX = textShape.x;
-          boundsY = textShape.y - textShape.fontSize; // Basic estimation
+          boundsY = textShape.y - textShape.fontSize;
         }
 
-        // Rotate around visual center (same as text-overlay.tsx)
         const centerX = boundsX + width / 2;
         const centerY = boundsY + height / 2;
         const cos = Math.cos(shape.rotation);
@@ -1364,7 +1224,6 @@ export class WebGLRenderer {
         }));
       }
       default:
-        // For polygon, polyline - return empty corners for now (or implement bounding box)
         return [];
     }
   }
@@ -1385,7 +1244,6 @@ export class WebGLRenderer {
     const nx = (-dy / len) * (adjustedWidth / 2);
     const ny = (dx / len) * (adjustedWidth / 2);
 
-    // Performance: Use pooled buffer to avoid allocations
     const v = this.vertexPool12;
     v[0] = p1.x - nx;
     v[1] = p1.y - ny;
@@ -1410,10 +1268,9 @@ export class WebGLRenderer {
     const handleBorder = 1 / scale;
     const hs = handleSize / 2;
     const hb = handleBorder;
-    // Blue border #0099ff
+
     const strokeColor: [number, number, number, number] = [0, 0.6, 1, 1];
 
-    // Performance: Use pooled buffer for outer (border)
     gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...strokeColor);
     const v = this.vertexPool12;
     v[0] = x - hs - hb;
@@ -1432,7 +1289,6 @@ export class WebGLRenderer {
     gl.bufferData(gl.ARRAY_BUFFER, v.subarray(0, 12), gl.DYNAMIC_DRAW);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // Inner (white fill) - reuse pooled buffer
     gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), 1, 1, 1, 1);
     v[0] = x - hs;
     v[1] = y - hs;
@@ -1453,7 +1309,7 @@ export class WebGLRenderer {
 
   private drawShapeOutline(shape: Shape, scale: number): void {
     const gl = this.gl;
-    // Blue outline #0099ff
+
     const strokeColor: [number, number, number, number] = [0, 0.6, 1, 1];
     const borderWidth = 1.5;
 
@@ -1483,8 +1339,6 @@ export class WebGLRenderer {
     this.resetRotation();
     gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), ...strokeColor);
 
-    // Pre-allocate array? It's hard to know exact size because lines are 1 segment, others are 4.
-    // Let's use a standard array and convert to Float32Array at the end, or chunks.
     const vertices: number[] = [];
 
     for (const shape of shapes) {
@@ -1508,7 +1362,6 @@ export class WebGLRenderer {
         const nx = (-dy / len) * halfWidth;
         const ny = (dx / len) * halfWidth;
 
-        // 6 vertices per segment (2 triangles)
         vertices.push(
           p1.x - nx,
           p1.y - ny,
@@ -1535,7 +1388,7 @@ export class WebGLRenderer {
 
   private drawShapeOutlineWithHandles(shape: Shape, scale: number): void {
     const gl = this.gl;
-    // Blue outline #0099ff
+
     const strokeColor: [number, number, number, number] = [0, 0.6, 1, 1];
     const borderWidth = 1.5;
 
@@ -1546,15 +1399,14 @@ export class WebGLRenderer {
 
     if (shape.type === "line") {
       this.drawLineBetweenPoints(corners[0], corners[1], borderWidth, scale);
-      // Draw handles at endpoints
+
       this.drawHandle(corners[0].x, corners[0].y, scale);
       this.drawHandle(corners[1].x, corners[1].y, scale);
     } else {
-      // Draw outline
       for (let i = 0; i < 4; i++) {
         this.drawLineBetweenPoints(corners[i], corners[(i + 1) % 4], borderWidth, scale);
       }
-      // Draw handles at corners
+
       for (const corner of corners) {
         this.drawHandle(corner.x, corner.y, scale);
       }
@@ -1564,7 +1416,7 @@ export class WebGLRenderer {
   private drawBoundingBoxWithHandles(bounds: BoundingBox, _isMultiSelect: boolean, scale: number): void {
     const { x, y, width, height } = bounds;
     const gl = this.gl;
-    // Blue outline #0099ff
+
     const strokeColor: [number, number, number, number] = [0, 0.6, 1, 1];
     const borderWidth = 1 / scale;
 
@@ -1607,14 +1459,12 @@ export class WebGLRenderer {
 
     this.resetRotation();
 
-    // Fill - Blue with low opacity (0.1)
     gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), 0, 0.6, 1, 0.1);
     const fillVerts = new Float32Array([x, y, x + w, y, x, y + h, x, y + h, x + w, y, x + w, y + h]);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, fillVerts, gl.STATIC_DRAW);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // Border - Blue #0099ff
     const lw = 1 / scale;
     gl.uniform4f(gl.getUniformLocation(this.shapeProgram!, "u_color"), 0, 0.6, 1, 1);
     const borders = [

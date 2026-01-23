@@ -2,22 +2,17 @@ import { create } from "zustand";
 import { canvasHistory } from "@/lib/canvas-history";
 import type { CanvasElement, GroupElement, ResizeHandle, SmartGuide, Tool, Transform } from "@/types";
 
-// Flag to skip auto-save when restoring from undo/redo
 let isRestoringFromHistory = false;
 
 interface CanvasState {
-  // Elements (replaces shapes)
   elements: CanvasElement[];
   selectedIds: string[];
-  expandedGroupIds: string[]; // For layers panel UI
+  expandedGroupIds: string[];
 
-  // Clipboard
   clipboard: CanvasElement[];
 
-  // Transform
   transform: Transform;
 
-  // Tools & Interaction
   activeTool: Tool;
   isSpaceHeld: boolean;
   isPanning: boolean;
@@ -30,38 +25,31 @@ interface CanvasState {
   hoveredHandle: ResizeHandle;
   activeResizeHandle: ResizeHandle;
 
-  // Context menu
   contextMenuTarget: CanvasElement | null;
 
-  // Export state
   isExporting: boolean;
 
-  // Selection box
   selectionBox: { startX: number; startY: number; endX: number; endY: number } | null;
 
-  // Page Settings
   canvasBackground: string;
   canvasBackgroundVisible: boolean;
 
-  // Snapping & Guides
   snapToGrid: boolean;
   snapToObjects: boolean;
   snapToGeometry: boolean;
   gridSize: number;
   smartGuides: SmartGuide[];
 
-  // View Mode
   isViewMode: boolean;
 }
 
 interface CanvasActions {
-  // ... existing actions
   setSnapToGrid: (enabled: boolean) => void;
   setSnapToObjects: (enabled: boolean) => void;
   setSnapToGeometry: (enabled: boolean) => void;
   setGridSize: (size: number) => void;
   setSmartGuides: (guides: SmartGuide[]) => void;
-  // Element actions
+
   addElement: (element: CanvasElement) => void;
   updateElement: (id: string, updates: Record<string, unknown>) => void;
   updateElements: (updates: Map<string, Record<string, unknown>>) => void;
@@ -73,38 +61,29 @@ interface CanvasActions {
   bringForward: (id: string) => void;
   sendBackward: (id: string) => void;
 
-  // Grouping actions
   groupSelected: () => string | null;
   ungroupSelected: () => void;
 
-  // Clipboard actions
   copySelected: () => void;
   paste: () => void;
 
-  // Transform actions for elements
   flipHorizontal: () => void;
   flipVertical: () => void;
 
-  // Lock actions
   toggleLock: () => void;
 
-  // Visibility actions
   setElementVisibility: (id: string, visible: boolean) => void;
 
-  // Layers panel
   toggleGroupExpanded: (groupId: string) => void;
   renameElement: (id: string, name: string) => void;
 
-  // Import action
   importElements: (elements: CanvasElement[]) => void;
 
-  // Selection actions
   setSelectedIds: (ids: string[]) => void;
   selectAll: () => void;
   clearSelection: () => void;
   toggleSelection: (id: string) => void;
 
-  // Transform actions
   setTransform: (transform: Partial<Transform>) => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -112,11 +91,9 @@ interface CanvasActions {
   resetView: () => void;
   panToCenter: (scale?: number, center?: { x: number; y: number }) => void;
 
-  // Tool actions
   setActiveTool: (tool: Tool) => void;
   setIsSpaceHeld: (held: boolean) => void;
 
-  // Interaction state
   setIsPanning: (panning: boolean) => void;
   setIsDragging: (dragging: boolean) => void;
   setIsResizing: (resizing: boolean, handle?: ResizeHandle) => void;
@@ -129,39 +106,30 @@ interface CanvasActions {
   setIsExporting: (isExporting: boolean) => void;
   setSelectionBox: (box: { startX: number; startY: number; endX: number; endY: number } | null) => void;
 
-  // Snapping actions
-  // setSnapToGrid... removed duplicates
-  // Helpers
   getElementById: (id: string) => CanvasElement | undefined;
   getSelectedElements: () => CanvasElement[];
-  getRenderOrder: () => CanvasElement[]; // Flattened render order (excludes groups, includes children)
-  getTopLevelElements: () => CanvasElement[]; // Elements without parents
+  getRenderOrder: () => CanvasElement[];
+  getTopLevelElements: () => CanvasElement[];
   getChildrenOfGroup: (groupId: string) => CanvasElement[];
   getParentGroup: (elementId: string) => GroupElement | undefined;
 
-  // Page Actions
   setCanvasBackground: (color: string) => void;
   setCanvasBackgroundVisible: (visible: boolean) => void;
 
-  // View Mode
   setViewMode: (viewMode: boolean) => void;
 
-  // Drag and Drop
   moveElement: (elementId: string, targetId: string | null, position: "before" | "after" | "inside") => void;
 
-  // History / Persistence
   pushHistory: () => void;
   undo: () => void;
   redo: () => void;
   loadFromStorage: () => Promise<void>;
 
-  // File operations
   newProject: () => void;
   exportProject: () => void;
   openProject: () => void;
 }
 
-// Helper to generate default element names
 function generateElementName(type: CanvasElement["type"], elements: CanvasElement[]): string {
   const prefix =
     type === "rect"
@@ -185,7 +153,6 @@ function generateElementName(type: CanvasElement["type"], elements: CanvasElemen
   return `${prefix} ${count}`;
 }
 
-// Helper to deep clone an element and offset it
 const cloneElement = (element: CanvasElement, newId: string, offset: number = 20): CanvasElement => {
   const copy = { ...element, id: newId, name: `${element.name} Copy` };
 
@@ -213,7 +180,6 @@ const cloneElement = (element: CanvasElement, newId: string, offset: number = 20
   return copy;
 };
 
-// Helper to recursively get all descendants of a group
 const getDescendants = (
   groupId: string,
   elements: CanvasElement[],
@@ -234,12 +200,10 @@ const getDescendants = (
   return collected;
 };
 
-// Performance: Cached element index map for O(1) lookups
 let elementIndexMap: Map<string, number> | null = null;
 let lastElements: CanvasElement[] | null = null;
 
 function getElementIndex(elements: CanvasElement[], id: string): number {
-  // Invalidate cache if elements array changed
   if (elements !== lastElements) {
     elementIndexMap = new Map();
     for (let i = 0; i < elements.length; i++) {
@@ -251,7 +215,6 @@ function getElementIndex(elements: CanvasElement[], id: string): number {
 }
 
 export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => ({
-  // Initial state
   elements: [],
   selectedIds: [],
   expandedGroupIds: [],
@@ -280,12 +243,10 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   smartGuides: [],
   isViewMode: false,
 
-  // Element actions
   addElement: (element) => set((state) => ({ elements: [...state.elements, element], selectedIds: [element.id] })),
 
   updateElement: (id, updates) =>
     set((state) => {
-      // Performance: Use cached index map for O(1) lookup
       const index = getElementIndex(state.elements, id);
       if (index === -1) return state;
 
@@ -296,10 +257,8 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
   updateElements: (updates) =>
     set((state) => {
-      // Performance: Skip if no updates
       if (updates.size === 0) return state;
 
-      // Performance: Use cached index map for O(1) lookups
       const newElements = [...state.elements];
       let hasChanges = false;
 
@@ -348,21 +307,18 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
     const newElements: CanvasElement[] = [];
     const newSelectedIds: string[] = [];
-    const idMap = new Map<string, string>(); // Old ID -> New ID
+    const idMap = new Map<string, string>();
 
-    // 1. Identify top-level selected elements (elements whose parents are NOT also selected)
-    // This avoids double-cloning children of selected groups
     const topLevelSelected = state.selectedIds.filter((id) => {
       const element = state.elements.find((e) => e.id === id);
       if (!element) return false;
-      // If element has a parent, and that parent is ALSO selected, skip this element (it will be cloned by the parent)
+
       if (element.parentId && state.selectedIds.includes(element.parentId)) {
         return false;
       }
       return true;
     });
 
-    // 2. Gather all descendants for these top-level elements
     const elementsToClone: CanvasElement[] = [];
 
     for (const id of topLevelSelected) {
@@ -376,7 +332,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       }
     }
 
-    // 3. Create new IDs and clone elements
     for (const element of elementsToClone) {
       const newId = crypto.randomUUID();
       idMap.set(element.id, newId);
@@ -384,30 +339,13 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
     for (const element of elementsToClone) {
       const newId = idMap.get(element.id)!;
-      // Apply offset ONLY to top-level items in this selection batch
-      // Descendants naturally follow their parents if parents are offset,
-      // BUT `cloneElement` applies offset to geometry.
-      // If we offset a group, we shouldn't double-offset children if they are absolute.
-      // However, our `cloneElement` applies offset to absolute coords.
-      // So effectively, we shift EVERYTHING in the batch by 20px.
 
       const newElement = cloneElement(element, newId, 20);
 
-      // Re-link hierarchy
       if (newElement.parentId && idMap.has(newElement.parentId)) {
         newElement.parentId = idMap.get(newElement.parentId);
       } else {
-        // If parent wasn't selected/cloned, drop the parent ref (orphan it? or keep original parent?)
-        // If we duplicate a selection, likely we want new copies to be siblings of originals (share parent)
-        // unless parent was also duplicated.
-        // Current logic: if parent NOT in map, keep original parentId (add to same group)
-        // OR make it top-level?
-        // Figma behavior: Duplicate inside group -> stays in group.
         newElement.parentId = element.parentId;
-
-        // If we simply keep parentId, we must ensure the parent group gets updated with new child ID.
-        // But `updateElement` isn't called here. Use `set` logic later?
-        // Actually, we must push updates to the parent group element if it exists in state but not in clone set.
       }
 
       if (newElement.type === "group") {
@@ -416,26 +354,20 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
       newElements.push(newElement);
 
-      // If this was one of the originally selected top-level items, select the new copy
       if (topLevelSelected.includes(element.id)) {
         newSelectedIds.push(newId);
       }
     }
 
-    // 4. Handle adding to existing parents (siblings of original selection)
     const updatedState = [...state.elements, ...newElements];
 
-    // We need to update existing parents to include these new children
     const elementsWithNonClonedParents = newElements.filter((e) => e.parentId && !idMap.has(e.parentId));
 
     for (const newEl of elementsWithNonClonedParents) {
       const parentIdx = updatedState.findIndex((e) => e.id === newEl.parentId);
       if (parentIdx !== -1) {
         const parent = updatedState[parentIdx] as GroupElement;
-        // Insert new child after the original child?
-        // Find index of original ID
-        // const originalId = ... (we'd need reverse lookup or iterate idMap)
-        // Simplest: append for now.
+
         updatedState[parentIdx] = {
           ...parent,
           childIds: [...parent.childIds, newEl.id],
@@ -484,7 +416,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       return { elements: newElements };
     }),
 
-  // Grouping actions
   groupSelected: () => {
     const state = get();
     if (state.selectedIds.length < 2) return null;
@@ -492,7 +423,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     const groupId = crypto.randomUUID();
     const groupName = generateElementName("group", state.elements);
 
-    // Get selected elements that don't have a parent (top-level only)
     const selectedTopLevel = state.selectedIds.filter((id) => {
       const element = state.elements.find((e) => e.id === id);
       return element && !element.parentId;
@@ -500,7 +430,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
     if (selectedTopLevel.length < 2) return null;
 
-    // Sort by z-index (position in elements array) to preserve visual stacking order
     selectedTopLevel.sort((a, b) => {
       const indexA = state.elements.findIndex((e) => e.id === a);
       const indexB = state.elements.findIndex((e) => e.id === b);
@@ -551,11 +480,9 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       };
     }),
 
-  // Clipboard actions
   copySelected: () => {
     const state = get();
-    // Similar logic to duplicate: gather all descendants
-    // 1. Identify top-level selected
+
     const topLevelSelected = state.selectedIds.filter((id) => {
       const element = state.elements.find((e) => e.id === id);
       if (!element) return false;
@@ -565,7 +492,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       return true;
     });
 
-    // 2. Collect descendants
     const elementsToCopy: CanvasElement[] = [];
     for (const id of topLevelSelected) {
       const element = state.elements.find((e) => e.id === id);
@@ -587,47 +513,32 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
     const newElements: CanvasElement[] = [];
     const newSelectedIds: string[] = [];
-    const idMap = new Map<string, string>(); // Old ID -> New ID
+    const idMap = new Map<string, string>();
 
-    // 1. Generate new IDs map
     for (const element of state.clipboard) {
       const newId = crypto.randomUUID();
       idMap.set(element.id, newId);
     }
 
-    // 2. Clone and fix references
-    // Identify top-level items in clipboard relative to the clipboard set
-    // (An item is top-level in clipboard if its parent is NOT in clipboard)
     const topLevelInClipboard = state.clipboard.filter((e) => !e.parentId || !idMap.has(e.parentId));
 
     for (const element of state.clipboard) {
       const newId = idMap.get(element.id)!;
 
-      // Apply offset ONLY to top-level pasted items
-      // (Descendants follow 20px via parent, or via cloneElement logic)
-      // Actually cloneElement adds 20px to absolute geometry.
-      // If we clone everything with 20px offset, we shift the whole group 20px.
-      // This is correct for absolute coords.
       const newElement = cloneElement(element, newId, 20);
 
-      // Fix parentId
       if (newElement.parentId && idMap.has(newElement.parentId)) {
         newElement.parentId = idMap.get(newElement.parentId);
       } else {
-        // If parent logic above says it's top-level in clipboard, we unset parentId
-        // so it pastes to root (or we could paste into current selection if we wanted nesting)
-        // For now: paste to root
         newElement.parentId = undefined;
       }
 
-      // Fix childIds for groups
       if (newElement.type === "group") {
         newElement.childIds = newElement.childIds.map((cid) => idMap.get(cid)).filter(Boolean) as string[];
       }
 
       newElements.push(newElement);
 
-      // Select top-level pasted items
       if (topLevelInClipboard.find((pl) => pl.id === element.id)) {
         newSelectedIds.push(newId);
       }
@@ -639,7 +550,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     }));
   },
 
-  // Transform actions for elements
   flipHorizontal: () =>
     set((state) => {
       if (state.selectedIds.length === 0) return state;
@@ -647,7 +557,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       const selectedElements = state.elements.filter((e) => state.selectedIds.includes(e.id) && e.type !== "group");
       if (selectedElements.length === 0) return state;
 
-      // Calculate bounding box center
       let minX = Infinity;
       let maxX = -Infinity;
       for (const element of selectedElements) {
@@ -729,7 +638,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       };
     }),
 
-  // Lock actions
   toggleLock: () =>
     set((state) => {
       if (state.selectedIds.length === 0) return state;
@@ -744,13 +652,11 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       };
     }),
 
-  // Visibility actions
   setElementVisibility: (id, visible) =>
     set((state) => ({
       elements: state.elements.map((e) => (e.id === id ? { ...e, visible } : e)),
     })),
 
-  // Layers panel
   toggleGroupExpanded: (groupId) =>
     set((state) => ({
       expandedGroupIds: state.expandedGroupIds.includes(groupId)
@@ -763,15 +669,12 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       elements: state.elements.map((e) => (e.id === id ? { ...e, name } : e)),
     })),
 
-  // Import action
   importElements: (newElements) =>
     set((state) => {
-      // If importing multiple elements, group them automatically
       if (newElements.length > 1) {
         const groupId = crypto.randomUUID();
         const groupName = generateElementName("group", state.elements);
 
-        // Create the group element
         const group: GroupElement = {
           id: groupId,
           type: "group",
@@ -782,7 +685,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
           expanded: false,
         };
 
-        // Assign parentId to all imported elements
         const groupedElements = newElements.map((e) => ({
           ...e,
           parentId: groupId,
@@ -792,11 +694,10 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
         return {
           elements: updatedElements,
-          selectedIds: [groupId], // Select the group
+          selectedIds: [groupId],
         };
       }
 
-      // Single element import - normal behavior
       const updatedElements = [...state.elements, ...newElements];
       const newIds = newElements.map((e) => e.id);
       return {
@@ -805,7 +706,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       };
     }),
 
-  // Selection actions
   setSelectedIds: (ids) => set({ selectedIds: ids }),
   selectAll: () => set((state) => ({ selectedIds: state.elements.filter((e) => !e.parentId).map((e) => e.id) })),
   clearSelection: () => set({ selectedIds: [] }),
@@ -818,7 +718,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
   setIsExporting: (isExporting) => set({ isExporting }),
 
-  // Transform actions
   setTransform: (transform) => set((state) => ({ transform: { ...state.transform, ...transform } })),
 
   zoomIn: () => {
@@ -856,7 +755,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   panToCenter: (scale, center) => {
     const state = get();
 
-    // If center is provided, use it
     if (center) {
       const targetScale = scale ?? state.transform.scale;
       const viewportCenterX = window.innerWidth / 2;
@@ -869,17 +767,15 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       return;
     }
 
-    // Otherwise, calculate center of all elements
     if (state.elements.length === 0) return;
 
-    // Calculate bounding box of all elements
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
 
     for (const el of state.elements) {
-      if (el.type === "group") continue; // Skip groups, we'll use their children
+      if (el.type === "group") continue;
 
       if (el.type === "rect" || el.type === "image") {
         minX = Math.min(minX, el.x);
@@ -910,13 +806,11 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
         }
       } else if (el.type === "text") {
         if (el.bounds) {
-          // Text bounds are relative to element position, so add el.x/el.y
           minX = Math.min(minX, el.x + el.bounds.x);
           minY = Math.min(minY, el.y + el.bounds.y);
           maxX = Math.max(maxX, el.x + el.bounds.x + el.bounds.width);
           maxY = Math.max(maxY, el.y + el.bounds.y + el.bounds.height);
         } else {
-          // Fallback approximation
           minX = Math.min(minX, el.x);
           minY = Math.min(minY, el.y - el.fontSize);
           maxX = Math.max(maxX, el.x + el.text.length * el.fontSize * 0.6);
@@ -925,18 +819,14 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       }
     }
 
-    // If no valid bounds found, do nothing
     if (!Number.isFinite(minX) || !Number.isFinite(minY)) return;
 
-    // Calculate center of all elements
     const contentCenterX = (minX + maxX) / 2;
     const contentCenterY = (minY + maxY) / 2;
 
-    // Calculate viewport center
     const viewportCenterX = window.innerWidth / 2;
     const viewportCenterY = window.innerHeight / 2;
 
-    // Calculate new transform to center content
     const targetScale = scale ?? state.transform.scale;
     const newX = viewportCenterX - contentCenterX * targetScale;
     const newY = viewportCenterY - contentCenterY * targetScale;
@@ -944,11 +834,9 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     set({ transform: { x: newX, y: newY, scale: targetScale } });
   },
 
-  // Tool actions
   setActiveTool: (tool) => set({ activeTool: tool }),
   setIsSpaceHeld: (held) => set({ isSpaceHeld: held }),
 
-  // Interaction state
   setIsPanning: (panning) => set({ isPanning: panning }),
   setIsDragging: (dragging) => set({ isDragging: dragging }),
   setIsResizing: (resizing, handle) =>
@@ -961,14 +849,12 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   setContextMenuTarget: (element) => set({ contextMenuTarget: element }),
   setSelectionBox: (box) => set({ selectionBox: box }),
 
-  // --- Snapping Actions ---
   setSnapToGrid: (snap) => set({ snapToGrid: snap }),
   setSnapToObjects: (snap) => set({ snapToObjects: snap }),
   setSnapToGeometry: (snap) => set({ snapToGeometry: snap }),
   setGridSize: (size) => set({ gridSize: Math.max(1, size) }),
   setSmartGuides: (guides) => set({ smartGuides: guides }),
 
-  // Helpers - Performance: Use cached index map for O(1) lookups
   getElementById: (id) => {
     const elements = get().elements;
     const index = getElementIndex(elements, id);
@@ -982,14 +868,12 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
   getRenderOrder: () => {
     const state = get();
-    // Return only visible, non-group elements in render order
-    // Groups are virtual containers, their children render at their positions
+
     const result: CanvasElement[] = [];
 
     const addElement = (element: CanvasElement) => {
       if (element.visible === false) return;
       if (element.type === "group") {
-        // Render children of group (in order)
         for (const childId of element.childIds) {
           const child = state.elements.find((e) => e.id === childId);
           if (child) addElement(child);
@@ -999,7 +883,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       }
     };
 
-    // Start with top-level elements (no parent)
     const topLevel = state.elements.filter((e) => !e.parentId);
     for (const element of topLevel) {
       addElement(element);
@@ -1039,7 +922,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
       const element = state.elements[elementIndex];
       const newElements = [...state.elements];
 
-      // Remove from old parent
       if (element.parentId) {
         const parentGroupIndex = newElements.findIndex((e) => e.id === element.parentId);
         if (parentGroupIndex !== -1) {
@@ -1051,26 +933,21 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
         }
       }
 
-      // Remove from array (temporarily)
       const currentIndex = newElements.findIndex((e) => e.id === elementId);
       newElements.splice(currentIndex, 1);
 
       let newParentId: string | undefined;
 
-      // Determine new parent
       if (position === "inside" && targetId) {
         newParentId = targetId;
       } else if (targetId) {
-        // Find target to get its parent
         const targetElement = state.elements.find((e) => e.id === targetId);
         newParentId = targetElement?.parentId;
       }
 
       const updatedElement = { ...element, parentId: newParentId };
 
-      // Insert logic
       if (position === "inside" && targetId) {
-        // Add to group children
         const groupIndex = newElements.findIndex((e) => e.id === targetId);
         if (groupIndex !== -1) {
           const group = newElements[groupIndex] as GroupElement;
@@ -1078,19 +955,14 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
             ...group,
             childIds: [...group.childIds, elementId],
           };
-          // For visualization/render order, append to end of list
-          // or just after the group?
-          // If we append to end, it draws on top.
+
           newElements.push(updatedElement);
         } else {
-          // Fallback
           newElements.push(updatedElement);
         }
       } else if (targetId) {
-        // Insert relative to target
         const targetIndex = newElements.findIndex((e) => e.id === targetId);
 
-        // Handle insertion into sibling group
         if (newParentId) {
           const parentGroupIndex = newElements.findIndex((e) => e.id === newParentId);
           if (parentGroupIndex !== -1) {
@@ -1100,7 +972,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
             if (position === "before") {
               newChildIds.splice(siblingIndex, 0, elementId);
             } else {
-              // after
               newChildIds.splice(siblingIndex + 1, 0, elementId);
             }
             newElements[parentGroupIndex] = {
@@ -1120,14 +991,12 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
           newElements.push(updatedElement);
         }
       } else {
-        // No target (e.g. dropped at root end), just append
         newElements.push(updatedElement);
       }
 
       return { elements: newElements };
     }),
 
-  // History / Persistence actions
   pushHistory: () => {
     const state = get();
     canvasHistory.push({
@@ -1175,7 +1044,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     }
   },
 
-  // File operations
   newProject: () => {
     canvasHistory.clear();
     set({
@@ -1221,7 +1089,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
         const data = JSON.parse(text);
         if (data.elements && Array.isArray(data.elements)) {
           canvasHistory.clear();
-          // Use setState directly to avoid closure issues with async
+
           useCanvasStore.setState({
             elements: data.elements,
             selectedIds: [],
@@ -1240,15 +1108,11 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
   },
 }));
 
-// Auto-save state to IndexedDB whenever elements change (debounced)
 let saveTimeout: number | null = null;
 const DEBOUNCE_MS = 500;
 
 useCanvasStore.subscribe((state, prevState) => {
-  // Only save when elements change (not for UI state changes)
-  // Skip if we're restoring from undo/redo to avoid clearing the redo stack
   if (state.elements !== prevState.elements && !isRestoringFromHistory) {
-    // Debounce the save
     if (saveTimeout) {
       clearTimeout(saveTimeout);
     }

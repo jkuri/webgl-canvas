@@ -1,20 +1,3 @@
-/**
- * SVG Import Parser
- *
- * Comprehensive SVG parser using svgson for AST parsing.
- * Supports:
- * - All basic shapes (rect, circle, ellipse, line, path, polygon, polyline)
- * - Text and image elements
- * - Groups and nested structure
- * - Definitions (defs): gradients, patterns, symbols, clipPaths, masks, filters
- * - Use elements (symbol references)
- * - Transform handling
- *
- * Uses:
- * - svgson for SVG -> JSON AST conversion
- * - svg-pathdata for robust path parsing
- */
-
 import { SVGPathData } from "svg-pathdata";
 import { type INode, parse as parseSvgson } from "svgson";
 import type {
@@ -41,17 +24,11 @@ import type {
 } from "@/types";
 import { type PathCommand, parsePath } from "./path-parser";
 
-/**
- * Parse result includes elements and definitions
- */
 export interface SVGParseResult {
   elements: CanvasElement[];
   defs: SVGDefs;
 }
 
-/**
- * Create an empty SVGDefs registry
- */
 function createEmptyDefs(): SVGDefs {
   return {
     gradients: new Map(),
@@ -63,34 +40,25 @@ function createEmptyDefs(): SVGDefs {
   };
 }
 
-// Get attribute with fallback
 function attr(node: INode, name: string, fallback = ""): string {
   return node.attributes?.[name] ?? fallback;
 }
 
-// Get numeric attribute
 function numAttr(node: INode, name: string, fallback = 0): number {
   const val = node.attributes?.[name];
   return val ? Number.parseFloat(val) : fallback;
 }
 
-// Parse URL reference like url(#id)
 function parseUrlRef(value: string): string | null {
   const match = value?.match(/url\(#([^)]+)\)/);
   return match ? match[1] : null;
 }
 
-/**
- * Parse an SVG string and convert to canvas elements
- */
 export function parseSVG(svgContent: string): CanvasElement[] {
   const result = parseSVGWithDefsSync(svgContent);
   return result.elements;
 }
 
-/**
- * Parse an SVG string synchronously and return both elements and definitions
- */
 function parseSVGWithDefsSync(svgContent: string): SVGParseResult {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgContent, "image/svg+xml");
@@ -107,35 +75,27 @@ function parseSVGWithDefsSync(svgContent: string): SVGParseResult {
     return { elements: [], defs: createEmptyDefs() };
   }
 
-  // Mount to hidden container to enable getBBox
   const container = document.createElement("div");
   container.style.cssText = "position:absolute;top:-9999px;left:-9999px;visibility:hidden;pointer-events:none;";
   document.body.appendChild(container);
 
-  // Clone because appending moves it
   const clonedSvg = svgRoot.cloneNode(true) as Element;
   container.appendChild(clonedSvg);
 
   try {
-    // Convert DOM to svgson-like structure
     const rootNode = domToNode(clonedSvg);
     return processNode(rootNode);
   } finally {
-    // Cleanup
     document.body.removeChild(container);
   }
 }
 
-/**
- * Convert DOM Element to INode structure (svgson format)
- */
 function domToNode(element: Element): INode {
   const attributes: Record<string, string> = {};
   for (const attr of element.attributes) {
     attributes[attr.name] = attr.value;
   }
 
-  // Optimization: Pre-calculate bounds for paths using browser native getBBox
   if (element.tagName.toLowerCase() === "path" && element instanceof SVGGraphicsElement) {
     try {
       const bbox = element.getBBox();
@@ -143,9 +103,7 @@ function domToNode(element: Element): INode {
       attributes["data-bbox-y"] = bbox.y.toString();
       attributes["data-bbox-width"] = bbox.width.toString();
       attributes["data-bbox-height"] = bbox.height.toString();
-    } catch (_e) {
-      // Ignore errors (e.g. invalid path data), fallback to calculation later
-    }
+    } catch (_e) {}
   }
 
   const children: INode[] = [];
@@ -162,15 +120,11 @@ function domToNode(element: Element): INode {
   };
 }
 
-/**
- * Process parsed SVG node tree
- */
 function processNode(rootNode: INode): SVGParseResult {
   const elements: CanvasElement[] = [];
   const defs = createEmptyDefs();
   let elementIndex = 0;
 
-  // Get viewBox offset
   const viewBox = rootNode.attributes?.viewBox;
   let offsetX = 0;
   let offsetY = 0;
@@ -183,10 +137,6 @@ function processNode(rootNode: INode): SVGParseResult {
   function generateId(): string {
     return `imported-${Date.now()}-${elementIndex++}`;
   }
-
-  // =========================================
-  // Transform Parsing
-  // =========================================
 
   interface Transform {
     rotation: number;
@@ -208,20 +158,17 @@ function processNode(rootNode: INode): SVGParseResult {
     const result = { ...defaultTransform };
     if (!transformStr) return result;
 
-    // Parse rotate
     const rotateMatch = transformStr.match(/rotate\(\s*([^,)]+)(?:,\s*([^,)]+),\s*([^)]+))?\s*\)/);
     if (rotateMatch) {
       result.rotation = (Number.parseFloat(rotateMatch[1]) * Math.PI) / 180;
     }
 
-    // Parse translate
     const translateMatch = transformStr.match(/translate\(\s*([^,)]+)(?:,\s*([^)]+))?\s*\)/);
     if (translateMatch) {
       result.translateX = Number.parseFloat(translateMatch[1]) || 0;
       result.translateY = Number.parseFloat(translateMatch[2] || "0") || 0;
     }
 
-    // Parse scale
     const scaleMatch = transformStr.match(/scale\(\s*([^,)]+)(?:,\s*([^)]+))?\s*\)/);
     if (scaleMatch) {
       result.scaleX = Number.parseFloat(scaleMatch[1]) || 1;
@@ -240,10 +187,6 @@ function processNode(rootNode: INode): SVGParseResult {
       scaleY: parent.scaleY * child.scaleY,
     };
   }
-
-  // =========================================
-  // Style Parsing
-  // =========================================
 
   function parseOpacity(node: INode): number {
     const opacity = numAttr(node, "opacity", 1);
@@ -299,22 +242,17 @@ function processNode(rootNode: INode): SVGParseResult {
     return stroke;
   }
 
-  // =========================================
-  // Definition Parsing
-  // =========================================
-
   function parseGradientStops(node: INode): GradientStop[] {
     return node.children
       .filter((child) => child.name === "stop")
       .map((stop) => {
         let offset = numAttr(stop, "offset", 0);
-        if (offset > 1) offset /= 100; // Handle percentage
+        if (offset > 1) offset /= 100;
 
         const style = attr(stop, "style");
         let color = attr(stop, "stop-color", "#000000");
         let opacity = numAttr(stop, "stop-opacity", 1);
 
-        // Parse inline style
         const colorMatch = style.match(/stop-color:\s*([^;]+)/);
         if (colorMatch) color = colorMatch[1].trim();
         const opacityMatch = style.match(/stop-opacity:\s*([^;]+)/);
@@ -482,16 +420,11 @@ function processNode(rootNode: INode): SVGParseResult {
           break;
         }
         case "g":
-          // Nested group in defs
           parseDefs(child);
           break;
       }
     }
   }
-
-  // =========================================
-  // Path Bounds Calculation
-  // =========================================
 
   function calculatePathBounds(d: string): { x: number; y: number; width: number; height: number } {
     try {
@@ -536,10 +469,6 @@ function processNode(rootNode: INode): SVGParseResult {
     }
   }
 
-  // =========================================
-  // Points Parsing
-  // =========================================
-
   function parsePoints(pointsStr: string, tx: number, ty: number): { x: number; y: number }[] {
     const coords = pointsStr
       .trim()
@@ -553,10 +482,6 @@ function processNode(rootNode: INode): SVGParseResult {
     }
     return points;
   }
-
-  // =========================================
-  // Element Processing
-  // =========================================
 
   function processElement(node: INode, parentTransform: Transform = defaultTransform): void {
     const transform = parseTransform(attr(node, "transform"));
@@ -661,22 +586,16 @@ function processNode(rootNode: INode): SVGParseResult {
       case "path": {
         const dStr = attr(node, "d");
         if (dStr) {
-          // Apply transforms to path data
-          // optimization: parse once?
-          // For now, let's just optimize the bounds check which is a second parse.
           const transformedD = new SVGPathData(dStr).scale(combined.scaleX, combined.scaleY).translate(tx, ty).encode();
 
           let bounds: { x: number; y: number; width: number; height: number };
 
-          // Optimization: Use pre-calculated bounds if available and no rotation
-          // (Rotating AABB is complex, fallback to exact calc if rotated)
           if (combined.rotation === 0 && node.attributes && "data-bbox-x" in node.attributes) {
             const bx = Number.parseFloat(node.attributes["data-bbox-x"]);
             const by = Number.parseFloat(node.attributes["data-bbox-y"]);
             const bw = Number.parseFloat(node.attributes["data-bbox-width"]);
             const bh = Number.parseFloat(node.attributes["data-bbox-height"]);
 
-            // Apply scale and translation to bbox
             bounds = {
               x: bx * combined.scaleX + tx,
               y: by * combined.scaleY + ty,
@@ -879,22 +798,17 @@ function processNode(rootNode: INode): SVGParseResult {
       }
 
       default:
-        // Process children of unknown elements
         for (const child of node.children || []) {
           processElement(child, combined);
         }
     }
   }
 
-  // Start processing from root
   processElement(rootNode);
 
   return { elements, defs };
 }
 
-/**
- * Parse SVG async (using svgson directly)
- */
 export async function parseSVGAsync(svgContent: string): Promise<SVGParseResult> {
   try {
     const rootNode = await parseSvgson(svgContent);
@@ -905,17 +819,11 @@ export async function parseSVGAsync(svgContent: string): Promise<SVGParseResult>
   }
 }
 
-/**
- * Import SVG from file
- */
 export async function importSVGFromFile(file: File): Promise<CanvasElement[]> {
   const content = await file.text();
   return parseSVG(content);
 }
 
-/**
- * Import SVG from file with definitions
- */
 export async function importSVGFromFileWithDefs(file: File): Promise<SVGParseResult> {
   const content = await file.text();
   return parseSVGAsync(content);
@@ -928,14 +836,12 @@ export function resizePath(
 ): string {
   if (!d) return d;
 
-  // Handle edge cases with zero dimensions to avoid division by zero
   if (!oldBounds.width || !oldBounds.height) {
     console.warn("resizePath: oldBounds has zero dimension, returning original path");
     return d;
   }
 
   try {
-    // Normalize path to convert Arcs to Cubic Beziers to prevent malformed shapes during non-uniform scaling
     const commands = parsePath(d);
     const normalizedD = commands
       .map((cmd: PathCommand) => {
@@ -943,7 +849,6 @@ export function resizePath(
       })
       .join(" ");
 
-    // Skip if normalization produced empty result
     if (!normalizedD.trim()) {
       return d;
     }
@@ -962,9 +867,6 @@ export function resizePath(
   }
 }
 
-/**
- * Translate a path data string by (x, y)
- */
 export function translatePath(d: string, x: number, y: number): string {
   if (!d) return d;
   return new SVGPathData(d).translate(x, y).encode();

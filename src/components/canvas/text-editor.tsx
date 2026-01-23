@@ -7,10 +7,6 @@ interface TextEditorProps {
   worldToScreen: (worldX: number, worldY: number) => { x: number; y: number };
 }
 
-/**
- * Inline text editor component
- * Shows a contentEditable div positioned at the text element location
- */
 export function TextEditor({ worldToScreen }: TextEditorProps) {
   const isEditingText = useCanvasStore((s) => s.isEditingText);
   const editingTextId = useCanvasStore((s) => s.editingTextId);
@@ -27,11 +23,9 @@ export function TextEditor({ worldToScreen }: TextEditorProps) {
   useEffect(() => {
     if (!isEditingText || !textElement || !inputRef.current) return;
 
-    // Calculate screen position - text baseline is at y, so we don't offset
     const screenPos = worldToScreen(textElement.x, textElement.y);
     setPosition(screenPos);
 
-    // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
       if (!inputRef.current) return;
       inputRef.current.focus();
@@ -58,7 +52,7 @@ export function TextEditor({ worldToScreen }: TextEditorProps) {
       e.preventDefault();
       cancelEditing();
     }
-    // Stop propagation to prevent canvas hotkeys
+
     e.stopPropagation();
   };
 
@@ -67,10 +61,8 @@ export function TextEditor({ worldToScreen }: TextEditorProps) {
 
     const newText = inputRef.current.textContent || "";
 
-    // Update text content
     updateElement(textElement.id, { text: newText });
 
-    // Calculate and update bounds (async) with relative coordinates
     const bounds = await calculateTextBounds({ ...textElement, text: newText, x: 0, y: 0 });
     updateElement(textElement.id, { bounds });
 

@@ -56,10 +56,6 @@ import { cn } from "@/lib/utils";
 import { useCanvasStore } from "@/store";
 import type { CanvasElement, GroupElement } from "@/types";
 
-// ============================================
-// LAYER ITEM COMPONENT
-// ============================================
-
 interface LayerItemProps {
   element: CanvasElement;
   depth: number;
@@ -70,7 +66,6 @@ interface LayerItemProps {
   style?: React.CSSProperties;
 }
 
-// Get icon for element type
 function getTypeIcon(type: string, isExpanded?: boolean) {
   switch (type) {
     case "rect":
@@ -119,7 +114,6 @@ const LayerItem = memo(
     const isVisible = element.visible !== false;
     const isLocked = element.locked === true;
 
-    // Handlers
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
       onSelect(element.id, e.shiftKey || e.metaKey);
@@ -162,7 +156,6 @@ const LayerItem = memo(
       updateElement(element.id, { locked: !isLocked });
     };
 
-    // Context menu actions
     const handleContextRename = () => {
       setIsEditing(true);
       setEditName(element.name);
@@ -256,14 +249,14 @@ const LayerItem = memo(
           }
         }}
       >
-        {/* Expand/collapse button for groups */}
+        {}
         <div className="flex w-4 shrink-0 items-center justify-center">
           {isGroup && (
             <button
               type="button"
               className="flex size-4 items-center justify-center rounded-sm hover:opacity-70 focus:outline-none focus-visible:ring-0"
               onClick={handleToggleExpand}
-              onMouseDown={(e) => e.stopPropagation()} // Prevent drag start when clicking expand
+              onMouseDown={(e) => e.stopPropagation()}
             >
               {isExpanded ? (
                 <HugeiconsIcon icon={ArrowDown01Icon} className="size-3" />
@@ -274,12 +267,12 @@ const LayerItem = memo(
           )}
         </div>
 
-        {/* Type icon */}
+        {}
         <span className={cn("mr-2 shrink-0 opacity-70", isSelected && "opacity-100")}>
           {getTypeIcon(element.type, isExpanded)}
         </span>
 
-        {/* Name */}
+        {}
         {isEditing ? (
           <Input
             value={editName}
@@ -288,16 +281,16 @@ const LayerItem = memo(
             onKeyDown={handleKeyDown}
             className="h-6 flex-1 px-1 text-xs"
             autoFocus
-            onMouseDown={(e) => e.stopPropagation()} // Prevent drag start
+            onMouseDown={(e) => e.stopPropagation()}
           />
         ) : (
           <span className="flex-1 truncate font-medium text-xs">{element.name}</span>
         )}
 
-        {/* Action buttons */}
+        {}
         <div
           className={cn("flex shrink-0 items-center gap-1 transition-opacity", !isSelected && "text-muted-foreground")}
-          onMouseDown={(e) => e.stopPropagation()} // Prevent drag start
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <button
             type="button"
@@ -337,7 +330,7 @@ const LayerItem = memo(
       <ContextMenu>
         <ContextMenuTrigger>{layerContent}</ContextMenuTrigger>
         <ContextMenuContent className="w-56">
-          {/* Rename */}
+          {}
           <ContextMenuItem onClick={handleContextRename}>
             Rename
             <ContextMenuShortcut>Enter</ContextMenuShortcut>
@@ -345,7 +338,7 @@ const LayerItem = memo(
 
           <ContextMenuSeparator />
 
-          {/* Copy/Paste/Duplicate */}
+          {}
           <ContextMenuItem onClick={handleContextCopy}>
             Copy
             <ContextMenuShortcut>⌘C</ContextMenuShortcut>
@@ -361,7 +354,7 @@ const LayerItem = memo(
 
           <ContextMenuSeparator />
 
-          {/* Layer ordering */}
+          {}
           <ContextMenuItem onClick={handleContextBringToFront}>
             Bring to Front
             <ContextMenuShortcut>⌘]</ContextMenuShortcut>
@@ -381,7 +374,7 @@ const LayerItem = memo(
 
           <ContextMenuSeparator />
 
-          {/* Group/Ungroup */}
+          {}
           {isGroup ? (
             <ContextMenuItem onClick={handleContextUngroup}>
               Ungroup
@@ -396,13 +389,13 @@ const LayerItem = memo(
 
           <ContextMenuSeparator />
 
-          {/* Lock/Unlock */}
+          {}
           <ContextMenuItem onClick={handleContextLock}>
             {isLocked ? "Unlock" : "Lock"}
             <ContextMenuShortcut>⌘⇧L</ContextMenuShortcut>
           </ContextMenuItem>
 
-          {/* Show/Hide */}
+          {}
           <ContextMenuItem onClick={handleContextVisibility}>
             {isVisible ? "Hide" : "Show"}
             <ContextMenuShortcut>⌘⇧H</ContextMenuShortcut>
@@ -421,7 +414,7 @@ const LayerItem = memo(
 
           <ContextMenuSeparator />
 
-          {/* Delete */}
+          {}
           <ContextMenuItem onClick={handleContextDelete} className="text-destructive focus:text-destructive">
             Delete
             <ContextMenuShortcut>⌫</ContextMenuShortcut>
@@ -431,14 +424,9 @@ const LayerItem = memo(
     );
   },
   (prev, next) => {
-    // Custom comparator to ignore non-visual updates (position, size)
     if (prev.isSelected !== next.isSelected) return false;
     if (prev.isExpanded !== next.isExpanded) return false;
     if (prev.depth !== next.depth) return false;
-    // We can't easily rely on style equality for drag transforms since it changes frequently
-    // But dnd-kit handles this via sortable wrapper usually.
-    // However, since we pass style prop now, we should check it?
-    // Actually, style is handled by wrapper, so it's new prop.
 
     const p = prev.element;
     const n = next.element;
@@ -449,7 +437,6 @@ const LayerItem = memo(
     if (p.locked !== n.locked) return false;
     if (p.type !== n.type) return false;
 
-    // For groups, check childIds
     if (p.type === "group" && n.type === "group") {
       const pg = p as GroupElement;
       const ng = n as GroupElement;
@@ -462,10 +449,6 @@ const LayerItem = memo(
     return true;
   },
 );
-
-// ============================================
-// SORTABLE LAYER ITEM WRAPPER
-// ============================================
 
 interface SortableLayerItemProps {
   elementId: string;
@@ -512,23 +495,17 @@ const SortableLayerItem = ({ elementId, depth, onSelect, onToggleExpand }: Sorta
   );
 };
 
-// ============================================
-// LAYERS PANEL
-// ============================================
-
 interface FlatItem {
   id: string;
   depth: number;
 }
 
-// Row props for virtualized list
 interface VirtualizedRowProps {
   flatItems: FlatItem[];
   handleSelect: (id: string, multiSelect: boolean) => void;
   toggleGroupExpanded: (id: string) => void;
 }
 
-// Virtualized row component for react-window
 function VirtualizedRow(props: RowComponentProps<VirtualizedRowProps>) {
   const { index, style, flatItems, handleSelect, toggleGroupExpanded } = props;
   const item = flatItems[index];
@@ -558,40 +535,26 @@ export function LayersPanel() {
   const [containerHeight, setContainerHeight] = useState(300);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Measure container height for virtualization
   const updateContainerHeight = useCallback(() => {
     if (containerRef.current) {
       setContainerHeight(containerRef.current.clientHeight);
     }
   }, []);
 
-  // Update height on mount and resize
   useEffect(() => {
     updateContainerHeight();
     window.addEventListener("resize", updateContainerHeight);
     return () => window.removeEventListener("resize", updateContainerHeight);
   }, [updateContainerHeight]);
 
-  // Flatten the tree for Drag and Drop
   const flatItems = useMemo(() => {
     const items: FlatItem[] = [];
-
-    // We want the list to be in visual order (top-level elements, then children if expanded)
-    // The `elements` array might not be in the perfect visual tree order if we just filter.
-    // We need to traverse.
-
-    // Note: Render order is usually "painters algorithm" (last in array = top).
-    // Layers panel usually shows Top element at the Top of the list.
-    // So we need to reverse the render order for the list.
 
     const traverse = (elementId: string, depth: number) => {
       items.push({ id: elementId, depth });
 
       const element = elements.find((e) => e.id === elementId);
       if (element?.type === "group" && expandedGroupIds.includes(elementId)) {
-        // Use childIds for order
-        // Groups childIds are usually in render order (back to front).
-        // So for the list (front to back), we should reverse childIds.
         const group = element as GroupElement;
         const reversedChildren = [...group.childIds].reverse();
         for (const childId of reversedChildren) {
@@ -601,7 +564,7 @@ export function LayersPanel() {
     };
 
     const topLevel = elements.filter((e) => !e.parentId);
-    // Reverse top level for list display (Front -> Back)
+
     const reversedTopLevel = [...topLevel].reverse();
     for (const e of reversedTopLevel) {
       traverse(e.id, 0);
@@ -630,7 +593,6 @@ export function LayersPanel() {
 
     if (activeId === overId) return;
 
-    // Determine drop position
     const oldIndex = flatItems.findIndex((x) => x.id === activeId);
     const newIndex = flatItems.findIndex((x) => x.id === overId);
 
@@ -640,18 +602,12 @@ export function LayersPanel() {
     let position: "before" | "after" | "inside" = "after";
 
     if (newIndex > oldIndex) {
-      // Moving Down in List -> Moving "Behind" in Render Order (Lower Z-Index)
-      // So we insert BEFORE the target in the Elements Array
       position = "before";
 
-      // Special case: If target is an expanded group, moving "visual after" (down)
-      // means becoming the first child (visual top of group)
       if (targetElement?.type === "group" && expandedGroupIds.includes(targetItem.id)) {
         position = "inside";
       }
     } else {
-      // Moving Up in List -> Moving "In Front" in Render Order (Higher Z-Index)
-      // So we insert AFTER the target in the Elements Array
       position = "after";
     }
 
@@ -675,7 +631,7 @@ export function LayersPanel() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      {/* Header */}
+      {}
       <div className="flex h-10 items-center justify-between border-b bg-muted/30 px-3">
         <div className="flex items-center gap-2">
           <HugeiconsIcon icon={Layers01Icon} className="size-4" />
@@ -684,7 +640,7 @@ export function LayersPanel() {
         <span className="text-muted-foreground text-xs">{elements.length}</span>
       </div>
 
-      {/* Layer list */}
+      {}
       <div className="flex flex-1 flex-col overflow-hidden" ref={containerRef}>
         {flatItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground text-xs">

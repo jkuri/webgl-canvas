@@ -47,12 +47,10 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
 
   const { handlers, actions } = useCanvasControls();
 
-  // Load canvas state from IndexedDB on mount
   useEffect(() => {
     loadFromStorage();
   }, []);
 
-  // Use centralized hotkeys hook
   useHotkeys({
     onCmdChange: setIsCmdHeld,
   });
@@ -108,7 +106,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
     actions,
   });
 
-  // Handle drag and drop for SVG import
   const handleDragOver = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -131,17 +128,14 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
 
       if (!isSvg && !isImage) return;
 
-      // Get drop position in world coordinates
       const dropWorld = screenToWorld(e.clientX, e.clientY);
 
       try {
         if (isSvg) {
-          // Handle SVG import
           const content = await file.text();
           const importedElements = parseSVG(content);
           if (importedElements.length === 0) return;
 
-          // Calculate bounding box of all imported elements
           let minX = Infinity,
             minY = Infinity,
             maxX = -Infinity,
@@ -154,13 +148,11 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
             maxY = Math.max(maxY, bounds.y + bounds.height);
           }
 
-          // Calculate offset to position at drop location
           const importedCenterX = (minX + maxX) / 2;
           const importedCenterY = (minY + maxY) / 2;
           const offsetX = dropWorld.x - importedCenterX;
           const offsetY = dropWorld.y - importedCenterY;
 
-          // Apply offset to all elements
           const positionedElements = importedElements.map((el) => {
             if (el.type === "rect" || el.type === "image") {
               return { ...el, x: el.x + offsetX, y: el.y + offsetY };
@@ -198,7 +190,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
 
           importElements(positionedElements);
         } else {
-          // Handle image import (PNG, JPG, GIF, WebP, etc.)
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
@@ -206,7 +197,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
             reader.readAsDataURL(file);
           });
 
-          // Get image dimensions
           const img = new Image();
           await new Promise<void>((resolve, reject) => {
             img.onload = () => resolve();
@@ -217,7 +207,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
           const width = img.naturalWidth;
           const height = img.naturalHeight;
 
-          // Create image element centered at drop position
           const imageElement = {
             id: crypto.randomUUID(),
             type: "image" as const,
@@ -244,7 +233,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
     [screenToWorld, importElements],
   );
 
-  // Initialize WebGL renderer
   useEffect(() => {
     if (!canvasRef.current) return;
     try {
@@ -260,12 +248,10 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
     };
   }, []);
 
-  // Mark renderer dirty when state changes
   useEffect(() => {
     rendererRef.current?.markDirty();
   }, [elements, selectedIds, selectionBox, canvasBackground, canvasBackgroundVisible]);
 
-  // Handle canvas resize
   useEffect(() => {
     const container = containerRef.current;
     const renderer = rendererRef.current;
@@ -298,13 +284,11 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
     handleMouseUp();
   }, [handleMouseUp]);
 
-  // Setup event listeners
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    // Prevent native browser context menu
     const preventContextMenu = (e: MouseEvent) => {
       e.preventDefault();
     };
@@ -328,7 +312,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
     };
   }, [handleWheel, handleMouseDown, handleMouseMove, onMouseUp, handleDragOver, handleDrop]);
 
-  // Check if hovered handle is a corner (for rotation)
   const isCornerHandle =
     hoveredHandle === "nw" || hoveredHandle === "ne" || hoveredHandle === "se" || hoveredHandle === "sw";
 
@@ -348,13 +331,11 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
                 ? "grab"
                 : "default";
 
-  // Calculate bounding box and rotation for selected elements
   const selectionInfo = useMemo(() => {
     if (selectedIds.length === 0) return null;
     const selectedElements = elements.filter((e) => selectedIds.includes(e.id));
     if (selectedElements.length === 0) return null;
 
-    // Helper to recursively get all non-group elements (flattening groups)
     const getAllShapes = (els: CanvasElement[]): CanvasElement[] => {
       const shapes: CanvasElement[] = [];
       for (const el of els) {
@@ -370,11 +351,9 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
       return shapes;
     };
 
-    // Get all shapes (flatten groups)
     const allShapes = getAllShapes(selectedElements);
     if (allShapes.length === 0) return null;
 
-    // For single non-group element, use its actual bounds and rotation
     if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
       const element = selectedElements[0];
       if (element.type === "line") {
@@ -397,7 +376,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
       }
 
       if (element.type === "text") {
-        // Use stored bounds if available (accurate), fallback to estimation
         if (element.bounds) {
           return {
             bounds: {
@@ -411,7 +389,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
           };
         }
 
-        // Fallback: Calculate text bounds for dimension display
         const textWidth = element.text.length * element.fontSize * 0.6;
         const textHeight = element.fontSize * 1.2;
         return {
@@ -434,7 +411,6 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
       };
     }
 
-    // For groups or multiple elements, calculate axis-aligned bounding box using rotated corners
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
@@ -465,7 +441,7 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
         <TextOverlay canvasRef={canvasRef.current} transform={transform} fontsReady={isReady} />
       </CanvasContextMenu>
 
-      {/* Hide all editing controls in view mode */}
+      {}
       {!isViewMode && (
         <>
           <TextEditor worldToScreen={worldToScreen} />
@@ -482,12 +458,12 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
 
           <CanvasToolbar />
 
-          {/* Layers Panel */}
+          {}
           <Panel className="absolute top-0 bottom-0 left-0 border-r border-l-0">
             <LayersPanel />
           </Panel>
 
-          {/* Properties Panel */}
+          {}
           <Panel className="absolute top-0 right-0 border-r-0 border-l">
             <PropertiesPanel />
           </Panel>

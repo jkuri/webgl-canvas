@@ -6,17 +6,17 @@ export type SnapAxis = "x" | "y";
 export interface SnapLine {
   value: number;
   type: SnapLineType;
-  origin: number; // The perpendicular value (e.g., y for a vertical line) to help guide drawing
-  range: [number, number]; // The perpendicular range (min, max)
+  origin: number;
+  range: [number, number];
   elementId: string;
 }
 
 export interface SnapState {
-  verticalLines: SnapLine[]; // Sorted by value (x)
-  horizontalLines: SnapLine[]; // Sorted by value (y)
-  xSortedBounds: Bounds[]; // Sorted by minX
-  ySortedBounds: Bounds[]; // Sorted by minY
-  points: Point[]; // For point snapping
+  verticalLines: SnapLine[];
+  horizontalLines: SnapLine[];
+  xSortedBounds: Bounds[];
+  ySortedBounds: Bounds[];
+  points: Point[];
 }
 
 export interface Bounds {

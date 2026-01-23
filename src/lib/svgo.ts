@@ -1,9 +1,3 @@
-/**
- * SVGO Optimization Utility
- *
- * Provides SVG optimization using svgo for cleaner, smaller SVG output.
- */
-
 import { type Config, optimize } from "svgo/browser";
 
 const SVGO_CONFIG: Config = {
@@ -37,9 +31,6 @@ const SVGO_CONFIG: Config = {
   ],
 };
 
-/**
- * Optimize an SVG string using svgo
- */
 export function optimizeSVG(svgString: string): string {
   try {
     const result = optimize(svgString, SVGO_CONFIG);

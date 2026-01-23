@@ -6,14 +6,13 @@ import { COLOR_PICKER_PRESETS } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 
 interface ColorPickerProps {
-  color: string; // Hex
+  color: string;
   onChange: (color: string) => void;
   className?: string;
   opacity?: number;
   onOpacityChange?: (opacity: number) => void;
 }
 
-// Helpers
 const hexToHsv = (hex: string) => {
   let r = 0,
     g = 0,
@@ -157,7 +156,6 @@ export function ColorPicker({ color, onChange, className, opacity = 1, onOpacity
   const hueRef = useRef<HTMLDivElement>(null);
   const alphaRef = useRef<HTMLDivElement>(null);
 
-  // Update internal HSV when color prop changes (uni-directional to avoid loops if we're not dragging)
   useEffect(() => {
     if (!isDraggingSat && !isDraggingHue) {
       setHsv(hexToHsv(color));
@@ -201,7 +199,6 @@ export function ColorPicker({ color, onChange, className, opacity = 1, onOpacity
     [onOpacityChange],
   );
 
-  // Global mouse up listeners
   useEffect(() => {
     const handleUp = () => {
       setIsDraggingSat(false);
@@ -229,7 +226,7 @@ export function ColorPicker({ color, onChange, className, opacity = 1, onOpacity
 
   return (
     <div className={cn("flex w-64 flex-col gap-3", className)}>
-      {/* Saturation Area */}
+      {}
       <div className="relative h-40 w-full overflow-hidden rounded-md border shadow-sm">
         <div
           ref={satRef}
@@ -250,11 +247,11 @@ export function ColorPicker({ color, onChange, className, opacity = 1, onOpacity
       </div>
 
       <div className="flex gap-3">
-        {/* Color Dropper / Preview (Optional, replacing with just sliders for now or add Icon later) */}
-        {/* <div className="size-8 shrink-0 rounded-full border shadow-sm" style={{ backgroundColor: color }} /> */}
+        {}
+        {}
 
         <div className="flex flex-1 flex-col gap-3">
-          {/* Hue Slider */}
+          {}
           <div
             ref={hueRef}
             className="relative h-3 w-full cursor-pointer overflow-hidden rounded-full shadow-sm"
@@ -272,7 +269,7 @@ export function ColorPicker({ color, onChange, className, opacity = 1, onOpacity
             />
           </div>
 
-          {/* Opacity Slider */}
+          {}
           <div
             ref={alphaRef}
             className="relative h-3 w-full cursor-pointer overflow-hidden rounded-full shadow-sm"
@@ -328,7 +325,7 @@ export function ColorPicker({ color, onChange, className, opacity = 1, onOpacity
         </div>
       </div>
 
-      {/* Predefined Colors (Tailwind Palette) */}
+      {}
       <div className="grid grid-cols-8 gap-1 border-t pt-2">
         {COLOR_PICKER_PRESETS.map((c) => (
           <button

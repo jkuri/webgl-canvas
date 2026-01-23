@@ -24,12 +24,10 @@ export function PropertiesPanel() {
   const selectedElement = elements.find((e) => e.id === selectedIds[0]);
   const isMultiple = selectedIds.length > 1;
 
-  // No selection - show page properties
   if (!selectedElement) {
     return <PageProperties />;
   }
 
-  // Multiple selection
   if (isMultiple) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-4 text-muted-foreground text-xs">
@@ -38,7 +36,6 @@ export function PropertiesPanel() {
     );
   }
 
-  // Single element - show type-specific properties
   switch (selectedElement.type) {
     case "rect":
       return <RectProperties element={selectedElement as RectElement} />;

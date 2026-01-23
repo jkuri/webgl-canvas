@@ -3,7 +3,6 @@ import { useCanvasStore } from "@/store";
 import type { CanvasElement, Shape } from "@/types";
 import { optimizeSVG } from "./svgo";
 
-// Measure native path bounds (the actual coordinates in the d string) for calculating translation offset
 function measurePathNativeBounds(d: string): { x: number; y: number } | null {
   if (!d?.trim()) return null;
 
@@ -35,7 +34,6 @@ function measurePathNativeBounds(d: string): { x: number; y: number } | null {
   }
 }
 
-// Helper to rotate a point around a center
 function rotatePoint(x: number, y: number, cx: number, cy: number, rotation: number): { x: number; y: number } {
   if (rotation === 0) return { x, y };
   const cos = Math.cos(rotation);
@@ -48,7 +46,6 @@ function rotatePoint(x: number, y: number, cx: number, cy: number, rotation: num
   };
 }
 
-// Get the four corners of an element, accounting for rotation
 function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
   const rotation = element.rotation || 0;
 
@@ -66,7 +63,6 @@ function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
       return corners.map((c) => rotatePoint(c.x, c.y, cx, cy, rotation));
     }
     case "ellipse": {
-      // For ellipse, use the bounding box corners
       const corners = [
         { x: element.cx - element.rx, y: element.cy - element.ry },
         { x: element.cx + element.rx, y: element.cy - element.ry },
@@ -84,7 +80,6 @@ function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
       ];
     }
     case "path": {
-      // Use element.bounds which stores the actual display position
       const bounds = element.bounds;
       if (!bounds || (bounds.width === 0 && bounds.height === 0)) return [];
 
@@ -99,7 +94,6 @@ function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
       return corners.map((c) => rotatePoint(c.x, c.y, cx, cy, rotation));
     }
     case "text": {
-      // Use stored bounds if available
       if (element.bounds) {
         const absX = element.x + element.bounds.x;
         const absY = element.y + element.bounds.y;
@@ -113,7 +107,7 @@ function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
         ];
         return corners.map((c) => rotatePoint(c.x, c.y, cx, cy, rotation));
       }
-      // Fallback estimation
+
       const w = element.text.length * element.fontSize * 0.6;
       const h = element.fontSize * 1.2;
       return [
@@ -123,7 +117,6 @@ function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
     }
     case "polygon":
     case "polyline": {
-      // For polygon/polyline, return all points (no rotation transform stored on type)
       return element.points.map((p) => ({ x: p.x, y: p.y }));
     }
     default:
@@ -131,7 +124,6 @@ function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
   }
 }
 
-// Calculate bounding box for elements, accounting for rotation
 function calculateBounds(
   elements: CanvasElement[],
   allElements: CanvasElement[],
@@ -142,7 +134,6 @@ function calculateBounds(
   let maxY = Number.NEGATIVE_INFINITY;
 
   const processElement = (element: CanvasElement) => {
-    // Skip invisible elements
     if (element.visible === false || element.opacity === 0) return;
 
     if (element.type === "group") {
@@ -156,7 +147,6 @@ function calculateBounds(
     const corners = getRotatedCorners(element);
     if (corners.length === 0) return;
 
-    // Calculate element bounds to check for degenerate size
     let eMinX = Number.POSITIVE_INFINITY;
     let eMinY = Number.POSITIVE_INFINITY;
     let eMaxX = Number.NEGATIVE_INFINITY;
@@ -169,20 +159,16 @@ function calculateBounds(
       eMaxY = Math.max(eMaxY, c.y);
     }
 
-    // Ignore degenerate elements (approximately 0 size)
-    // We check if BOTH width and height are negligible (e.g. artifacts at 0,0)
     if (Math.abs(eMaxX - eMinX) < 0.1 && Math.abs(eMaxY - eMinY) < 0.1) {
       return;
     }
 
-    // Account for stroke width (strokes extend outside the geometric bounds by half width)
     let strokePadding = 0;
     const shape = element as Shape;
     if (shape.stroke?.width) {
       strokePadding = shape.stroke.width / 2;
     }
 
-    // Update global bounds with stroke padding
     minX = Math.min(minX, eMinX - strokePadding);
     minY = Math.min(minY, eMinY - strokePadding);
     maxX = Math.max(maxX, eMaxX + strokePadding);
@@ -193,7 +179,6 @@ function calculateBounds(
     processElement(element);
   }
 
-  // Handle case where no elements were processed or all were invisible
   if (minX === Number.POSITIVE_INFINITY) {
     return { x: 0, y: 0, width: 0, height: 0 };
   }
@@ -206,7 +191,6 @@ function calculateBounds(
   };
 }
 
-// Get fill and stroke attributes for SVG
 function getFillStroke(element: Shape): string {
   const attrs: string[] = [];
 
@@ -228,13 +212,11 @@ function getFillStroke(element: Shape): string {
   return attrs.length > 0 ? ` ${attrs.join(" ")}` : "";
 }
 
-// Get transform attribute for rotation (without offset adjustment)
 function getTransform(element: CanvasElement): string {
   if (element.rotation === 0) return "";
 
   const degrees = (element.rotation * 180) / Math.PI;
 
-  // Get center point for rotation
   let cx = 0;
   let cy = 0;
 
@@ -252,7 +234,6 @@ function getTransform(element: CanvasElement): string {
       cy = (element.y1 + element.y2) / 2;
       break;
     case "path": {
-      // Use element.bounds for rotation center
       const bounds = element.bounds;
       if (bounds) {
         cx = bounds.x + bounds.width / 2;
@@ -267,7 +248,6 @@ function getTransform(element: CanvasElement): string {
   return ` transform="rotate(${degrees.toFixed(2)} ${cx.toFixed(2)} ${cy.toFixed(2)})"`;
 }
 
-// Convert a single element to SVG using original coordinates (no translation)
 function elementToSVGOriginal(element: CanvasElement, allElements: CanvasElement[], indent = "  "): string {
   const transform = getTransform(element);
 
@@ -282,15 +262,12 @@ function elementToSVGOriginal(element: CanvasElement, allElements: CanvasElement
     case "line":
       return `${indent}<line x1="${element.x1}" y1="${element.y1}" x2="${element.x2}" y2="${element.y2}"${getFillStroke(element)}${transform}/>`;
     case "path": {
-      // Calculate translation offset: paths store display position in bounds,
-      // but the d string has native coordinates that may differ
       const nativeBounds = measurePathNativeBounds(element.d);
       let pathTransform = transform;
       if (nativeBounds && element.bounds) {
         const dx = element.bounds.x - nativeBounds.x;
         const dy = element.bounds.y - nativeBounds.y;
         if (dx !== 0 || dy !== 0) {
-          // Combine translation with any rotation
           if (element.rotation !== 0) {
             const degrees = (element.rotation * 180) / Math.PI;
             const cx = element.bounds.x + element.bounds.width / 2;
@@ -333,17 +310,11 @@ function elementToSVGOriginal(element: CanvasElement, allElements: CanvasElement
   }
 }
 
-/**
- * Export elements to SVG format
- * Uses a wrapping group with transform to center content at (0,0)
- */
 export function exportToSVG(elements: CanvasElement[], allElements: CanvasElement[]): string {
   const bounds = calculateBounds(elements, allElements);
 
-  // Generate SVG for all elements using original coordinates
   const svgElements = elements.map((el) => elementToSVGOriginal(el, allElements, "    ")).join("\n");
 
-  // Use a translate transform to move content so it starts at origin
   const translateX = -bounds.x;
   const translateY = -bounds.y;
 
@@ -358,9 +329,6 @@ ${svgElements}
 </svg>`;
 }
 
-/**
- * Download SVG content as a file
- */
 export function downloadSVG(svgContent: string, filename = "export.svg"): void {
   const optimized = optimizeSVG(svgContent);
   const blob = new Blob([optimized], { type: "image/svg+xml" });
@@ -477,7 +445,6 @@ export function downloadJPG(svgContent: string, filename = "export.jpg"): void {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Fill with white background for JPG
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 

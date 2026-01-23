@@ -7,13 +7,8 @@ interface ImageOverlayProps {
   transform: { x: number; y: number; scale: number };
 }
 
-// Cache loaded images by their href
 const loadedImages = new Map<string, HTMLImageElement>();
 
-/**
- * Canvas 2D overlay for rendering image elements
- * Uses Canvas 2D API for image rendering since WebGL texture support isn't implemented
- */
 export function ImageOverlay({ canvasRef, transform }: ImageOverlayProps) {
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const elements = useCanvasStore((s) => s.elements);
@@ -25,7 +20,6 @@ export function ImageOverlay({ canvasRef, transform }: ImageOverlayProps) {
     const overlay = overlayRef.current;
     const ctx = overlay.getContext("2d")!;
 
-    // Match WebGL canvas size
     const rect = canvasRef.getBoundingClientRect();
     const dpr = window.devicePixelRatio;
     overlay.width = rect.width * dpr;
@@ -36,10 +30,8 @@ export function ImageOverlay({ canvasRef, transform }: ImageOverlayProps) {
     const render = async () => {
       if (!mounted) return;
 
-      // Clear canvas
       ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-      // Apply transform
       ctx.save();
       ctx.scale(dpr, dpr);
       ctx.translate(transform.x, transform.y);
@@ -54,11 +46,9 @@ export function ImageOverlay({ canvasRef, transform }: ImageOverlayProps) {
 
         const { x, y, width, height, href, opacity, rotation } = imageEl;
 
-        // Get or load image
         let img = loadedImages.get(href);
 
         if (!img) {
-          // Load image
           img = new Image();
           const loadPromise = new Promise<void>((resolve, reject) => {
             img!.onload = () => resolve();
@@ -71,7 +61,6 @@ export function ImageOverlay({ canvasRef, transform }: ImageOverlayProps) {
             if (!mounted) break;
             loadedImages.set(href, img);
           } catch {
-            // Skip if image fails to load
             continue;
           }
         }
@@ -80,11 +69,9 @@ export function ImageOverlay({ canvasRef, transform }: ImageOverlayProps) {
 
         ctx.save();
 
-        // Calculate center for rotation
         const centerX = x + width / 2;
         const centerY = y + height / 2;
 
-        // Apply rotation around center
         if (rotation) {
           ctx.translate(centerX, centerY);
           ctx.rotate(rotation);
@@ -93,13 +80,11 @@ export function ImageOverlay({ canvasRef, transform }: ImageOverlayProps) {
 
         ctx.globalAlpha = opacity ?? 1;
 
-        // Draw image
         ctx.drawImage(img, x, y, width, height);
 
         ctx.restore();
       }
 
-      // Restore transform
       ctx.restore();
     };
 

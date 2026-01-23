@@ -1,6 +1,5 @@
 import { useCanvasStore } from "@/store";
 
-// Figma uses this magenta/pink color for guides
 const GUIDE_COLOR = "#FF00FF";
 
 export function SmartGuides() {
@@ -13,7 +12,7 @@ export function SmartGuides() {
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
       <svg className="h-full w-full">
         <defs>
-          {/* Dash pattern for alignment lines */}
+          {}
           <pattern id="dash-pattern" patternUnits="userSpaceOnUse" width={8 / transform.scale} height={1}>
             <line
               x1="0"
@@ -29,7 +28,6 @@ export function SmartGuides() {
           {smartGuides.map((guide, i) => {
             const strokeWidth = 1 / transform.scale;
 
-            // Alignment guides - magenta line connecting objects
             if (guide.type === "alignment") {
               const x1 = guide.x1 ?? 0;
               const y1 = guide.y1 ?? 0;
@@ -50,7 +48,6 @@ export function SmartGuides() {
               );
             }
 
-            // Spacing/distance guides - line with label pill
             if (guide.type === "spacing") {
               const x1 = guide.x1 ?? 0;
               const y1 = guide.y1 ?? 0;
@@ -59,21 +56,18 @@ export function SmartGuides() {
               const cx = (x1 + x2) / 2;
               const cy = (y1 + y2) / 2;
 
-              // Determine if horizontal or vertical
               const isHorizontal = Math.abs(y2 - y1) < 0.1;
               const lineLength = isHorizontal ? Math.abs(x2 - x1) : Math.abs(y2 - y1);
 
-              // Don't show if distance is too small
               if (lineLength < 5) return null;
 
-              // Cap size for T-shaped ends
               const capSize = 6 / transform.scale;
 
               return (
                 <g key={i}>
-                  {/* Main line */}
+                  {}
                   <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={GUIDE_COLOR} strokeWidth={strokeWidth} />
-                  {/* T-cap start */}
+                  {}
                   {isHorizontal ? (
                     <>
                       <line
@@ -113,7 +107,7 @@ export function SmartGuides() {
                       />
                     </>
                   )}
-                  {/* Label pill */}
+                  {}
                   {guide.label && (
                     <foreignObject
                       x={cx - 20 / transform.scale}
@@ -149,7 +143,6 @@ export function SmartGuides() {
               );
             }
 
-            // Center indicator - small diamond
             if (guide.type === "center") {
               const cx = guide.cx ?? 0;
               const cy = guide.cy ?? 0;
@@ -157,7 +150,7 @@ export function SmartGuides() {
 
               return (
                 <g key={i}>
-                  {/* Diamond shape */}
+                  {}
                   <polygon
                     points={`${cx},${cy - size} ${cx + size},${cy} ${cx},${cy + size} ${cx - size},${cy}`}
                     fill={GUIDE_COLOR}

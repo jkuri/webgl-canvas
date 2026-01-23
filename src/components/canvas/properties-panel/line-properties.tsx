@@ -41,7 +41,7 @@ export function LineProperties({ element }: LinePropertiesProps) {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-2">
-        {/* Position */}
+        {}
         <div className="flex flex-col gap-2">
           <SectionHeader title="Position" />
           <div className="grid grid-cols-2 gap-2">
@@ -59,7 +59,7 @@ export function LineProperties({ element }: LinePropertiesProps) {
 
         <Separator />
 
-        {/* Layout */}
+        {}
         <div className="flex flex-col gap-2">
           <SectionHeader title="Layout" />
           <div className="grid grid-cols-2 gap-2">
@@ -69,7 +69,7 @@ export function LineProperties({ element }: LinePropertiesProps) {
 
         <Separator />
 
-        {/* Appearance */}
+        {}
         <div className="flex flex-col gap-3 p-3">
           <SectionHeader title="Appearance" />
           <div className="flex flex-col gap-1">

@@ -1,12 +1,10 @@
 import { Menu01Icon, RotateRight01Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
-// Section Header
 export function SectionHeader({ title }: { title: string }) {
   return <span className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">{title}</span>;
 }
 
-// Icons
 export const RotateIcon = () => <HugeiconsIcon icon={RotateRight01Icon} className="size-3.5" />;
 
 export const WeightIcon = () => <HugeiconsIcon icon={Menu01Icon} className="size-3.5" />;

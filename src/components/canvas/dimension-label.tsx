@@ -23,7 +23,6 @@ export function DimensionLabel({ bounds, transform, rotation = 0, isLine = false
   let rotationDeg: number;
 
   if (isLine) {
-    // LINE LOGIC: Perpendicular offset from center
     const screenX = centerX * transform.scale + transform.x;
     const screenY = centerY * transform.scale + transform.y;
     const offsetDistance = (bounds.height / 2) * transform.scale + 16;
@@ -35,7 +34,6 @@ export function DimensionLabel({ bounds, transform, rotation = 0, isLine = false
     labelY = screenY + dy;
     rotationDeg = (rotation * 180) / Math.PI;
   } else {
-    // RECT LOGIC: Find visual bottom edge
     const halfW = bounds.width / 2;
     const halfH = bounds.height / 2;
     const cos = Math.cos(rotation);
@@ -89,7 +87,6 @@ export function DimensionLabel({ bounds, transform, rotation = 0, isLine = false
     rotationDeg = (edgeAngle * 180) / Math.PI;
   }
 
-  // Normalize and Flip for readability
   if (rotationDeg > 90 || rotationDeg < -90) {
     rotationDeg += 180;
   }

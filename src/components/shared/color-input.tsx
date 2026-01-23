@@ -12,7 +12,6 @@ interface ColorInputProps {
 }
 
 export function ColorInput({ value = "#000000", opacity = 1, onChange, className }: ColorInputProps) {
-  // We'll trust the parent to pass correct hex for now, or fallback
   const displayValue = value.toUpperCase();
 
   return (

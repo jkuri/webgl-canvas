@@ -14,7 +14,6 @@ import { useCanvasStore } from "@/store";
 import type { BoundingBox, CanvasElement, ResizeHandle, Shape, SmartGuide } from "@/types";
 import { getElementBounds } from "@/types";
 
-// Performance: RAF-based update batching for drag/resize operations
 interface PendingUpdate {
   type: "drag" | "resize" | "rotate" | "marquee";
   updates?: Map<string, Record<string, unknown>>;
@@ -22,6 +21,29 @@ interface PendingUpdate {
   selectionBox?: { startX: number; startY: number; endX: number; endY: number } | null;
   selectedIds?: string[];
   smartGuides?: SmartGuide[];
+}
+
+interface ElementData {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
+  type?: string;
+  cx?: number;
+  cy?: number;
+  rx?: number;
+  ry?: number;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+  d?: string;
+  bounds?: { x: number; y: number; width: number; height: number };
+  parentId?: string;
+  aspectRatioLocked?: boolean;
+  anchorX?: number;
+  anchorY?: number;
 }
 
 let pendingUpdate: PendingUpdate | null = null;
@@ -61,7 +83,6 @@ function scheduleUpdate(update: PendingUpdate) {
   }
 }
 
-// Helper to flatten groups recursively
 function flattenCanvasElements(
   elements: CanvasElement[],
   getElementById: (id: string) => CanvasElement | undefined,
@@ -82,7 +103,6 @@ function flattenCanvasElements(
   return result;
 }
 
-// Helper to get all descendant IDs of elements (for group snap exclusion)
 function getDescendantIds(ids: string[], getElementById: (id: string) => CanvasElement | undefined): Set<string> {
   const descendants = new Set<string>();
 
@@ -105,33 +125,25 @@ function getSnapCandidatesAndPoints(elements: CanvasElement[], excludeIds: Set<s
   return createSnapState(elements, excludeSet);
 }
 
-// Generate Figma-style SVG cursor for resize handles with rotation
 function createRotatedResizeCursor(angle: number): string {
-  // Normalize angle to 0-360
   const normalizedAngle = ((angle % 360) + 360) % 360;
 
-  // Smaller resize cursor (20x20)
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><g transform="rotate(${normalizedAngle} 10 10)"><path d="M3 3L7 3L7 5L5 5L5 7L3 7Z" fill="#fff"/><path d="M17 17L13 17L13 15L15 15L15 13L17 13Z" fill="#fff"/><path d="M5 5L15 15" stroke="#fff" stroke-width="2.5"/><path d="M3 3L7 3L7 5L5 5L5 7L3 7Z" fill="#000"/><path d="M17 17L13 17L13 15L15 15L15 13L17 13Z" fill="#000"/><path d="M5 5L15 15" stroke="#000" stroke-width="1.2"/></g></svg>`;
 
-  // Use base64 encoding for better browser compatibility
   const base64 = btoa(svg);
   return `url("data:image/svg+xml;base64,${base64}") 10 10, auto`;
 }
 
-// Generate Figma-style rotation cursor (curved arrow) with rotation
 function createRotationCursor(angle: number): string {
   const normalizedAngle = ((angle % 360) + 360) % 360;
 
-  // Professional rotation cursor (24x24) - clean curved arrow with proper arrowheads
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g transform="rotate(${normalizedAngle} 12 12)"><path d="M12 5C8.13 5 5 8.13 5 12" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M12 5C8.13 5 5 8.13 5 12" stroke="#000" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M12 2L15 5L12 8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 2L15 5L12 8" stroke="#000" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12L5 15L8 12" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12L5 15L8 12" stroke="#000" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
 
   const base64 = btoa(svg);
   return `url("data:image/svg+xml;base64,${base64}") 12 12, auto`;
 }
 
-// Get rotation cursor for a specific corner handle
 function getRotatedRotationCursor(handle: ResizeHandle, shapeRotation: number): string {
-  // Only corner handles can rotate
   const cornerAngles: Record<string, number> = {
     nw: 0,
     ne: 90,
@@ -140,7 +152,6 @@ function getRotatedRotationCursor(handle: ResizeHandle, shapeRotation: number): 
   };
 
   if (!handle || !(handle in cornerAngles)) {
-    // Default rotation cursor for non-corner or when no handle
     const rotationDegrees = (shapeRotation * 180) / Math.PI;
     const roundedAngle = Math.round(rotationDegrees / 5) * 5;
     const cacheKey = `rotate-${roundedAngle}`;
@@ -163,7 +174,6 @@ function getRotatedRotationCursor(handle: ResizeHandle, shapeRotation: number): 
   return cursorCache.get(cacheKey)!;
 }
 
-// Cache for cursor URLs to avoid regenerating
 const cursorCache = new Map<string, string>();
 
 function getRotatedCursor(handle: ResizeHandle, rotation: number): string {
@@ -184,7 +194,6 @@ function getRotatedCursor(handle: ResizeHandle, rotation: number): string {
   const rotationDegrees = (rotation * 180) / Math.PI;
   const finalAngle = baseAngle + rotationDegrees;
 
-  // Round to nearest 5 degrees for caching
   const roundedAngle = Math.round(finalAngle / 5) * 5;
   const cacheKey = `resize-${roundedAngle}`;
 
@@ -306,7 +315,7 @@ export function useCanvasInteractions({
         y2?: number;
         d?: string;
         bounds?: { x: number; y: number; width: number; height: number };
-        // For text elements: store original anchor position
+
         anchorX?: number;
         anchorY?: number;
       }
@@ -320,11 +329,9 @@ export function useCanvasInteractions({
   const lastClickTimeRef = useRef<number>(0);
   const lastClickElementRef = useRef<string | null>(null);
 
-  // Performance: Throttle hover handle detection to reduce hit testing during idle
   const lastHoverCheckRef = useRef<number>(0);
-  const HOVER_THROTTLE_MS = 16; // ~60fps
+  const HOVER_THROTTLE_MS = 16;
 
-  // Get the rotation of the currently selected element(s) for cursor
   const selectedRotation = useMemo(() => {
     if (selectedIds.length === 1) {
       const element = elements.find((e) => e.id === selectedIds[0]);
@@ -337,7 +344,6 @@ export function useCanvasInteractions({
     (handle: ResizeHandle): string => {
       if (!handle) return "default";
 
-      // Special case for line endpoints - use move cursor
       if (selectedIds.length === 1) {
         const element = elements.find((e) => e.id === selectedIds[0]);
         if (element?.type === "line" && (handle === "nw" || handle === "se")) {
@@ -352,7 +358,6 @@ export function useCanvasInteractions({
 
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
-      // Ignore events originating from UI panels
       const target = e.target as HTMLElement;
       if (target.closest(".pointer-events-auto")) {
         return;
@@ -370,16 +375,13 @@ export function useCanvasInteractions({
       if (activeTool === "select" && e.button === 0) {
         const world = screenToWorld(e.clientX, e.clientY);
 
-        // Check for rotation mode (Cmd/Ctrl + click on corner handles)
         if ((e.metaKey || e.ctrlKey) && selectedIds.length > 0) {
           const selectedElements = selectedIds.map((id) => getElementById(id)).filter(Boolean) as CanvasElement[];
 
-          // Don't allow rotation if any selected element is locked
           if (selectedElements.some((e) => e.locked)) {
             return;
           }
 
-          // Check if clicking on a corner handle
           let clickedHandle: ResizeHandle = null;
           if (selectedElements.length === 1 && selectedElements[0].type !== "group") {
             clickedHandle = hitTestRotatedElementHandle(
@@ -396,7 +398,6 @@ export function useCanvasInteractions({
             }
           }
 
-          // Only allow rotation from corner handles
           const isCorner =
             clickedHandle === "nw" || clickedHandle === "ne" || clickedHandle === "se" || clickedHandle === "sw";
           if (isCorner) {
@@ -426,26 +427,21 @@ export function useCanvasInteractions({
                   y2?: number;
                   d?: string;
                   bounds?: { x: number; y: number; width: number; height: number };
-                  // For text elements: store original anchor position (element.x, element.y)
+
                   anchorX?: number;
                   anchorY?: number;
                 }
               >();
 
-              // Add the group itself to originalRotations if it's the single selected element
               if (selectedElements.length === 1 && selectedElements[0].type === "group") {
                 const group = selectedElements[0];
                 originalRotations.set(group.id, group.rotation);
-                // We don't add the group to flattenedElements (which is used for calculating bounds),
-                // but we need to track it in originalElements to update its rotation later.
-                // However, the loop below iterates over `flattenedElements` which are CHILDREN.
-                // We need to add the group to `originalElements` separately.
 
                 originalElements.set(group.id, {
                   x: 0,
                   y: 0,
                   width: 0,
-                  height: 0, // Group doesn't have intrinsic bounds usually, but we need the entry
+                  height: 0,
                   rotation: group.rotation,
                   type: "group",
                 });
@@ -485,8 +481,6 @@ export function useCanvasInteractions({
                   entry.d = element.d;
                   entry.bounds = element.bounds;
                 } else if (element.type === "text") {
-                  // Store original anchor position for text elements
-                  // eBounds.x/y is the absolute bounds position, but we need the anchor (element.x, element.y)
                   entry.anchorX = element.x;
                   entry.anchorY = element.y;
                 }
@@ -506,15 +500,12 @@ export function useCanvasInteractions({
           }
         }
 
-        // Check resize handle first
         if (selectedIds.length > 0) {
           const selectedElements = selectedIds.map((id) => getElementById(id)).filter(Boolean) as CanvasElement[];
 
-          // Don't allow resize if any selected element is locked
           const anyLocked = selectedElements.some((e) => e.locked);
 
           if (!anyLocked) {
-            // Check resize handle first
             let handle: ResizeHandle = null;
             if (
               selectedElements.length === 1 &&
@@ -540,7 +531,6 @@ export function useCanvasInteractions({
                 selectedElements[0].type !== "group";
               const elementRotation = isSingleRotatedElement ? selectedElements[0].rotation : 0;
 
-              // Get bounds for the element(s)
               let bounds: BoundingBox | null;
               let flattenedElements: CanvasElement[] = [];
 
@@ -575,17 +565,15 @@ export function useCanvasInteractions({
                     aspectRatioLocked?: boolean;
                   }
                 >();
-                // biome-ignore lint/suspicious/noExplicitAny: complex type
-                const collectElements = (els: CanvasElement[], map: Map<string, any>) => {
+
+                const collectElements = (els: CanvasElement[], map: Map<string, ElementData>) => {
                   for (const element of els) {
                     if (element.type === "group") {
-                      // Recursive collection of children
                       const children = element.childIds
                         .map((id) => getElementById(id))
                         .filter(Boolean) as CanvasElement[];
                       collectElements(children, map);
                     } else {
-                      // Collect leaf element
                       const eBounds = getElementBounds(element);
                       const entry = {
                         ...eBounds,
@@ -601,7 +589,7 @@ export function useCanvasInteractions({
                         y2: undefined as number | undefined,
                         d: undefined as string | undefined,
                         bounds: undefined as { x: number; y: number; width: number; height: number } | undefined,
-                        // Store parentId to check if it belongs to a group being resized
+
                         parentId: element.parentId,
                         aspectRatioLocked: element.aspectRatioLocked,
                       };
@@ -642,16 +630,11 @@ export function useCanvasInteractions({
           }
         }
 
-        // Check if any currently selected element is a child (has parentId)
-        // If so, use deep select to allow clicking on children directly
         const hasSelectedChild = selectedIds.some((id) => {
           const el = getElementById(id);
           return el?.parentId;
         });
 
-        // IMPORTANT: Before doing hit testing, check if we're clicking within the bounds
-        // of the currently selected element(s). If so, start dragging instead of changing selection.
-        // This prevents clicking on a selected group from selecting elements underneath it.
         if (selectedIds.length > 0 && !hasSelectedChild) {
           const selectedElements = selectedIds.map((id) => getElementById(id)).filter(Boolean) as CanvasElement[];
           const flattened = flattenCanvasElements(selectedElements, getElementById);
@@ -665,13 +648,11 @@ export function useCanvasInteractions({
               world.y <= bounds.y + bounds.height;
 
             if (isWithinBounds) {
-              // Check for double-click to deep-select into groups
               const now = Date.now();
               const firstSelectedId = selectedIds[0];
               const isDoubleClick =
                 now - lastClickTimeRef.current < 400 && lastClickElementRef.current === firstSelectedId;
 
-              // If double-clicking on a group, allow deep-select by falling through to normal hit testing
               const selectedElement = selectedIds.length === 1 ? getElementById(firstSelectedId) : null;
 
               if (isDoubleClick && selectedElement?.type === "text") {
@@ -682,21 +663,13 @@ export function useCanvasInteractions({
               }
 
               if (isDoubleClick && selectedElement?.type === "group") {
-                // Don't start dragging - let the normal double-click handling below find the child
-                // Don't update click tracking here - let downstream handler use the original values
-                // Fall through to regular hit testing
               } else {
-                // Update click tracking for non-double-click-on-group cases
                 lastClickTimeRef.current = now;
                 lastClickElementRef.current = firstSelectedId;
 
-                // Before starting drag, check if there's a different element on top at this position
-                // If so, don't drag the selected element - select the element on top instead
                 const topHit = hitTest(world.x, world.y, hasSelectedChild);
                 if (topHit && !selectedIds.includes(topHit.id)) {
-                  // There's a different element on top - fall through to normal selection
                 } else {
-                  // Check if any selected element is locked
                   const anyLocked = selectedElements.some((e) => e.locked);
 
                   if (!anyLocked) {
@@ -715,9 +688,7 @@ export function useCanvasInteractions({
                       }
                     >();
 
-                    // Collect all draggable elements (including group children)
-                    // biome-ignore lint/suspicious/noExplicitAny: complex type
-                    const collectDraggableElements = (ids: string[], map: Map<string, any>) => {
+                    const collectDraggableElements = (ids: string[], map: Map<string, ElementData>) => {
                       for (const id of ids) {
                         const element = getElementById(id);
                         if (!element) continue;
@@ -742,10 +713,8 @@ export function useCanvasInteractions({
 
                     collectDraggableElements(selectedIds, elementsMap);
 
-                    // Get all descendant IDs for snap exclusion
                     const excludedIds = getDescendantIds(selectedIds, getElementById);
 
-                    // Performance: Limit snap candidates for large canvases
                     const snapState = getSnapCandidatesAndPoints(elements, excludedIds);
 
                     const originalBounds: Bounds = {
@@ -774,20 +743,16 @@ export function useCanvasInteractions({
         const hit = hitTest(world.x, world.y, hasSelectedChild);
 
         if (hit) {
-          // Detect double-click
           const now = Date.now();
           const isDoubleClick = now - lastClickTimeRef.current < 400 && lastClickElementRef.current === hit.id;
 
           if (isDoubleClick && hit.type === "text") {
-            // Start editing text
             useCanvasStore.getState().setIsEditingText(true, hit.id);
             lastClickTimeRef.current = 0;
             lastClickElementRef.current = null;
             return;
           }
 
-          // Special case: when a group is already selected and we double-click in its area
-          // (even if another element is on top), deep-select into the group's children
           const selectedGroup = selectedIds.length === 1 ? getElementById(selectedIds[0]) : null;
           const isTimeForDoubleClick = now - lastClickTimeRef.current < 400;
           if (
@@ -795,15 +760,13 @@ export function useCanvasInteractions({
             selectedGroup?.type === "group" &&
             lastClickElementRef.current === selectedGroup.id
           ) {
-            // Find children of the selected group at this position (ignores elements from other groups)
             const groupChildren = hitTestAllElements(world.x, world.y, elements, selectedGroup.id);
             if (groupChildren.length > 0) {
-              const deepHit = groupChildren[0]; // Topmost child in the group
+              const deepHit = groupChildren[0];
               lastClickTimeRef.current = now;
               lastClickElementRef.current = deepHit.id;
               setSelectedIds([deepHit.id]);
 
-              // Start dragging the deep-selected element if not locked
               if (!deepHit.locked) {
                 setIsDragging(true);
                 const elementsMap = new Map<
@@ -854,7 +817,6 @@ export function useCanvasInteractions({
             }
           }
 
-          // Double-click on a group: deep select the child element
           if (isDoubleClick && hit.type === "group") {
             const deepHit = hitTest(world.x, world.y, true);
             if (deepHit && deepHit.id !== hit.id) {
@@ -862,7 +824,6 @@ export function useCanvasInteractions({
               lastClickElementRef.current = deepHit.id;
               setSelectedIds([deepHit.id]);
 
-              // Start dragging the deep-selected element if not locked
               if (!deepHit.locked) {
                 setIsDragging(true);
                 const elementsMap = new Map<
@@ -889,7 +850,6 @@ export function useCanvasInteractions({
                   elementsMap.set(deepHit.id, { x: deepHit.x, y: deepHit.y });
                 }
 
-                // Pre-calculate candidates for snapping (everything NOT being dragged)
                 const snapState = getSnapCandidatesAndPoints(elements, deepHit.id);
 
                 const b = getBounds(deepHit, elements);
@@ -914,16 +874,12 @@ export function useCanvasInteractions({
             }
           }
 
-          // Double-click on a top-level element (not a child): cycle through overlapping top-level items
-          // This allows selecting groups/elements underneath other elements
           if (isDoubleClick && !hasSelectedChild && selectedIds.length === 1 && hit.type !== "group") {
             const overlappingTopLevel = hitTestAllTopLevel(world.x, world.y, elements);
 
             if (overlappingTopLevel.length > 1) {
-              // Find current selection in the list
               const currentIndex = overlappingTopLevel.findIndex((e) => e.id === hit.id);
 
-              // Cycle to the next element (wrap around)
               const nextIndex = (currentIndex + 1) % overlappingTopLevel.length;
               const nextElement = overlappingTopLevel[nextIndex];
 
@@ -934,19 +890,14 @@ export function useCanvasInteractions({
             }
           }
 
-          // Double-click when already inside a group: cycle through overlapping elements
-          // This implements Figma-like behavior where double-clicking cycles to elements underneath
           if (isDoubleClick && hasSelectedChild && selectedIds.length === 1) {
             const currentSelected = getElementById(selectedIds[0]);
             if (currentSelected?.parentId) {
-              // Get all elements at this position within the same group
               const overlappingElements = hitTestAllElements(world.x, world.y, elements, currentSelected.parentId);
 
               if (overlappingElements.length > 1) {
-                // Find current selection in the list
                 const currentIndex = overlappingElements.findIndex((e) => e.id === currentSelected.id);
 
-                // Cycle to the next element (wrap around)
                 const nextIndex = (currentIndex + 1) % overlappingElements.length;
                 const nextElement = overlappingElements[nextIndex];
 
@@ -954,7 +905,6 @@ export function useCanvasInteractions({
                 lastClickElementRef.current = nextElement.id;
                 setSelectedIds([nextElement.id]);
 
-                // Start dragging the newly selected element if not locked
                 if (!nextElement.locked) {
                   setIsDragging(true);
                   const elementsMap = new Map<
@@ -990,7 +940,6 @@ export function useCanvasInteractions({
                     elementsMap.set(nextElement.id, { x: nextElement.x, y: nextElement.y });
                   }
 
-                  // Pre-calculate candidates for snapping
                   const snapState = getSnapCandidatesAndPoints(elements, nextElement.id);
 
                   const b = getBounds(nextElement, elements);
@@ -1020,13 +969,12 @@ export function useCanvasInteractions({
           lastClickElementRef.current = hit.id;
 
           const isAlreadySelected = selectedIds.includes(hit.id);
-          // Support multi-select with Shift or Cmd/Ctrl
+
           if (e.shiftKey || e.metaKey || e.ctrlKey) {
             setSelectedIds(isAlreadySelected ? selectedIds.filter((id) => id !== hit.id) : [...selectedIds, hit.id]);
           } else {
             if (!isAlreadySelected) setSelectedIds([hit.id]);
 
-            // Check if any element to be dragged is locked
             const elementsToDrag = isAlreadySelected ? selectedIds : [hit.id];
             const anyLocked = elementsToDrag.some((id) => {
               const element = getElementById(id);
@@ -1039,9 +987,8 @@ export function useCanvasInteractions({
                 string,
                 { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }
               >();
-              // Helper to collect all draggable elements (including group children)
-              // biome-ignore lint/suspicious/noExplicitAny: complex type
-              const collectDraggableElements = (ids: string[], map: Map<string, any>) => {
+
+              const collectDraggableElements = (ids: string[], map: Map<string, ElementData>) => {
                 for (const id of ids) {
                   const element = getElementById(id);
                   if (!element) continue;
@@ -1066,11 +1013,8 @@ export function useCanvasInteractions({
 
               collectDraggableElements(elementsToDrag, elementsMap);
 
-              // Get all descendant IDs (including selected elements and their children)
-              // to properly exclude them from snap candidates
               const excludedIds = getDescendantIds(elementsToDrag, getElementById);
 
-              // Pre-calculate candidates for snapping (everything NOT being dragged)
               const snapState = getSnapCandidatesAndPoints(elements, excludedIds);
 
               const draggedEls = elements.filter((e) => elementsToDrag.includes(e.id));
@@ -1144,7 +1088,6 @@ export function useCanvasInteractions({
     (e: MouseEvent) => {
       const world = screenToWorld(e.clientX, e.clientY);
 
-      // Update hovered handle (throttled for performance)
       if (activeTool === "select" && !isPanning && !isDragging && !isResizing && !isMarqueeSelecting) {
         const now = performance.now();
         if (now - lastHoverCheckRef.current >= HOVER_THROTTLE_MS) {
@@ -1186,7 +1129,6 @@ export function useCanvasInteractions({
         const deltaX = world.x - dragStartRef.current.worldX;
         const deltaY = world.y - dragStartRef.current.worldY;
 
-        // Snapping Logic
         let finalDeltaX = deltaX;
         let finalDeltaY = deltaY;
 
@@ -1198,7 +1140,6 @@ export function useCanvasInteractions({
           const originalBounds = dragStartRef.current.originalBounds;
           const snapState = dragStartRef.current.snapState;
 
-          // Projected bounds
           const projected: Bounds = {
             minX: originalBounds.minX + deltaX,
             minY: originalBounds.minY + deltaY,
@@ -1255,7 +1196,6 @@ export function useCanvasInteractions({
           }
         }
         if (updates.size > 0) {
-          // Performance: Use RAF-based batching for drag updates
           scheduleUpdate({
             type: "drag",
             updates,
@@ -1278,8 +1218,6 @@ export function useCanvasInteractions({
         const deltaX = world.x - startX;
         const deltaY = world.y - startY;
 
-        // For now, only support resize for rect elements (most common case)
-        // TODO: Add proper ellipse and line resize support
         if (isSingleRotatedElement && originalElements.size === 1) {
           const [id, original] = [...originalElements.entries()][0];
 
@@ -1325,14 +1263,12 @@ export function useCanvasInteractions({
 
             if (shouldMaintainRatio) {
               const ratio = original.width / original.height;
-              // Determine which dimension drives the resize
+
               let driveByWidth = true;
 
               if (handle?.length === 1) {
-                // Edge handles
                 if (handle === "n" || handle === "s") driveByWidth = false;
               } else {
-                // Corner handles - use the larger relative delta
                 if (Math.abs(localDeltaY * ratio) > Math.abs(localDeltaX)) {
                   driveByWidth = false;
                 }
@@ -1371,7 +1307,6 @@ export function useCanvasInteractions({
             const finalX = newCenterWorldX - newWidth / 2;
             const finalY = newCenterWorldY - newHeight / 2;
 
-            // Performance: Use RAF-based batching for resize updates
             scheduleUpdate({
               type: "resize",
               singleUpdate: {
@@ -1391,7 +1326,6 @@ export function useCanvasInteractions({
             const currentY2 = original.y2 ?? 0;
 
             if (handle === "nw") {
-              // Start point
               scheduleUpdate({
                 type: "resize",
                 singleUpdate: {
@@ -1403,7 +1337,6 @@ export function useCanvasInteractions({
                 },
               });
             } else if (handle === "se") {
-              // End point
               scheduleUpdate({
                 type: "resize",
                 singleUpdate: {
@@ -1416,8 +1349,6 @@ export function useCanvasInteractions({
               });
             }
           } else if (original.type === "path") {
-            // Path resizing - resize bounds proportionally
-            // PathElement stores bounds in the `bounds` property, not at top-level
             const bounds = original.bounds || { x: 0, y: 0, width: 0, height: 0 };
             const cosNeg = Math.cos(-elementRotation);
             const sinNeg = Math.sin(-elementRotation);
@@ -1448,7 +1379,6 @@ export function useCanvasInteractions({
             newWidth = Math.max(minSize, newWidth);
             newHeight = Math.max(minSize, newHeight);
 
-            // Aspect ratio lock for paths
             const shouldMaintainRatio = original.aspectRatioLocked || e.shiftKey;
 
             if (shouldMaintainRatio) {
@@ -1469,18 +1399,15 @@ export function useCanvasInteractions({
                 newWidth = newHeight * ratio;
               }
 
-              // Re-adjust position based on anchor if size changed due to ratio
               if (handle?.includes("w")) {
                 newX = bounds.x + bounds.width - newWidth;
               } else if (!handle?.includes("e")) {
-                // If centered horizontally (e.g. N/S drag), grow from center
                 newX = bounds.x + (bounds.width - newWidth) / 2;
               }
 
               if (handle?.includes("n")) {
                 newY = bounds.y + bounds.height - newHeight;
               } else if (!handle?.includes("s")) {
-                // If centered vertically (e.g. E/W drag), grow from center
                 newY = bounds.y + (bounds.height - newHeight) / 2;
               }
             }
@@ -1488,7 +1415,6 @@ export function useCanvasInteractions({
             const newBounds = { x: newX, y: newY, width: newWidth, height: newHeight };
             const newD = resizePath(original.d!, bounds, newBounds);
 
-            // Performance: Use RAF-based batching for resize updates
             scheduleUpdate({
               type: "resize",
               singleUpdate: {
@@ -1501,7 +1427,6 @@ export function useCanvasInteractions({
             });
           }
         } else {
-          // Non-rotated or multi-select: use original axis-aligned logic
           const shouldMaintainRatio =
             originalElements.size === 1
               ? [...originalElements.values()][0].aspectRatioLocked || e.shiftKey
@@ -1512,7 +1437,6 @@ export function useCanvasInteractions({
           let newBoundsWidth = originalBounds.width;
           let newBoundsHeight = originalBounds.height;
 
-          // Calculate proposed new dimensions
           if (handle?.includes("w")) {
             newBoundsWidth = originalBounds.width - deltaX;
             newBoundsX = originalBounds.x + deltaX;
@@ -1534,9 +1458,6 @@ export function useCanvasInteractions({
             if (handle?.length === 1) {
               if (handle === "n" || handle === "s") driveByWidth = false;
             } else {
-              // Use raw delta comparison for axis aligned? Or scaled? Scaled is better.
-              // DeltaX/Y logic here is different from rotated.
-              // Comparing proposed size change is safer.
               const deltaW = Math.abs(newBoundsWidth - originalBounds.width);
               const deltaH = Math.abs(newBoundsHeight - originalBounds.height);
               if (deltaH * ratio > deltaW) {
@@ -1550,7 +1471,6 @@ export function useCanvasInteractions({
               newBoundsWidth = newBoundsHeight * ratio;
             }
 
-            // Recalculate positions based on new dimensions and handle anchor
             if (handle?.includes("w")) {
               newBoundsX = originalBounds.x + originalBounds.width - newBoundsWidth;
             } else if (!handle?.includes("e")) {
@@ -1608,7 +1528,6 @@ export function useCanvasInteractions({
                 y2: newBoundsY + relY2 * newBoundsHeight,
               });
             } else if (original.type === "path") {
-              // PathElement stores bounds in the `bounds` property, not at top-level
               const oldBounds = original.bounds || { x: 0, y: 0, width: 0, height: 0 };
               const newBounds = {
                 ...oldBounds,
@@ -1626,7 +1545,6 @@ export function useCanvasInteractions({
             }
           }
           if (updates.size > 0) {
-            // Performance: Use RAF-based batching for drag updates
             const { snapToGrid, snapToObjects, snapToGeometry } = useCanvasStore.getState();
             const hasSnapping = snapToGrid || snapToObjects || snapToGeometry;
             scheduleUpdate({
@@ -1668,7 +1586,6 @@ export function useCanvasInteractions({
               rotation: newRotation,
             });
           } else if (original.type === "group") {
-            // Only update rotation for the group itself
             updates.set(id, {
               rotation: newRotation,
             });
@@ -1680,7 +1597,6 @@ export function useCanvasInteractions({
               rotation: newRotation,
             });
           } else if (original.type === "rect" || original.type === "image") {
-            // Calculate original center
             const ox = original.x + original.width / 2;
             const oy = original.y + original.height / 2;
             const center = rotatePoint(ox, oy);
@@ -1691,43 +1607,32 @@ export function useCanvasInteractions({
               rotation: newRotation,
             });
           } else if (original.type === "text") {
-            // Text rotates around its visual center (bounds center), same as text-overlay.tsx
-            // original.x/y is the bounds position (from getElementBounds)
-            // original.anchorX/anchorY stores the original element.x, element.y
             const boundsX = original.x;
             const boundsY = original.y;
             const anchorX = original.anchorX ?? boundsX;
             const anchorY = original.anchorY ?? boundsY;
 
-            // Visual center of the text bounds
             const visualCenterX = boundsX + original.width / 2;
             const visualCenterY = boundsY + original.height / 2;
 
-            // Single element rotation if only 1 element is being rotated
             const isSingleElement = originalElements.size === 1;
 
             if (isSingleElement) {
-              // Single element rotation - visual center is the pivot, position stays the same
               updates.set(id, {
                 rotation: newRotation,
               });
             } else {
-              // Multi-element orbital rotation - rotate the visual center around the group center
               const newVisualCenter = rotatePoint(visualCenterX, visualCenterY);
 
-              // Calculate new bounds position from new visual center
               const newBoundsX = newVisualCenter.x - original.width / 2;
               const newBoundsY = newVisualCenter.y - original.height / 2;
 
-              // Calculate original offset from anchor to bounds (in world space, at original rotation)
               const anchorToBoundsX = boundsX - anchorX;
               const anchorToBoundsY = boundsY - anchorY;
 
-              // Rotate this offset by deltaAngle
               const rotatedOffsetX = anchorToBoundsX * cos - anchorToBoundsY * sin;
               const rotatedOffsetY = anchorToBoundsX * sin + anchorToBoundsY * cos;
 
-              // New anchor = new bounds position minus rotated offset
               updates.set(id, {
                 x: newBoundsX - rotatedOffsetX,
                 y: newBoundsY - rotatedOffsetY,
@@ -1735,10 +1640,6 @@ export function useCanvasInteractions({
               });
             }
           } else if (original.type === "path") {
-            // Path rotation requires standard bounds update plus path data rotation or just bounds?
-            // Usually paths are defined by d-string relative to bounds or absolute?
-            // In this app, paths seem to have 'bounds'.
-            // We'll rotate the bounds center.
             const ox = original.bounds!.x + original.bounds!.width / 2;
             const oy = original.bounds!.y + original.bounds!.height / 2;
             const center = rotatePoint(ox, oy);
@@ -1754,7 +1655,6 @@ export function useCanvasInteractions({
           }
         }
         if (updates.size > 0) {
-          // Performance: Use RAF-based batching for rotation updates
           scheduleUpdate({
             type: "rotate",
             updates,
@@ -1787,7 +1687,6 @@ export function useCanvasInteractions({
           newSelectedIds = [];
         }
 
-        // Performance: Use RAF-based batching for marquee selection
         scheduleUpdate({
           type: "marquee",
           selectionBox: {
@@ -1849,7 +1748,6 @@ export function useCanvasInteractions({
     rotateStartRef.current = null;
     marqueeStartRef.current = null;
 
-    // Clear guides
     useCanvasStore.getState().setSmartGuides([]);
   }, [
     isMarqueeSelecting,
@@ -1868,8 +1766,6 @@ export function useCanvasInteractions({
     (e: React.MouseEvent) => {
       const world = screenToWorld(e.clientX, e.clientY);
 
-      // Check if any currently selected element is a child (has parentId)
-      // If so, use deep select to allow right-clicking on children directly
       const hasSelectedChild = selectedIds.some((id) => {
         const el = getElementById(id);
         return el?.parentId;
@@ -1882,7 +1778,6 @@ export function useCanvasInteractions({
     [screenToWorld, hitTest, selectedIds, setContextMenuTarget, setSelectedIds, getElementById],
   );
 
-  // Get rotation cursor based on hovered handle and element rotation
   const getRotationCursorForHandle = useCallback(
     (handle: ResizeHandle): string => {
       return getRotatedRotationCursor(handle, selectedRotation);
@@ -1890,7 +1785,6 @@ export function useCanvasInteractions({
     [selectedRotation],
   );
 
-  // Get the handle that started the rotation (for cursor during rotation)
   const activeRotationHandle = isRotating ? (rotateStartRef.current?.handle ?? null) : null;
 
   return {

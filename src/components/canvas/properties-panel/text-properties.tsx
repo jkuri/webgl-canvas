@@ -24,11 +24,11 @@ export function TextProperties({ element }: TextPropertiesProps) {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-2">
-        {/* Typography */}
+        {}
         <div className="flex flex-col gap-2 p-3">
           <SectionHeader title="Typography" />
 
-          {/* Font Family */}
+          {}
           <Select
             value={element.fontFamily || "Inter"}
             onValueChange={async (newFontFamily) => {
@@ -96,7 +96,7 @@ export function TextProperties({ element }: TextPropertiesProps) {
             </SelectContent>
           </Select>
 
-          {/* Font Size and Weight */}
+          {}
           <div className="grid grid-cols-2 gap-1">
             <NumberInput
               value={element.fontSize || 16}
@@ -179,7 +179,7 @@ export function TextProperties({ element }: TextPropertiesProps) {
             </Select>
           </div>
 
-          {/* Text Alignment */}
+          {}
           <div className="flex gap-1">
             <button
               type="button"
@@ -219,7 +219,7 @@ export function TextProperties({ element }: TextPropertiesProps) {
 
         <Separator />
 
-        {/* Appearance */}
+        {}
         <div className="flex flex-col gap-3 p-3">
           <SectionHeader title="Appearance" />
           <div className="flex flex-col gap-1">

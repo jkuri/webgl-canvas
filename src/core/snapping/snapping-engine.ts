@@ -1,26 +1,19 @@
 import type { CanvasElement, SmartGuide } from "@/types";
 import type { Bounds, Point, SnapLine, SnapResult, SnapState } from "./types";
 
-// ============================================
-// STATE PREPARATION
-// ============================================
-
 export function createSnapState(elements: CanvasElement[], excludeIds: Set<string>): SnapState {
   const eligible = elements.filter((e) => !excludeIds.has(e.id) && e.type !== "group");
 
-  // Arrays to hold lines
   const verticalLines: SnapLine[] = [];
   const horizontalLines: SnapLine[] = [];
   const boundsList: Bounds[] = [];
   const points: Point[] = [];
 
-  // 1. Single pass to collect all data
   for (const element of eligible) {
     const bounds = getBounds(element, elements);
     bounds.id = element.id;
     boundsList.push(bounds);
 
-    // Add vertical lines (for X snapping)
     verticalLines.push(
       {
         value: bounds.minX,
@@ -45,7 +38,6 @@ export function createSnapState(elements: CanvasElement[], excludeIds: Set<strin
       },
     );
 
-    // Add horizontal lines (for Y snapping)
     horizontalLines.push(
       {
         value: bounds.minY,
@@ -70,12 +62,9 @@ export function createSnapState(elements: CanvasElement[], excludeIds: Set<strin
       },
     );
 
-    // Collect points
     points.push(...getSnapPoints(element, bounds));
   }
 
-  // 2. Sort everything (O(N log N))
-  // This is the key optimization - doing this once allows O(log N) lookups later
   verticalLines.sort((a, b) => a.value - b.value);
   horizontalLines.sort((a, b) => a.value - b.value);
 
@@ -91,10 +80,6 @@ export function createSnapState(elements: CanvasElement[], excludeIds: Set<strin
   };
 }
 
-// ============================================
-// SNAPPING LOGIC
-// ============================================
-
 export function calculateSnaps(
   projected: Bounds,
   state: SnapState,
@@ -108,11 +93,10 @@ export function calculateSnaps(
   },
 ): SnapResult {
   const { snapToGrid, snapToObjects, snapToGeometry, gridSize, scale } = config;
-  const threshold = config.threshold / scale; // Adjust threshold by zoom scale
+  const threshold = config.threshold / scale;
 
   const result: SnapResult = { x: 0, y: 0, guides: [] };
 
-  // 1. Object Snapping (Alignment) - High Priority
   let alignX: { diff: number; guides: SmartGuide[]; dist: number } | null = null;
   let alignY: { diff: number; guides: SmartGuide[]; dist: number } | null = null;
 
@@ -121,7 +105,6 @@ export function calculateSnaps(
     alignY = findBestAlignment(projected, state.horizontalLines, "y", threshold);
   }
 
-  // 2. Object Snapping (Spacing) - High Priority (competes with alignment)
   let spaceX: { diff: number; guides: SmartGuide[]; dist: number } | null = null;
   let spaceY: { diff: number; guides: SmartGuide[]; dist: number } | null = null;
 
@@ -130,7 +113,6 @@ export function calculateSnaps(
     spaceY = findBestSpacing(projected, state.ySortedBounds, "y", threshold);
   }
 
-  // 3. Grid Snapping - Low Priority (fallback)
   let gridX = 0;
   let gridY = 0;
   let hasGridX = false;
@@ -150,20 +132,14 @@ export function calculateSnaps(
     }
   }
 
-  // 4. Resolve X Axis
-  // Priority: Alignment > Spacing > Grid
-  // However, usually we pick the closest one.
-
-  // Collect X candidates
   const candidatesX = [];
   if (alignX) candidatesX.push(alignX);
   if (spaceX) candidatesX.push(spaceX);
 
-  // Find best object snap
   let bestObjX = null;
   if (candidatesX.length > 0) {
     candidatesX.sort((a, b) => a.dist - b.dist);
-    // Prefer alignment over spacing if distances are very close
+
     bestObjX = candidatesX[0];
   }
 
@@ -174,7 +150,6 @@ export function calculateSnaps(
     result.x = gridX;
   }
 
-  // 5. Resolve Y Axis
   const candidatesY = [];
   if (alignY) candidatesY.push(alignY);
   if (spaceY) candidatesY.push(spaceY);
@@ -192,9 +167,6 @@ export function calculateSnaps(
     result.y = gridY;
   }
 
-  // 6. Geometry Snapping (Points) - Highest Priority Override?
-  // Usually geometry snapping (like vertex to vertex) is very specific.
-  // We'll check if it offers a better snap.
   if (snapToGeometry && state.points.length > 0) {
     const geoSnap = findGeometrySnap(projected, state.points, threshold);
     if (geoSnap) {
@@ -203,7 +175,6 @@ export function calculateSnaps(
 
       const geoDist = Math.sqrt(geoSnap.diffX * geoSnap.diffX + geoSnap.diffY * geoSnap.diffY);
 
-      // If geometry snap is valid and closer than object/grid snap
       if (geoDist < threshold && geoDist < Math.min(currentDistX, currentDistY)) {
         result.x = geoSnap.diffX;
         result.y = geoSnap.diffY;
@@ -215,10 +186,6 @@ export function calculateSnaps(
   return result;
 }
 
-// ============================================
-// HELPERS
-// ============================================
-
 function findBestAlignment(bounds: Bounds, lines: SnapLine[], axis: "x" | "y", threshold: number) {
   const targets =
     axis === "x" ? [bounds.minX, bounds.centerX, bounds.maxX] : [bounds.minY, bounds.centerY, bounds.maxY];
@@ -226,17 +193,14 @@ function findBestAlignment(bounds: Bounds, lines: SnapLine[], axis: "x" | "y", t
   let bestDiff = Infinity;
   let bestGuides: SmartGuide[] = [];
 
-  // Binary search for each target
   for (let i = 0; i < targets.length; i++) {
     const val = targets[i];
 
-    // Find index of first line >= val - threshold
     const minVal = val - threshold;
     const maxVal = val + threshold;
 
     let idx = lowerBound(lines, minVal);
 
-    // Iterate through candidates within threshold
     while (idx < lines.length && lines[idx].value <= maxVal) {
       const line = lines[idx];
       const diff = line.value - val;
@@ -245,12 +209,9 @@ function findBestAlignment(bounds: Bounds, lines: SnapLine[], axis: "x" | "y", t
       if (dist < Math.abs(bestDiff)) {
         bestDiff = diff;
 
-        // Construct Guide
         const guides: SmartGuide[] = [];
 
         if (axis === "x") {
-          // Vertical guide (X alignment)
-          // We want the guide to span between the objects
           const myMinY = bounds.minY;
           const myMaxY = bounds.maxY;
           const otherMinY = line.range[0];
@@ -269,7 +230,6 @@ function findBestAlignment(bounds: Bounds, lines: SnapLine[], axis: "x" | "y", t
             y2: y2,
           });
         } else {
-          // Horizontal guide (Y alignment)
           const myMinX = bounds.minX;
           const myMaxX = bounds.maxX;
           const otherMinX = line.range[0];
@@ -310,52 +270,44 @@ function lowerBound(lines: SnapLine[], value: number): number {
 }
 
 function findBestSpacing(bounds: Bounds, sortedBounds: Bounds[], axis: "x" | "y", threshold: number) {
-  // Simplification: Look for equal spacing with immediate visual neighbors
   const minVal = axis === "x" ? bounds.minX : bounds.minY;
   const maxVal = axis === "x" ? bounds.maxX : bounds.maxY;
   const size = maxVal - minVal;
 
-  // Find insertion point
   const centerIdx = lowerBoundBounds(sortedBounds, minVal, axis);
 
   let leftNeighbor: Bounds | null = null;
   let rightNeighbor: Bounds | null = null;
 
-  // Search backwards for left neighbor
   for (let i = centerIdx - 1; i >= 0; i--) {
     const b = sortedBounds[i];
     const bMax = axis === "x" ? b.maxX : b.maxY;
 
-    // Check overlap in perpendicular axis
     const overlaps =
       axis === "x" ? b.maxY > bounds.minY && b.minY < bounds.maxY : b.maxX > bounds.minX && b.minX < bounds.maxX;
 
     if (overlaps) {
       if (bMax < minVal) {
-        // strictly to the left/top
         if (!leftNeighbor) {
           leftNeighbor = b;
-          break; // Found immediate neighbor
+          break;
         }
       }
     }
   }
 
-  // Search forwards for right neighbor
   for (let i = centerIdx; i < sortedBounds.length; i++) {
     const b = sortedBounds[i];
     const bMin = axis === "x" ? b.minX : b.minY;
 
-    // Check overlap
     const overlaps =
       axis === "x" ? b.maxY > bounds.minY && b.minY < bounds.maxY : b.maxX > bounds.minX && b.minX < bounds.maxX;
 
     if (overlaps) {
       if (bMin > maxVal) {
-        // strictly to the right/bottom
         if (!rightNeighbor) {
           rightNeighbor = b;
-          break; // Found immediate neighbor
+          break;
         }
       }
     }
@@ -372,7 +324,6 @@ function findBestSpacing(bounds: Bounds, sortedBounds: Bounds[], axis: "x" | "y"
     const diff = targetPos - minVal;
 
     if (Math.abs(diff) < threshold) {
-      // Construct guides
       const guides: SmartGuide[] = [];
       const gapSize = Math.round(targetGap);
       const otherCenter = axis === "x" ? (bounds.minY + bounds.maxY) / 2 : (bounds.minX + bounds.maxX) / 2;
@@ -473,10 +424,6 @@ function findGeometrySnap(projected: Bounds, points: Point[], threshold: number)
   return bestSnap;
 }
 
-// ============================================
-// BOUNDS UTILITIES (Copied/Adapted)
-// ============================================
-
 export function getBounds(element: CanvasElement, allElements: CanvasElement[]): Bounds {
   if (element.type === "group") {
     let minX = Infinity,
@@ -544,7 +491,6 @@ export function getBounds(element: CanvasElement, allElements: CanvasElement[]):
       maxY = Math.max(maxY, pt.y);
     }
   } else {
-    // Rect, Image
     minX = element.x;
     minY = element.y;
     maxX = element.x + element.width;

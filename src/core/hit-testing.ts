@@ -8,7 +8,6 @@ import type {
   Shape,
 } from "@/types";
 
-// Helper to get rotated corners of a rect element
 function getRotatedCornersRect(element: RectElement): { x: number; y: number }[] {
   const { x, y, width, height, rotation } = element;
   const centerX = x + width / 2;
@@ -33,7 +32,6 @@ function getRotatedCornersRect(element: RectElement): { x: number; y: number }[]
   });
 }
 
-// Helper to get rotated corners of an ellipse (bounding box corners)
 function getRotatedCornersEllipse(element: EllipseElement): { x: number; y: number }[] {
   const { cx, cy, rx, ry, rotation } = element;
   const cos = Math.cos(rotation);
@@ -56,7 +54,6 @@ function getRotatedCornersEllipse(element: EllipseElement): { x: number; y: numb
   });
 }
 
-// Get rotated corners for any shape element
 export function getRotatedCorners(element: Shape): { x: number; y: number }[] {
   switch (element.type) {
     case "rect":
@@ -64,7 +61,6 @@ export function getRotatedCorners(element: Shape): { x: number; y: number }[] {
     case "ellipse":
       return getRotatedCornersEllipse(element);
     case "line": {
-      // Lines don't have corners, return endpoints
       const { x1, y1, x2, y2 } = element;
       return [
         { x: x1, y: y1 },
@@ -72,7 +68,6 @@ export function getRotatedCorners(element: Shape): { x: number; y: number }[] {
       ];
     }
     case "path": {
-      // Return bounding box corners
       const { x, y, width, height } = element.bounds;
       const centerX = x + width / 2;
       const centerY = y + height / 2;
@@ -110,7 +105,6 @@ export function getRotatedCorners(element: Shape): { x: number; y: number }[] {
         boundsY = element.y - element.fontSize;
       }
 
-      // Rotate around visual center (same as text-overlay.tsx)
       const centerX = boundsX + textWidth / 2;
       const centerY = boundsY + textHeight / 2;
       const cos = Math.cos(element.rotation);
@@ -184,7 +178,6 @@ export function getRotatedCorners(element: Shape): { x: number; y: number }[] {
   }
 }
 
-// Hit test a single rect element
 function hitTestRect(worldX: number, worldY: number, element: RectElement): boolean {
   const { x, y, width, height, rotation } = element;
   const centerX = x + width / 2;
@@ -199,7 +192,6 @@ function hitTestRect(worldX: number, worldY: number, element: RectElement): bool
   return localX >= x && localX <= x + width && localY >= y && localY <= y + height;
 }
 
-// Hit test a single ellipse element
 function hitTestEllipse(worldX: number, worldY: number, element: EllipseElement): boolean {
   const { cx, cy, rx, ry, rotation } = element;
   const dx = worldX - cx;
@@ -211,7 +203,6 @@ function hitTestEllipse(worldX: number, worldY: number, element: EllipseElement)
   return (localX * localX) / (rx * rx) + (localY * localY) / (ry * ry) <= 1;
 }
 
-// Helper to check if point is near a line segment
 function pointToLineDistance(
   px: number,
   py: number,
@@ -238,7 +229,6 @@ function pointToLineDistance(
   return { distance, t };
 }
 
-// Hit test a single line element
 function hitTestLine(worldX: number, worldY: number, element: LineElement): boolean {
   const strokeWidth = element.stroke?.width ?? 1;
   const hitDistance = Math.max(strokeWidth / 2, 5);
@@ -246,10 +236,9 @@ function hitTestLine(worldX: number, worldY: number, element: LineElement): bool
   return distance <= hitDistance;
 }
 
-// Hit test an element (any type)
 export function hitTestElement(worldX: number, worldY: number, element: CanvasElement): boolean {
   if (element.visible === false) return false;
-  if (element.type === "group") return false; // Groups don't have hit areas, their children do
+  if (element.type === "group") return false;
 
   switch (element.type) {
     case "rect":
@@ -259,15 +248,13 @@ export function hitTestElement(worldX: number, worldY: number, element: CanvasEl
     case "line":
       return hitTestLine(worldX, worldY, element);
     case "path": {
-      // Simple bounding box hit test for paths
       const { x, y, width, height } = element.bounds;
       return worldX >= x && worldX <= x + width && worldY >= y && worldY <= y + height;
     }
     case "text": {
-      // Use stored bounds if available (accurate), fallback to estimation
       if (element.bounds) {
         const { x, y, width, height } = element.bounds;
-        // element.bounds is relative to element.x/y
+
         const absoluteX = element.x + x;
         const absoluteY = element.y + y;
         return (
@@ -275,7 +262,6 @@ export function hitTestElement(worldX: number, worldY: number, element: CanvasEl
         );
       }
 
-      // Fallback
       const textWidth = element.text.length * element.fontSize * 0.6;
       const textHeight = element.fontSize * 1.2;
       const x = element.x;
@@ -285,7 +271,7 @@ export function hitTestElement(worldX: number, worldY: number, element: CanvasEl
     case "polygon":
     case "polyline": {
       if (element.points.length === 0) return false;
-      // Point in polygon using ray casting
+
       let inside = false;
       const pts = element.points;
       for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
@@ -306,16 +292,12 @@ export function hitTestElement(worldX: number, worldY: number, element: CanvasEl
   }
 }
 
-// Hit test all elements, returns the topmost hit element
-// When deepSelect is true, returns the actual child element instead of its parent group
 export function hitTestShape(
   worldX: number,
   worldY: number,
   elements: CanvasElement[],
   deepSelect = false,
 ): CanvasElement | null {
-  // Helper function to recursively test a group's children
-  // Returns [hitElement, immediateParent] or null if no hit
   const testGroup = (group: CanvasElement, depth: number): { hit: CanvasElement; parent: CanvasElement } | null => {
     if (group.type !== "group") return null;
 
@@ -323,17 +305,13 @@ export function hitTestShape(
       .map((id) => elements.find((e) => e.id === id))
       .filter((c): c is CanvasElement => c !== undefined && c.visible !== false);
 
-    // Test children in reverse order (top to bottom)
     for (let j = children.length - 1; j >= 0; j--) {
       const child = children[j];
       if (child.locked) continue;
 
       if (child.type === "group") {
-        // Recursively test nested groups
         const nestedHit = testGroup(child, depth + 1);
         if (nestedHit) {
-          // If deep select, return the nested result
-          // Otherwise, return this child group as the hit
           if (deepSelect) {
             return nestedHit;
           }
@@ -348,14 +326,12 @@ export function hitTestShape(
     return null;
   };
 
-  // Build list of top-level items (groups and non-grouped elements) preserving z-order
   const topLevelItems: CanvasElement[] = [];
   for (const element of elements) {
-    if (element.parentId) continue; // Skip children (they're tested via their parent group)
+    if (element.parentId) continue;
     topLevelItems.push(element);
   }
 
-  // Test in reverse order (top to bottom in z-order)
   for (let i = topLevelItems.length - 1; i >= 0; i--) {
     const item = topLevelItems[i];
     if (item.visible === false) continue;
@@ -367,10 +343,9 @@ export function hitTestShape(
         if (deepSelect) {
           return result.hit;
         }
-        return item; // Return the top-level group
+        return item;
       }
     } else {
-      // Non-group element
       if (hitTestElement(worldX, worldY, item)) {
         return item;
       }
@@ -379,8 +354,6 @@ export function hitTestShape(
   return null;
 }
 
-// Hit test all elements at a position, returns all hit elements in order (top to bottom)
-// Used for cycling through overlapping elements when double-clicking
 export function hitTestAllElements(
   worldX: number,
   worldY: number,
@@ -389,7 +362,6 @@ export function hitTestAllElements(
 ): CanvasElement[] {
   const hits: CanvasElement[] = [];
 
-  // Helper to recursively check if a group has any hit children
   const groupHasHitChild = (group: CanvasElement): boolean => {
     if (group.type !== "group") return false;
     for (const childId of group.childIds) {
@@ -404,17 +376,14 @@ export function hitTestAllElements(
     return false;
   };
 
-  // Test in reverse order (top to bottom)
   for (let i = elements.length - 1; i >= 0; i--) {
     const element = elements[i];
     if (element.visible === false) continue;
     if (element.locked) continue;
 
-    // If parentId is specified, only include elements from that group
     if (parentId !== undefined && element.parentId !== parentId) continue;
 
     if (element.type === "group") {
-      // Include groups if they have hit children (for deep-select into nested groups)
       if (groupHasHitChild(element)) {
         hits.push(element);
       }
@@ -428,35 +397,27 @@ export function hitTestAllElements(
   return hits;
 }
 
-// Hit test all top-level elements/groups at a position
-// Returns items with their top-level parent (group or element itself)
-// Used for cycling through overlapping elements that may be in different groups
 export function hitTestAllTopLevel(worldX: number, worldY: number, elements: CanvasElement[]): CanvasElement[] {
   const hits: CanvasElement[] = [];
   const seenTopLevel = new Set<string>();
 
-  // Test in reverse order (top to bottom)
   for (let i = elements.length - 1; i >= 0; i--) {
     const element = elements[i];
     if (element.visible === false) continue;
     if (element.locked) continue;
-    if (element.type === "group") continue; // Skip groups themselves
+    if (element.type === "group") continue;
 
     if (hitTestElement(worldX, worldY, element)) {
-      // Get the top-level item (the element itself if no parent, or its parent group)
       const topLevelId = element.parentId || element.id;
 
-      // Only add if we haven't seen this top-level item yet
       if (!seenTopLevel.has(topLevelId)) {
         seenTopLevel.add(topLevelId);
         if (element.parentId) {
-          // Find and add the parent group
           const parentGroup = elements.find((e) => e.id === element.parentId);
           if (parentGroup) {
             hits.push(parentGroup);
           }
         } else {
-          // Add the element itself (it's top-level)
           hits.push(element);
         }
       }
@@ -468,8 +429,7 @@ export function hitTestAllTopLevel(worldX: number, worldY: number, elements: Can
 
 export function hitTestResizeHandle(worldX: number, worldY: number, element: CanvasElement, scale = 1): ResizeHandle {
   if (element.type === "group") {
-    // For groups, compute bounds from children and use axis-aligned hit test
-    return null; // Groups use bounding box handles
+    return null;
   }
   return hitTestRotatedElementHandle(worldX, worldY, element as Shape, scale);
 }
@@ -482,11 +442,10 @@ export function hitTestRotatedElementHandle(worldX: number, worldY: number, elem
 
   const corners = getRotatedCorners(element);
 
-  // For lines, only return endpoint handles
   if (element.type === "line") {
     const handles: { x: number; y: number; type: ResizeHandle }[] = [
-      { x: corners[0].x, y: corners[0].y, type: "nw" }, // Start point
-      { x: corners[1].x, y: corners[1].y, type: "se" }, // End point
+      { x: corners[0].x, y: corners[0].y, type: "nw" },
+      { x: corners[1].x, y: corners[1].y, type: "se" },
     ];
 
     for (const handle of handles) {
@@ -499,7 +458,6 @@ export function hitTestRotatedElementHandle(worldX: number, worldY: number, elem
     return null;
   }
 
-  // For rect, ellipse, path: check corner handles
   const cornerHandles: { x: number; y: number; type: ResizeHandle }[] = [
     { x: corners[0].x, y: corners[0].y, type: "nw" },
     { x: corners[1].x, y: corners[1].y, type: "ne" },
@@ -515,7 +473,6 @@ export function hitTestRotatedElementHandle(worldX: number, worldY: number, elem
     }
   }
 
-  // Check edges
   const edges: { p1: { x: number; y: number }; p2: { x: number; y: number }; type: ResizeHandle }[] = [
     { p1: corners[0], p2: corners[1], type: "n" },
     { p1: corners[1], p2: corners[2], type: "e" },
@@ -573,7 +530,6 @@ export function hitTestBoundsHandle(worldX: number, worldY: number, bounds: Boun
   return null;
 }
 
-// Helper to recursively collect shapes from elements (including groups)
 export function calculateBoundingBox(elements: CanvasElement[]): BoundingBox | null {
   const shapes = elements.filter((e) => e.type !== "group" && e.visible !== false) as Shape[];
   if (shapes.length === 0) return null;
@@ -606,30 +562,24 @@ function lineIntersectsBox(
   maxX: number,
   maxY: number,
 ): boolean {
-  // Check if either point is inside
   if (x1 >= minX && x1 <= maxX && y1 >= minY && y1 <= maxY) return true;
   if (x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY) return true;
 
-  // Check intersection with box edges
-  // Left edge (x=minX)
   if (x2 !== x1) {
     let t = (minX - x1) / (x2 - x1);
     let y = y1 + t * (y2 - y1);
     if (t >= 0 && t <= 1 && y >= minY && y <= maxY) return true;
 
-    // Right edge (x=maxX)
     t = (maxX - x1) / (x2 - x1);
     y = y1 + t * (y2 - y1);
     if (t >= 0 && t <= 1 && y >= minY && y <= maxY) return true;
   }
 
-  // Top edge (y=minY)
   if (y2 !== y1) {
     let t = (minY - y1) / (y2 - y1);
     let x = x1 + t * (x2 - x1);
     if (t >= 0 && t <= 1 && x >= minX && x <= maxX) return true;
 
-    // Bottom edge (y=maxY)
     t = (maxY - y1) / (y2 - y1);
     x = x1 + t * (x2 - x1);
     if (t >= 0 && t <= 1 && x >= minX && x <= maxX) return true;
@@ -638,12 +588,10 @@ function lineIntersectsBox(
   return false;
 }
 
-// Helper to check if a single element intersects a selection box
 function elementIntersectsBox(element: CanvasElement, minX: number, minY: number, maxX: number, maxY: number): boolean {
   if (element.visible === false) return false;
   if (element.type === "group") return false;
 
-  // Special case for lines: check intersection with box
   if (element.type === "line") {
     const line = element as LineElement;
     return lineIntersectsBox(line.x1, line.y1, line.x2, line.y2, minX, minY, maxX, maxY);
@@ -652,14 +600,12 @@ function elementIntersectsBox(element: CanvasElement, minX: number, minY: number
   const shape = element as Shape;
   const corners = getRotatedCorners(shape);
 
-  // Check if any corner is inside the selection box
   for (const corner of corners) {
     if (corner.x >= minX && corner.x <= maxX && corner.y >= minY && corner.y <= maxY) {
       return true;
     }
   }
 
-  // Also check if the shape's bounding box overlaps
   const shapeBounds = calculateBoundingBox([shape]);
   if (!shapeBounds) return false;
   return (
@@ -670,7 +616,6 @@ function elementIntersectsBox(element: CanvasElement, minX: number, minY: number
   );
 }
 
-// Helper to check if any child of a group intersects the selection box
 function groupIntersectsBox(
   group: CanvasElement,
   elementMap: Map<string, CanvasElement>,
@@ -686,7 +631,6 @@ function groupIntersectsBox(
     if (!child) continue;
 
     if (child.type === "group") {
-      // Recursively check nested groups
       if (groupIntersectsBox(child, elementMap, minX, minY, maxX, maxY)) {
         return true;
       }
@@ -712,7 +656,6 @@ export function getShapesInBox(
   const boxHeight = maxY - minY;
   if (boxWidth < 1 && boxHeight < 1) return [];
 
-  // Build element lookup map for O(1) access
   const elementMap = new Map<string, CanvasElement>();
   for (const el of elements) {
     elementMap.set(el.id, el);
@@ -721,11 +664,9 @@ export function getShapesInBox(
   const result: CanvasElement[] = [];
   const selectedGroupIds = new Set<string>();
 
-  // First pass: find all groups that intersect the selection box
   for (const element of elements) {
     if (element.visible === false) continue;
     if (element.type === "group" && !element.parentId) {
-      // Only check top-level groups
       if (groupIntersectsBox(element, elementMap, minX, minY, maxX, maxY)) {
         result.push(element);
         selectedGroupIds.add(element.id);
@@ -733,12 +674,10 @@ export function getShapesInBox(
     }
   }
 
-  // Second pass: find all top-level elements (not in a group) that intersect
   for (const element of elements) {
     if (element.visible === false) continue;
     if (element.type === "group") continue;
 
-    // Find the top-level ancestor group (if any)
     let topLevelAncestor: CanvasElement | null = null;
     let currentParentId = element.parentId;
     while (currentParentId) {
@@ -748,10 +687,8 @@ export function getShapesInBox(
       currentParentId = parent.parentId;
     }
 
-    // Skip if the top-level ancestor is already selected
     if (topLevelAncestor && selectedGroupIds.has(topLevelAncestor.id)) continue;
 
-    // If element has a parent group that wasn't selected, add the top-level ancestor
     if (topLevelAncestor) {
       if (!selectedGroupIds.has(topLevelAncestor.id)) {
         if (elementIntersectsBox(element, minX, minY, maxX, maxY)) {
@@ -762,7 +699,6 @@ export function getShapesInBox(
       continue;
     }
 
-    // Top-level element (no parent)
     if (elementIntersectsBox(element, minX, minY, maxX, maxY)) {
       result.push(element);
     }

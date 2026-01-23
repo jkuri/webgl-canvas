@@ -1,18 +1,12 @@
-// Tailwind color palette for shapes
-// Values are RGBA arrays normalized to 0-1 range for WebGL
-
 export type RGBAColor = [number, number, number, number];
 
-// Complete Tailwind CSS default color palette (500 shades)
 export const TAILWIND_COLORS = {
-  // Grays
   slate: "#64748b",
   gray: "#6b7280",
   zinc: "#71717a",
   neutral: "#737373",
   stone: "#78716c",
 
-  // Colors
   red: "#ef4444",
   orange: "#f97316",
   amber: "#f59e0b",
@@ -32,9 +26,7 @@ export const TAILWIND_COLORS = {
   rose: "#f43f5e",
 } as const;
 
-// Color presets for the color picker (subset of commonly used colors)
 export const COLOR_PICKER_PRESETS = [
-  // Row 1: Black, White, and Grays
   "#000000",
   "#ffffff",
   "#f5f5f5",
@@ -43,7 +35,7 @@ export const COLOR_PICKER_PRESETS = [
   "#404040",
   "#171717",
   "#0a0a0a",
-  // Row 2: Reds and Oranges
+
   "#fecaca",
   "#f87171",
   "#ef4444",
@@ -52,7 +44,7 @@ export const COLOR_PICKER_PRESETS = [
   "#fb923c",
   "#f97316",
   "#ea580c",
-  // Row 3: Yellows and Greens
+
   "#fef08a",
   "#facc15",
   "#eab308",
@@ -61,7 +53,7 @@ export const COLOR_PICKER_PRESETS = [
   "#4ade80",
   "#22c55e",
   "#16a34a",
-  // Row 4: Teals and Cyans
+
   "#a7f3d0",
   "#34d399",
   "#10b981",
@@ -70,7 +62,7 @@ export const COLOR_PICKER_PRESETS = [
   "#22d3ee",
   "#06b6d4",
   "#0891b2",
-  // Row 5: Blues and Indigos
+
   "#bfdbfe",
   "#60a5fa",
   "#3b82f6",
@@ -79,7 +71,7 @@ export const COLOR_PICKER_PRESETS = [
   "#818cf8",
   "#6366f1",
   "#4f46e5",
-  // Row 6: Purples and Pinks
+
   "#ddd6fe",
   "#a78bfa",
   "#8b5cf6",
@@ -88,7 +80,7 @@ export const COLOR_PICKER_PRESETS = [
   "#e879f9",
   "#d946ef",
   "#c026d3",
-  // Row 7: Pinks and Roses
+
   "#fbcfe8",
   "#f472b6",
   "#ec4899",
@@ -99,7 +91,6 @@ export const COLOR_PICKER_PRESETS = [
   "#e11d48",
 ] as const;
 
-// Legacy types for backward compatibility
 export type ShapeColorName = "Blue" | "Cyan" | "Emerald" | "Fuchsia" | "Green" | "Indigo" | "Lime" | "Orange" | "Pink";
 
 export const SHAPE_COLORS: Record<ShapeColorName, RGBAColor> = {
@@ -134,7 +125,6 @@ export function getRandomShapeColorCSS(): string {
 }
 
 export function cssToRGBA(css: string): RGBAColor {
-  // Handle hex colors
   if (css.startsWith("#")) {
     const hex = css.slice(1);
     if (hex.length === 3) {
@@ -157,7 +147,7 @@ export function cssToRGBA(css: string): RGBAColor {
       return [r, g, b, a];
     }
   }
-  // Handle rgba()
+
   const rgbaMatch = css.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
   if (rgbaMatch) {
     return [
@@ -167,6 +157,6 @@ export function cssToRGBA(css: string): RGBAColor {
       rgbaMatch[4] ? Number.parseFloat(rgbaMatch[4]) : 1,
     ];
   }
-  // Default fallback
+
   return [0.5, 0.5, 0.5, 1];
 }

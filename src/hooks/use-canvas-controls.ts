@@ -17,7 +17,6 @@ export function useCanvasControls(options: CanvasControlsOptions = {}) {
 
   const handleWheel = useCallback(
     (e: WheelEvent, rect: DOMRect) => {
-      // Ignore events originating from UI panels
       const target = e.target as HTMLElement;
       if (target.closest(".pointer-events-auto")) {
         return;
