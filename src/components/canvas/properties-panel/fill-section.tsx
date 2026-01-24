@@ -13,6 +13,10 @@ interface FillSectionProps {
 export function FillSection({ elements }: FillSectionProps) {
   const updateElements = useCanvasStore((s) => s.updateElements);
 
+  if (elements.length === 0) {
+    return null;
+  }
+
   const uniqueFills = new Set(
     elements.map((e) => {
       if (typeof e.fill === "string") return e.fill;

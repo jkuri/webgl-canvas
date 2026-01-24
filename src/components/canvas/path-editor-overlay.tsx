@@ -22,8 +22,6 @@ export function PathEditorOverlay({ screenToWorld, worldToScreen }: PathEditorOv
     };
   }, [handleMouseMove, handleMouseUp]);
 
-  console.log("PathEditorOverlay: isEditing", isEditing, "points", editablePoints.length);
-
   if (!isEditing) return null;
 
   const ANCHOR_SIZE = 8;

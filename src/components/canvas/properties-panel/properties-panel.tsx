@@ -32,7 +32,7 @@ export function PropertiesPanel() {
           <span className="truncate">{selectedElements.length} items selected</span>
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-2">
-          <FillSection elements={shapes} />
+          {shapes.length > 0 && <FillSection elements={shapes} />}
           <Separator />
           {showStroke && <StrokeSection elements={shapes} showMarkers={shapes.every((e) => e.type === "line")} />}
         </div>
