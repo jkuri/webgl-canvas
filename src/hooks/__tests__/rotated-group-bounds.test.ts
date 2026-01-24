@@ -1,13 +1,14 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { CanvasElement } from "@/types";
 import { createGroup, createRect, resetIdCounter } from "../canvas-interactions/__tests__/test-utils";
 
 // Mock the store
-let mockElements: any[] = [];
+let mockElements: CanvasElement[] = [];
 let mockSelectedIds: string[] = [];
 
 vi.mock("@/store", () => ({
-  useCanvasStore: (selector: any) => {
+  useCanvasStore: (selector: (state: { elements: CanvasElement[]; selectedIds: string[] }) => unknown) => {
     const state = {
       elements: mockElements,
       selectedIds: mockSelectedIds,

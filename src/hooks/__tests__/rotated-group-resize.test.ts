@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCanvasStore } from "@/store";
+import type { CanvasElement } from "@/types";
 import { useResizeInteraction } from "../canvas-interactions/use-resize-interaction";
 
 describe("useResizeInteraction - Rotated Group", () => {
@@ -56,7 +57,7 @@ describe("useResizeInteraction - Rotated Group", () => {
 
     // Store state
     useCanvasStore.setState({
-      elements: [group, rect] as any[],
+      elements: [group, rect] as CanvasElement[],
       selectedIds: ["group1"],
     });
 
@@ -91,7 +92,7 @@ describe("useResizeInteraction - Rotated Group", () => {
         startX,
         startY,
         "e", // East handle
-        [group as any],
+        [group as CanvasElement],
         setIsResizing,
       );
     });
@@ -148,7 +149,7 @@ describe("useResizeInteraction - Rotated Group", () => {
 
     // Store state
     useCanvasStore.setState({
-      elements: [group, rect] as any[],
+      elements: [group, rect] as CanvasElement[],
       selectedIds: ["group1"],
     });
 
@@ -178,7 +179,7 @@ describe("useResizeInteraction - Rotated Group", () => {
         startX,
         startY,
         "se", // South-East handle
-        [group as any],
+        [group as CanvasElement],
         setIsResizing,
       );
     });
