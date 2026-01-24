@@ -13,6 +13,9 @@ function removeComments(code) {
   // And preserve biome-ignore comments
   code = code.replace(/(?<!:)\/\/(?!\/)(?!\s*biome-ignore)[^\n]*/g, "");
 
+  // Remove JSX comments {/* ... */} that are on their own line
+  code = code.replace(/(^|\n)\s*\{\s*\/\*[\s\S]*?\*\/\s*\}[ \t]*(?=\r?\n|$)/g, "$1");
+
   // Remove multi-line comments (/* ... */)
   code = code.replace(/\/\*[\s\S]*?\*\//g, "");
 
