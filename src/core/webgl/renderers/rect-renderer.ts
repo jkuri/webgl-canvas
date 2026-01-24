@@ -47,8 +47,6 @@ export function drawRoundedRect(ctx: RenderContext, element: RectElement, scale:
 
   const segments = Math.max(16, Math.min(256, Math.ceil(r * scale)));
 
-  // reuse helper logic essentially
-  // Fan drawing helper locally
   const drawFan = (pts: number[]) => {
     const cx = pts[0],
       cy = pts[1];
@@ -143,23 +141,12 @@ export function drawRoundedRect(ctx: RenderContext, element: RectElement, scale:
     drawLineBetweenPoints(ctx, { x: x + width, y: y + r }, { x: x + width, y: y + height - r }, w, 1);
 
     const drawArcStroke = (cx: number, cy: number, start: number, end: number) => {
-      // Note: Rotation handled by shader logic for individual segments?
-      // Wait, original code calls drawRotatedDisc but `drawDisc` calls `resetRotation`?
-      // Actually `drawDisc` in original code (lines 1019) calls `resetRotation`.
-      // But `drawArcStroke` (lines 623) sets uniform rotation back.
-      // So we need `drawDisc` equivalent.
-
-      // Let's implement inline or helper if complex.
-      // For now, let's just do line segments to approximate curve.
-
       for (let i = 0; i < segments; i++) {
         const a1 = start + (i / segments) * (end - start);
         const a2 = start + ((i + 1) / segments) * (end - start);
         const p1 = { x: cx + Math.cos(a1) * r, y: cy + Math.sin(a1) * r };
         const p2 = { x: cx + Math.cos(a2) * r, y: cy + Math.sin(a2) * r };
         drawLineBetweenPoints(ctx, p1, p2, w, 1);
-        // We skip the disc caps for simplicity unless critical, they were for smooth joins
-        // The original code uses `drawDisc` for caps.
       }
     };
 

@@ -49,7 +49,6 @@ export interface ElementsSlice {
   openProject: () => void;
 }
 
-// Helper requirement
 interface StoreWithSelection {
   selectedIds: string[];
   canvasBackground: string;

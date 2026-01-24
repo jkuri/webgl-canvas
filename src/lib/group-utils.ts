@@ -252,13 +252,12 @@ export const resizeGroupChildrenOBB = (
   group: GroupElement,
   startOBB: { x: number; y: number; width: number; height: number; rotation: number },
   endOBB: { x: number; y: number; width: number; height: number; rotation: number },
-  originalElements: Map<string, CanvasElement>, // Use Map instead of array
+  originalElements: Map<string, CanvasElement>,
   updates: Map<string, Record<string, unknown>>,
 ) => {
   const scaleX = endOBB.width / startOBB.width;
   const scaleY = endOBB.height / startOBB.height;
 
-  // Center of the group in world space
   const startCenterX = startOBB.x + startOBB.width / 2;
   const startCenterY = startOBB.y + startOBB.height / 2;
 
@@ -273,7 +272,7 @@ export const resizeGroupChildrenOBB = (
 
   const traverse = (ids: string[]) => {
     for (const id of ids) {
-      const el = originalElements.get(id); // Lookup in original map
+      const el = originalElements.get(id);
       if (!el) continue;
 
       if (el.type === "group") {
@@ -286,7 +285,6 @@ export const resizeGroupChildrenOBB = (
           w = el.bounds.width;
           h = el.bounds.height;
         } else {
-          // For text without bounds, we assume it's just a point for now or need better text resize logic
           if (el.type !== "text") {
             w = el.width;
             h = el.height;
@@ -296,18 +294,15 @@ export const resizeGroupChildrenOBB = (
         const elCx = el.x + w / 2;
         const elCy = el.y + h / 2;
 
-        // Localize
         const dx = elCx - startCenterX;
         const dy = elCy - startCenterY;
 
         const localX = dx * cos - dy * sin;
         const localY = dx * sin + dy * cos;
 
-        // Scale
         const scaledLocalX = localX * scaleX;
         const scaledLocalY = localY * scaleY;
 
-        // World transform back
         const finalCx = endCenterX + scaledLocalX * cosEnd - scaledLocalY * sinEnd;
         const finalCy = endCenterY + scaledLocalX * sinEnd + scaledLocalY * cosEnd;
 
@@ -328,8 +323,6 @@ export const resizeGroupChildrenOBB = (
 
         updates.set(id, update);
       } else if (el.type === "path") {
-        // Simplified implementation for path: resize bounds and update d
-        // This assumes path is also rotated with group which generally fits
         const b = el.bounds;
         const elCx = b.x + b.width / 2;
         const elCy = b.y + b.height / 2;
@@ -358,7 +351,6 @@ export const resizeGroupChildrenOBB = (
         const newD = resizePath(el.d, b, newBounds);
         updates.set(id, { d: newD, bounds: newBounds });
       }
-      // TODO: Implement other types (ellipse, line, polygon) as needed
     }
   };
   traverse(group.childIds);

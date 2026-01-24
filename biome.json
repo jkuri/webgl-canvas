@@ -17,8 +17,7 @@
         "noNonNullAssertion": "off"
       },
       "correctness": {
-        "useExhaustiveDependencies": "off",
-        "useHookAtTopLevel": "off"
+        "useExhaustiveDependencies": "off"
       },
       "suspicious": {
         "noArrayIndexKey": "off"

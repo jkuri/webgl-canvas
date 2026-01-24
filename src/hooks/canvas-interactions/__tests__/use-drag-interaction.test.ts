@@ -82,7 +82,6 @@ describe("useDragInteraction", () => {
         result.current.startDrag(50, 50, [group.id], elements, setIsDragging);
       });
 
-      // Should contain the rect (child), not the group
       expect(result.current.dragStartRef.current?.elements.has(rect.id)).toBe(true);
     });
   });
@@ -188,7 +187,7 @@ describe("useDragInteraction", () => {
       });
 
       act(() => {
-        result.current.updateDrag(100, 150, 1); // Move by (50, 100)
+        result.current.updateDrag(100, 150, 1);
       });
 
       expect(mockUpdateElements).toHaveBeenCalled();
@@ -229,7 +228,7 @@ describe("useDragInteraction", () => {
       });
 
       act(() => {
-        result.current.updateDrag(70, 60, 1); // Delta: (20, 10)
+        result.current.updateDrag(70, 60, 1);
       });
 
       const updates = mockUpdateElements.mock.calls[0][0];
@@ -251,7 +250,7 @@ describe("useDragInteraction", () => {
       });
 
       act(() => {
-        result.current.updateDrag(80, 90, 1); // Delta: (30, 40)
+        result.current.updateDrag(80, 90, 1);
       });
 
       const updates = mockUpdateElements.mock.calls[0][0];
@@ -275,7 +274,7 @@ describe("useDragInteraction", () => {
       });
 
       act(() => {
-        result.current.updateDrag(50, 75, 1); // Delta: (35, 50)
+        result.current.updateDrag(50, 75, 1);
       });
 
       const updates = mockUpdateElements.mock.calls[0][0];

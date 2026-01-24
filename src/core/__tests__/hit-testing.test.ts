@@ -20,20 +20,18 @@ describe("getRotatedCorners", () => {
       const corners = getRotatedCorners(rect);
 
       expect(corners).toHaveLength(4);
-      expect(corners[0]).toEqual({ x: 0, y: 0 }); // top-left
-      expect(corners[1]).toEqual({ x: 100, y: 0 }); // top-right
-      expect(corners[2]).toEqual({ x: 100, y: 100 }); // bottom-right
-      expect(corners[3]).toEqual({ x: 0, y: 100 }); // bottom-left
+      expect(corners[0]).toEqual({ x: 0, y: 0 });
+      expect(corners[1]).toEqual({ x: 100, y: 0 });
+      expect(corners[2]).toEqual({ x: 100, y: 100 });
+      expect(corners[3]).toEqual({ x: 0, y: 100 });
     });
 
     it("should return rotated corners for 90 degree rotation", () => {
       const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 2 });
       const corners = getRotatedCorners(rect);
 
-      // Rotation is around center (50, 50)
-      // After 90 degree rotation, corners should be shifted
       expect(corners).toHaveLength(4);
-      // Check that corners are approximately at expected rotated positions
+
       expect(corners[0].x).toBeCloseTo(100, 5);
       expect(corners[0].y).toBeCloseTo(0, 5);
     });
@@ -87,7 +85,7 @@ describe("getRotatedCorners", () => {
       const corners = getRotatedCorners(text);
 
       expect(corners).toHaveLength(4);
-      // Text bounds are relative to x, y position
+
       expect(corners[0]).toEqual({ x: 10, y: 20 });
       expect(corners[1]).toEqual({ x: 60, y: 20 });
       expect(corners[2]).toEqual({ x: 60, y: 40 });
@@ -123,11 +121,10 @@ describe("calculateBoundingBox", () => {
       y: 0,
       width: 100,
       height: 100,
-      rotation: Math.PI / 4, // 45 degrees
+      rotation: Math.PI / 4,
     });
     const result = calculateBoundingBox([rect]);
 
-    // Rotated square should have a larger bounding box
     expect(result).not.toBeNull();
     expect(result!.width).toBeGreaterThan(100);
     expect(result!.height).toBeGreaterThan(100);
@@ -172,7 +169,6 @@ describe("calculateBoundingBox", () => {
 
     const result = calculateBoundingBox([rect, group]);
 
-    // Should only include rect bounds
     expect(result).toEqual({ x: 0, y: 0, width: 100, height: 100 });
   });
 });
@@ -228,15 +224,15 @@ describe("hitTestBoundsHandle", () => {
 
   it("should return null when not on any handle", () => {
     const bounds = { x: 0, y: 0, width: 100, height: 100 };
-    const result = hitTestBoundsHandle(50, 50, bounds, 1); // center
+    const result = hitTestBoundsHandle(50, 50, bounds, 1);
     expect(result).toBeNull();
   });
 
   it("should respect scale for hit radius", () => {
     const bounds = { x: 0, y: 0, width: 100, height: 100 };
-    // At scale 0.5, hit radius is larger in world coords
+
     const result = hitTestBoundsHandle(10, 0, bounds, 0.5);
-    expect(result).toBe("nw"); // Should still hit because hit radius is larger
+    expect(result).toBe("nw");
   });
 });
 
@@ -256,9 +252,9 @@ describe("hitTestElement", () => {
 
   it("should hit test ellipse inside", () => {
     const ellipse = createEllipse({ cx: 50, cy: 50, rx: 50, ry: 50, rotation: 0 });
-    expect(hitTestElement(50, 50, ellipse)).toBe(true); // center
-    expect(hitTestElement(50, 0, ellipse)).toBe(true); // top
-    expect(hitTestElement(100, 50, ellipse)).toBe(true); // right
+    expect(hitTestElement(50, 50, ellipse)).toBe(true);
+    expect(hitTestElement(50, 0, ellipse)).toBe(true);
+    expect(hitTestElement(100, 50, ellipse)).toBe(true);
   });
 
   it("should return false for point outside ellipse", () => {
@@ -273,9 +269,9 @@ describe("hitTestElement", () => {
       y: 0,
       width: 100,
       height: 100,
-      rotation: Math.PI / 4, // 45 degrees
+      rotation: Math.PI / 4,
     });
-    // Center should still hit
+
     expect(hitTestElement(50, 50, rect)).toBe(true);
   });
 

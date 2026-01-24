@@ -109,6 +109,6 @@ export function drawDisc(ctx: RenderContext, x: number, y: number, radius: numbe
   gl.bufferData(gl.ARRAY_BUFFER, floatVertices, gl.STATIC_DRAW);
 
   resetRotation(ctx);
-  // Assuming callers set color beforehand
+
   gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
 }

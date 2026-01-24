@@ -131,7 +131,6 @@ describe("useResizeInteraction", () => {
         result.current.updateResize(150, 150, false);
       });
 
-      // Non-rotated rects use updateElements
       expect(mockUpdateElements).toHaveBeenCalled();
     });
 
@@ -169,7 +168,6 @@ describe("useResizeInteraction", () => {
         result.current.updateResize(-50, -50, false);
       });
 
-      // Non-rotated rects use updateElements
       expect(mockUpdateElements).toHaveBeenCalled();
     });
 
@@ -183,17 +181,14 @@ describe("useResizeInteraction", () => {
         result.current.startResize(100, 100, "se", [rect], setIsResizing);
       });
 
-      // Try to make element very small
       act(() => {
         result.current.updateResize(5, 5, false);
       });
 
-      // Non-rotated rects use updateElements
       expect(mockUpdateElements).toHaveBeenCalled();
     });
 
     it("should resize rotated rect from se handle using updateElement", () => {
-      // For rotated elements, isSingleRotatedElement = true, so updateElement is used
       const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 4 });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
@@ -203,7 +198,6 @@ describe("useResizeInteraction", () => {
         result.current.startResize(100, 100, "se", [rect], setIsResizing);
       });
 
-      // Verify rotated element detection
       expect(result.current.resizeStartRef.current?.isSingleRotatedElement).toBe(true);
       expect(result.current.resizeStartRef.current?.elementRotation).toBe(Math.PI / 4);
 
@@ -211,7 +205,6 @@ describe("useResizeInteraction", () => {
         result.current.updateResize(150, 150, false);
       });
 
-      // Rotated rects use updateElement (singular)
       expect(mockUpdateElement).toHaveBeenCalled();
       const [id, data] = mockUpdateElement.mock.calls[0];
       expect(id).toBe(rect.id);
@@ -268,12 +261,12 @@ describe("useResizeInteraction", () => {
       });
 
       act(() => {
-        result.current.updateResize(150, 100, true); // shiftKey = true
+        result.current.updateResize(150, 100, true);
       });
 
       expect(mockUpdateElement).toHaveBeenCalled();
       const [, data] = mockUpdateElement.mock.calls[0];
-      // Aspect ratio should be maintained (2:1)
+
       expect(Math.abs(data.width / data.height - 2)).toBeLessThan(0.01);
     });
 

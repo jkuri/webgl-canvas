@@ -48,7 +48,6 @@ export class WebGLRenderer {
   private lastTransform: Transform | null = null;
   private getState: GetStateFunc | null = null;
 
-  // Shared vertex pool for renderers to avoid GC
   private vertexPool12 = new Float32Array(24);
 
   constructor(canvas: HTMLCanvasElement) {
@@ -153,8 +152,8 @@ export class WebGLRenderer {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    // Draw Grid
     if (this.gridProgram) {
+      // biome-ignore lint/correctness/useHookAtTopLevel: not a React hook
       gl.useProgram(this.gridProgram);
       const posLoc = gl.getAttribLocation(this.gridProgram, "a_position");
       gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
@@ -170,8 +169,8 @@ export class WebGLRenderer {
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
-    // Draw Shapes
     if (this.shapeProgram) {
+      // biome-ignore lint/correctness/useHookAtTopLevel: not a React hook
       gl.useProgram(this.shapeProgram);
       const posLoc = gl.getAttribLocation(this.shapeProgram, "a_position");
       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
@@ -255,26 +254,22 @@ export class WebGLRenderer {
     if (element.visible === false) return;
 
     if (visibleBounds) {
-      // Simple Culling
       let ex = 0;
       let ey = 0;
       let ew = 0;
       let eh = 0;
 
       if (element.type === "group") {
-        // Groups don't have direct bounds, we recurse
       } else if (element.type === "rect" || element.type === "image") {
         ex = element.x;
         ey = element.y;
         ew = element.width;
         eh = element.height;
       } else if (element.type === "text") {
-        // Text bounds logic
-        // Simplified for culling
         ex = element.x;
         ey = element.y;
-        ew = 100; // placeholder
-        eh = 20; // placeholder
+        ew = 100;
+        eh = 20;
       } else if (element.type === "ellipse") {
         const el = element as EllipseElement;
         ex = el.cx - el.rx;

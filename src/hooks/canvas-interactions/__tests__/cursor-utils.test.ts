@@ -50,8 +50,8 @@ describe("getRotatedCursor", () => {
 
   it("should apply rotation to cursor", () => {
     const cursor0 = getRotatedCursor("nw", 0);
-    const cursorRotated = getRotatedCursor("nw", Math.PI / 2); // 90 degrees
-    // Both should be valid cursors but different due to rotation
+    const cursorRotated = getRotatedCursor("nw", Math.PI / 2);
+
     expect(cursor0).toContain("data:image/svg+xml");
     expect(cursorRotated).toContain("data:image/svg+xml");
     expect(cursor0).not.toBe(cursorRotated);
@@ -97,13 +97,11 @@ describe("getRotatedRotationCursor", () => {
   });
 
   it("should handle different corner handles with different base angles", () => {
-    // Each corner should have a different base angle
     const nw = getRotatedRotationCursor("nw", 0);
     const ne = getRotatedRotationCursor("ne", 0);
     const se = getRotatedRotationCursor("se", 0);
     const sw = getRotatedRotationCursor("sw", 0);
 
-    // They should all be different because they have different base angles
     expect(nw).not.toBe(ne);
     expect(ne).not.toBe(se);
     expect(se).not.toBe(sw);

@@ -1,10 +1,9 @@
 import { renderHook } from "@testing-library/react";
-// We need to mock the store for this test
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CanvasElement } from "@/types";
 import { createGroup, createRect, resetIdCounter } from "../canvas-interactions/__tests__/test-utils";
 
-// Mock the store
 let mockElements: CanvasElement[] = [];
 let mockSelectedIds: string[] = [];
 
@@ -18,7 +17,6 @@ vi.mock("@/store", () => ({
   },
 }));
 
-// Import after mocking
 import { useSelectionBounds } from "../use-selection-bounds";
 
 beforeEach(() => {
@@ -49,7 +47,6 @@ describe("useSelectionBounds", () => {
 
       const { result } = renderHook(() => useSelectionBounds());
 
-      // Should return group rotation
       expect(result.current?.rotation).toBe(Math.PI / 2);
     });
 
@@ -74,7 +71,6 @@ describe("useSelectionBounds", () => {
 
       const { result } = renderHook(() => useSelectionBounds());
 
-      // Should return group rotation
       expect(result.current?.rotation).toBe(Math.PI / 2);
     });
   });
@@ -88,7 +84,6 @@ describe("useSelectionBounds", () => {
 
       const { result } = renderHook(() => useSelectionBounds());
 
-      // Multiple elements should have axis-aligned selection box
       expect(result.current?.rotation).toBe(0);
     });
   });

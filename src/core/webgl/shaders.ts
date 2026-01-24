@@ -71,15 +71,12 @@ export const GRID_FRAGMENT_SHADER = `
     vec2 gridPos = mod(worldPos, spacing);
     vec2 dist = min(gridPos, spacing - gridPos);
 
-
     float lineThickness = 1.0 / u_scale;
     float lineY = smoothstep(lineThickness, 0.0, dist.y);
     float lineX = smoothstep(lineThickness, 0.0, dist.x);
     float grid = max(lineX, lineY);
 
-
     vec3 gridColor = vec3(0.92);
-
 
     if (u_bgVisible > 0.5) {
         gl_FragColor = vec4(mix(bgColor, gridColor, grid), 1.0);

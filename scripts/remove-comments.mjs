@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
 function removeComments(code) {
   // Remove single-line comments (// ...)
   // But preserve URLs like http:// and https://
-  code = code.replace(/(?<!:)\/\/(?!\/)[^\n]*/g, "");
+  // And preserve biome-ignore comments
+  code = code.replace(/(?<!:)\/\/(?!\/)(?!\s*biome-ignore)[^\n]*/g, "");
 
   // Remove multi-line comments (/* ... */)
   code = code.replace(/\/\*[\s\S]*?\*\//g, "");

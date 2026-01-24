@@ -30,17 +30,6 @@ export function drawEllipse(ctx: RenderContext, element: EllipseElement, _scale:
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.STATIC_DRAW);
 
-    // resetRotation was called implicitly because we compute rotated vertices?
-    // Wait, original logic passes rotation to shader?
-    // Checking webgl-renderer.ts:
-    // gl.uniform1f(gl.getUniformLocation(this.shapeProgram!, "u_rotation"), rotation);
-    // So vertices are calculated around standard circle then rotated by shader?
-    // Checking original code:
-    // vertices.push(cx + Math.cos(angle) * rx, cy + Math.sin(angle) * ry);
-
-    // Ah, it calculates vertices in world space (cx, cy) but without rotation.
-    // The rotation is passed via uniform.
-
     const { program } = ctx;
     gl.uniform4f(gl.getUniformLocation(program, "u_color"), ...color);
     gl.uniform1f(gl.getUniformLocation(program, "u_rotation"), rotation);

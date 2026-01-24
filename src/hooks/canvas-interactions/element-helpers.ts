@@ -60,8 +60,6 @@ export function collectElementsForResize(
         rotation: element.rotation,
         childIds: element.childIds,
         aspectRatioLocked: element.aspectRatioLocked,
-        // Group bounds are not strictly needed for children traversal,
-        // but can be added if available. For now, leave x/y undefined.
       };
       map.set(element.id, entry);
 

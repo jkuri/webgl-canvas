@@ -234,7 +234,6 @@ describe("useRotateInteraction", () => {
     });
 
     it("should rotate rect with existing rotation", () => {
-      // Element already has rotation = 45 degrees
       const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 4 });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useRotateInteraction(screenToWorld, getElementById));
@@ -244,7 +243,6 @@ describe("useRotateInteraction", () => {
         result.current.startRotate(100, 50, "se", [rect], setIsRotating);
       });
 
-      // Verify initial rotation was stored
       expect(result.current.rotateStartRef.current?.originalRotations.get(rect.id)).toBe(Math.PI / 4);
 
       act(() => {
@@ -255,7 +253,7 @@ describe("useRotateInteraction", () => {
       const updates = mockUpdateElements.mock.calls[0][0];
       const update = updates.get(rect.id);
       expect(update?.rotation).toBeDefined();
-      // New rotation should be different from original
+
       expect(update?.rotation).not.toBe(Math.PI / 4);
     });
 
@@ -281,19 +279,16 @@ describe("useRotateInteraction", () => {
     });
 
     it("should accumulate rotation when rotating already-rotated element", () => {
-      // Start with a 90-degree rotated element
       const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 2 });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useRotateInteraction(screenToWorld, getElementById));
 
       const setIsRotating = vi.fn();
       act(() => {
-        // Start rotation from east handle (right side of 90-deg rotated element)
         result.current.startRotate(100, 50, "e", [rect], setIsRotating);
       });
 
       act(() => {
-        // Move to create additional rotation
         result.current.updateRotate(50, 100);
       });
 
@@ -314,14 +309,12 @@ describe("useRotateInteraction", () => {
         result.current.startRotate(100, 50, "se", [rect], setIsRotating);
       });
 
-      // Simulate multiple small rotation updates (like during mouse move)
       act(() => {
         result.current.updateRotate(101, 51);
       });
 
       expect(mockUpdateElements).toHaveBeenCalled();
 
-      // Clear mocks and do another update
       mockUpdateElements.mockClear();
 
       act(() => {

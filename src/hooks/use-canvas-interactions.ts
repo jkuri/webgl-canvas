@@ -130,15 +130,9 @@ export function useCanvasInteractions({
             selectedElements.length === 1 &&
             (selectedElements[0].type !== "group" || selectedElements[0].type === "group")
           ) {
-            // Check if it's a group, if so use OBB from calculateGroupOBB to hit test handles
             if (selectedElements[0].type === "group") {
-              const group = selectedElements[0] as unknown as CanvasElement; // Avoiding type issues for now, strictly it is GroupElement
-              // We need all top-level shapes to calculate OBB if we simply pass group to calculateGroupOBB? NO.
-              // calculateGroupOBB expects a list of shapes.
-              // But we can't easily get all shapes here without helper.
-              // Actually getResizeHandle already solves this logic. We should reuse getResizeHandle logic here or similar.
+              const group = selectedElements[0] as unknown as CanvasElement;
 
-              // Let's use getResizeHandle logic's pattern: flatten and calculate OBB.
               const flattenedElements = flattenCanvasElements([group], getElementById);
               const obb = calculateGroupOBB(flattenedElements as Shape[], group.rotation);
               clickedHandle = hitTestRotatedElementHandle(world.x, world.y, obb, transform.scale);

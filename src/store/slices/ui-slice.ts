@@ -91,8 +91,6 @@ export const createUiSlice: StateCreator<UiSlice & { elements: CanvasElement[] }
       return;
     }
 
-    // Depends on elements from another slice
-    // We assume 'elements' is present in the store
     if (state.elements.length === 0) return;
 
     let minX = Infinity;
@@ -138,8 +136,8 @@ export const createUiSlice: StateCreator<UiSlice & { elements: CanvasElement[] }
           maxY = Math.max(maxY, el.y + el.bounds.y + el.bounds.height);
         } else {
           minX = Math.min(minX, el.x);
-          minY = Math.min(minY, el.y - (el.fontSize || 12)); // fallback font size if missing?
-          // approximation if bounds not set
+          minY = Math.min(minY, el.y - (el.fontSize || 12));
+
           maxX = Math.max(maxX, el.x + el.text.length * el.fontSize * 0.6);
           maxY = Math.max(maxY, el.y);
         }

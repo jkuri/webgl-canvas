@@ -34,31 +34,27 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
 
   describe("Resize of pre-rotated elements", () => {
     it("should correctly resize a 45-degree rotated rect from SE corner", () => {
-      // Create a rect with 45-degree rotation at position (100, 100) with size 100x100
       const rect = createRect({
         x: 100,
         y: 100,
         width: 100,
         height: 100,
-        rotation: Math.PI / 4, // 45 degrees
+        rotation: Math.PI / 4,
       });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
 
       const setIsResizing = vi.fn();
 
-      // Start resize from the SE corner (at the rotated position)
       act(() => {
         const success = result.current.startResize(200, 200, "se", [rect], setIsResizing);
         expect(success).toBe(true);
       });
 
-      // Verify initial state was captured correctly
       expect(result.current.resizeStartRef.current).not.toBeNull();
       expect(result.current.resizeStartRef.current?.isSingleRotatedElement).toBe(true);
       expect(result.current.resizeStartRef.current?.elementRotation).toBe(Math.PI / 4);
 
-      // Original element data should be captured
       const originalData = result.current.resizeStartRef.current?.originalElements.get(rect.id);
       expect(originalData).toBeDefined();
       expect(originalData?.width).toBe(100);
@@ -66,12 +62,10 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
       expect(originalData?.x).toBe(100);
       expect(originalData?.y).toBe(100);
 
-      // Simulate mouse move to resize (drag SE corner out by 50 pixels diagonally)
       act(() => {
         result.current.updateResize(250, 250, false);
       });
 
-      // Verify updateElement was called with valid values
       expect(mockUpdateElement).toHaveBeenCalled();
       const [id, data] = mockUpdateElement.mock.calls[0];
 
@@ -81,18 +75,13 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
       expect(typeof data.width).toBe("number");
       expect(typeof data.height).toBe("number");
 
-      // Values should be finite (not NaN or Infinity)
       expect(Number.isFinite(data.x)).toBe(true);
       expect(Number.isFinite(data.y)).toBe(true);
       expect(Number.isFinite(data.width)).toBe(true);
       expect(Number.isFinite(data.height)).toBe(true);
 
-      // Width and height should be larger than the original
-      // Width should be larger than the original (SE corner drag increases width)
       expect(data.width).toBeGreaterThan(100);
-      // For a 45-degree rotated rect, dragging diagonally (50, 50) in screen coordinates
-      // converts to local coords where localDeltaY ≈ 0 (because we're dragging parallel to one edge)
-      // This is correct behavior - the height stays the same
+
       expect(data.height).toBe(100);
     });
 
@@ -102,19 +91,17 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         y: 100,
         width: 100,
         height: 100,
-        rotation: Math.PI / 2, // 90 degrees
+        rotation: Math.PI / 2,
       });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
 
       const setIsResizing = vi.fn();
 
-      // Start resize from NW corner
       act(() => {
         result.current.startResize(100, 100, "nw", [rect], setIsResizing);
       });
 
-      // Update resize (move NW corner towards origin)
       act(() => {
         result.current.updateResize(80, 80, false);
       });
@@ -130,8 +117,8 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         x: 0,
         y: 0,
         width: 200,
-        height: 100, // 2:1 aspect ratio
-        rotation: Math.PI / 6, // 30 degrees
+        height: 100,
+        rotation: Math.PI / 6,
       });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
@@ -142,15 +129,13 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         result.current.startResize(200, 100, "se", [rect], setIsResizing);
       });
 
-      // Resize with shift key held (should maintain aspect ratio)
       act(() => {
-        result.current.updateResize(300, 200, true); // shiftKey = true
+        result.current.updateResize(300, 200, true);
       });
 
       expect(mockUpdateElement).toHaveBeenCalled();
       const [, data] = mockUpdateElement.mock.calls[0];
 
-      // Check aspect ratio is maintained (approximately 2:1)
       const aspectRatio = data.width / data.height;
       expect(Math.abs(aspectRatio - 2)).toBeLessThan(0.01);
     });
@@ -163,22 +148,19 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         y: 100,
         width: 100,
         height: 100,
-        rotation: Math.PI / 4, // Already rotated 45 degrees
+        rotation: Math.PI / 4,
       });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useRotateInteraction(screenToWorld, getElementById));
 
       const setIsRotating = vi.fn();
 
-      // Start rotation from SE corner
       act(() => {
         result.current.startRotate(200, 200, "se", [rect], setIsRotating);
       });
 
-      // Verify initial rotation was captured
       expect(result.current.rotateStartRef.current?.originalRotations.get(rect.id)).toBe(Math.PI / 4);
 
-      // Rotate by moving mouse (simulating 45 degree additional rotation)
       act(() => {
         result.current.updateRotate(100, 200);
       });
@@ -192,7 +174,6 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
       expect(typeof update?.rotation).toBe("number");
       expect(Number.isFinite(update?.rotation)).toBe(true);
 
-      // The new rotation should be different from original
       expect(update?.rotation).not.toBe(Math.PI / 4);
     });
 
@@ -202,7 +183,7 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         y: 100,
         width: 100,
         height: 100,
-        rotation: Math.PI, // 180 degrees
+        rotation: Math.PI,
       });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useRotateInteraction(screenToWorld, getElementById));
@@ -231,7 +212,7 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         y: 100,
         width: 100,
         height: 100,
-        rotation: Math.PI / 3, // 60 degrees
+        rotation: Math.PI / 3,
       });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useRotateInteraction(screenToWorld, getElementById));
@@ -242,17 +223,14 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         result.current.startRotate(200, 200, "se", [rect], setIsRotating);
       });
 
-      // Simulate multiple small mouse movements (like real dragging)
       for (let i = 1; i <= 5; i++) {
         act(() => {
           result.current.updateRotate(200 + i, 200 + i);
         });
       }
 
-      // Should have been called 5 times
       expect(mockUpdateElements).toHaveBeenCalledTimes(5);
 
-      // All calls should have valid rotation values
       for (let i = 0; i < 5; i++) {
         const updates = mockUpdateElements.mock.calls[i][0];
         const update = updates.get(rect.id);
@@ -269,7 +247,7 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         y: 100,
         width: 100,
         height: 100,
-        rotation: 0.0001, // Very small rotation
+        rotation: 0.0001,
       });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
@@ -280,7 +258,6 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         result.current.startResize(200, 200, "se", [rect], setIsResizing);
       });
 
-      // Should be treated as rotated element
       expect(result.current.resizeStartRef.current?.isSingleRotatedElement).toBe(true);
 
       act(() => {
@@ -299,7 +276,7 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         y: 100,
         width: 100,
         height: 100,
-        rotation: Math.PI * 2, // Full rotation = 0 degrees equivalent
+        rotation: Math.PI * 2,
       });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
@@ -323,7 +300,7 @@ describe("Rotated Element Canvas Interactions - Integration Tests", () => {
         y: 100,
         width: 100,
         height: 100,
-        rotation: -Math.PI / 4, // -45 degrees
+        rotation: -Math.PI / 4,
       });
       const getElementById = createGetElementById([rect]);
       const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));

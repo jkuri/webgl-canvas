@@ -35,12 +35,9 @@ export function useResizeInteraction(
 
       if (isSingleRotatedElement) {
         if (selectedElements[0].type === "group") {
-          // flattenedElements must include the group itself AND all its children (recursively)
-          // flattenCanvasElements returns children. We prepend the group.
           const children = flattenCanvasElements(selectedElements, getElementById);
           flattenedElements = [selectedElements[0], ...children];
 
-          // bounds logic remains same (only group matters for visual bounds start)
           const obb = calculateGroupOBB(children as Shape[], selectedElements[0].rotation);
 
           bounds = { x: obb.x, y: obb.y, width: obb.width, height: obb.height };
@@ -71,12 +68,7 @@ export function useResizeInteraction(
         activeElementId: isSingleRotatedElement ? selectedElements[0].id : undefined,
       };
 
-      // Special case: Inject calculated bounds for Group into originalElements map
-      // Special case: Inject calculated bounds for Group into originalElements map
-      // because Group element doesn't carry these itself.
       if (isSingleRotatedElement && selectedElements[0].type === "group" && bounds) {
-        // collectElementsForResize treats groups recursively and does not add the group container itself.
-        // We must ensure the group entry exists so updateResize can find it as the target.
         const groupEntry: ElementData = {
           rotation: selectedElements[0].rotation,
           type: "group",
@@ -115,16 +107,14 @@ export function useResizeInteraction(
 
       const targetId = resizeStartRef.current.activeElementId;
 
-      // If we have a targetId, we use it. Otherwise fallback to size check (legacy/standard behavior)
       const shouldResizeSingleRotated = isSingleRotatedElement && (targetId ? true : originalElements.size === 1);
 
       if (shouldResizeSingleRotated) {
-        // If targetId is set, use it. Else assume only 1 element exists.
         const [id, original] = targetId
           ? [targetId, originalElements.get(targetId)!]
           : [...originalElements.entries()][0];
 
-        if (!original) return; // Should not happen
+        if (!original) return;
 
         if (original.type === "rect" || original.type === "image" || original.type === "group") {
           const cos = Math.cos(elementRotation);
@@ -227,9 +217,6 @@ export function useResizeInteraction(
               height: newHeight,
               rotation: elementRotation,
             };
-            // We need all descendants to pass to resizeGroupChildrenOBB
-            // We can get them via flattenCanvasElements or just pass all elements and let it find by ID.
-            // CAUTION: We must pass originalElements (snapshot) to resizing func, otherwise it compounds!
 
             const updates = new Map<string, Record<string, unknown>>();
             const groupElement = originalElements.get(id) as GroupElement;
