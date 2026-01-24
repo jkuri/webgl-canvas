@@ -355,8 +355,6 @@ export function isFillReference(fill: Fill): fill is { ref: string; type: "gradi
   return fill !== null && typeof fill === "object" && "ref" in fill;
 }
 
-export function isStrokeColorReference(
-  color: string | { ref: string; type: "gradient" },
-): color is { ref: string; type: "gradient" } {
+export function isStrokeColorReference(color: string | { ref: string; type: "gradient" }): color is { ref: string; type: "gradient" } {
   return typeof color === "object" && "ref" in color;
 }

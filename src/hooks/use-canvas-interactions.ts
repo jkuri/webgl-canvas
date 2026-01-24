@@ -126,10 +126,7 @@ export function useCanvasInteractions({
           }
 
           let clickedHandle: ResizeHandle = null;
-          if (
-            selectedElements.length === 1 &&
-            (selectedElements[0].type !== "group" || selectedElements[0].type === "group")
-          ) {
+          if (selectedElements.length === 1 && (selectedElements[0].type !== "group" || selectedElements[0].type === "group")) {
             if (selectedElements[0].type === "group") {
               const group = selectedElements[0] as unknown as CanvasElement;
 
@@ -137,12 +134,7 @@ export function useCanvasInteractions({
               const obb = calculateGroupOBB(flattenedElements as Shape[], group.rotation);
               clickedHandle = hitTestRotatedElementHandle(world.x, world.y, obb, transform.scale);
             } else {
-              clickedHandle = hitTestRotatedElementHandle(
-                world.x,
-                world.y,
-                selectedElements[0] as Shape,
-                transform.scale,
-              );
+              clickedHandle = hitTestRotatedElementHandle(world.x, world.y, selectedElements[0] as Shape, transform.scale);
             }
           } else {
             const flattenedElements = flattenCanvasElements(selectedElements, getElementById);
@@ -152,8 +144,7 @@ export function useCanvasInteractions({
             }
           }
 
-          const isCorner =
-            clickedHandle === "nw" || clickedHandle === "ne" || clickedHandle === "se" || clickedHandle === "sw";
+          const isCorner = clickedHandle === "nw" || clickedHandle === "ne" || clickedHandle === "se" || clickedHandle === "sw";
           if (isCorner) {
             rotateInteraction.startRotate(world.x, world.y, clickedHandle, selectedElements, setIsRotating);
             return;
@@ -194,16 +185,12 @@ export function useCanvasInteractions({
 
           if (bounds) {
             const isWithinBounds =
-              world.x >= bounds.x &&
-              world.x <= bounds.x + bounds.width &&
-              world.y >= bounds.y &&
-              world.y <= bounds.y + bounds.height;
+              world.x >= bounds.x && world.x <= bounds.x + bounds.width && world.y >= bounds.y && world.y <= bounds.y + bounds.height;
 
             if (isWithinBounds) {
               const now = Date.now();
               const firstSelectedId = selectedIds[0];
-              const isDoubleClick =
-                now - lastClickTimeRef.current < 400 && lastClickElementRef.current === firstSelectedId;
+              const isDoubleClick = now - lastClickTimeRef.current < 400 && lastClickElementRef.current === firstSelectedId;
 
               const selectedElement = selectedIds.length === 1 ? getElementById(firstSelectedId) : null;
 
@@ -249,11 +236,7 @@ export function useCanvasInteractions({
 
           const selectedGroup = selectedIds.length === 1 ? getElementById(selectedIds[0]) : null;
           const isTimeForDoubleClick = now - lastClickTimeRef.current < 400;
-          if (
-            isTimeForDoubleClick &&
-            selectedGroup?.type === "group" &&
-            lastClickElementRef.current === selectedGroup.id
-          ) {
+          if (isTimeForDoubleClick && selectedGroup?.type === "group" && lastClickElementRef.current === selectedGroup.id) {
             const groupChildren = hitTestAllElements(world.x, world.y, elements, selectedGroup.id);
             if (groupChildren.length > 0) {
               const deepHit = groupChildren[0];

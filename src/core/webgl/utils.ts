@@ -28,9 +28,7 @@ export function createProgram(gl: WebGLRenderingContext, vertexSrc: string, frag
   return program;
 }
 
-export function cssColorToRGBA(
-  color: string | { ref: string; type: "gradient" | "pattern" } | null,
-): [number, number, number, number] {
+export function cssColorToRGBA(color: string | { ref: string; type: "gradient" | "pattern" } | null): [number, number, number, number] {
   if (!color) return [0, 0, 0, 0];
 
   if (typeof color === "object" && "ref" in color) {

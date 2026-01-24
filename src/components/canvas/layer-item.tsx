@@ -213,9 +213,7 @@ export const LayerItem = memo(
         tabIndex={0}
         className={cn(
           "group flex h-7 cursor-pointer items-center pr-2 text-sm transition-colors",
-          isSelected
-            ? "bg-accent text-accent-foreground"
-            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+          isSelected ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
         )}
         style={{ paddingLeft: depth * 12 + 8, ...style }}
         onClick={handleClick}
@@ -244,9 +242,7 @@ export const LayerItem = memo(
           )}
         </div>
 
-        <span className={cn("mr-2 shrink-0 opacity-70", isSelected && "opacity-100")}>
-          {getTypeIcon(element.type, isExpanded)}
-        </span>
+        <span className={cn("mr-2 shrink-0 opacity-70", isSelected && "opacity-100")}>{getTypeIcon(element.type, isExpanded)}</span>
 
         {isEditing ? (
           <Input

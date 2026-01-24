@@ -56,15 +56,7 @@ describe("useMarqueeInteraction", () => {
       const setSelectionBox = vi.fn();
 
       act(() => {
-        result.current.startMarquee(
-          100,
-          100,
-          ["existing-id"],
-          false,
-          setIsMarqueeSelecting,
-          setSelectedIds,
-          setSelectionBox,
-        );
+        result.current.startMarquee(100, 100, ["existing-id"], false, setIsMarqueeSelecting, setSelectedIds, setSelectionBox);
       });
 
       expect(setSelectedIds).toHaveBeenCalledWith([]);
@@ -78,15 +70,7 @@ describe("useMarqueeInteraction", () => {
       const setSelectionBox = vi.fn();
 
       act(() => {
-        result.current.startMarquee(
-          100,
-          100,
-          ["existing-id"],
-          true,
-          setIsMarqueeSelecting,
-          setSelectedIds,
-          setSelectionBox,
-        );
+        result.current.startMarquee(100, 100, ["existing-id"], true, setIsMarqueeSelecting, setSelectedIds, setSelectionBox);
       });
 
       expect(setSelectedIds).not.toHaveBeenCalled();
@@ -179,15 +163,7 @@ describe("useMarqueeInteraction", () => {
       const setSelectionBox = vi.fn();
 
       act(() => {
-        result.current.startMarquee(
-          100,
-          100,
-          [existingRect.id],
-          true,
-          setIsMarqueeSelecting,
-          setSelectedIds,
-          setSelectionBox,
-        );
+        result.current.startMarquee(100, 100, [existingRect.id], true, setIsMarqueeSelecting, setSelectedIds, setSelectionBox);
       });
 
       act(() => {

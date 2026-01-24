@@ -57,10 +57,7 @@ interface StoreWithSelection {
   panToCenter: () => void;
 }
 
-export const createElementsSlice: StateCreator<ElementsSlice & StoreWithSelection, [], [], ElementsSlice> = (
-  set,
-  get,
-) => ({
+export const createElementsSlice: StateCreator<ElementsSlice & StoreWithSelection, [], [], ElementsSlice> = (set, get) => ({
   elements: [],
   expandedGroupIds: [],
   isRestoringFromHistory: false,
@@ -279,9 +276,7 @@ export const createElementsSlice: StateCreator<ElementsSlice & StoreWithSelectio
 
   ungroupSelected: () =>
     set((state) => {
-      const groupsToUngroup = state.selectedIds.filter(
-        (id) => state.elements.find((e) => e.id === id)?.type === "group",
-      );
+      const groupsToUngroup = state.selectedIds.filter((id) => state.elements.find((e) => e.id === id)?.type === "group");
 
       if (groupsToUngroup.length === 0) return state;
 

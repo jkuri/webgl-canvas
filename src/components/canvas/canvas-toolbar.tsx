@@ -1,10 +1,4 @@
-import {
-  CenterFocusIcon,
-  Cursor01Icon,
-  FourFinger02Icon,
-  MinusSignIcon,
-  PlusSignIcon,
-} from "@hugeicons/core-free-icons";
+import { CenterFocusIcon, Cursor01Icon, FourFinger02Icon, MinusSignIcon, PlusSignIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRef, useState } from "react";
 import { SettingsDialog } from "@/components/canvas/settings-dialog";
@@ -478,13 +472,7 @@ export function CanvasToolbar() {
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={zoomIn} title="Zoom In">
             <HugeiconsIcon icon={PlusSignIcon} size={16} />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg"
-            onClick={() => panToCenter()}
-            title="Center All Elements"
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => panToCenter()} title="Center All Elements">
             <HugeiconsIcon icon={CenterFocusIcon} size={16} />
           </Button>
         </div>
@@ -496,8 +484,8 @@ export function CanvasToolbar() {
             <AlertDialogTitle>Create New Project?</AlertDialogTitle>
           </AlertDialogHeader>
           <AlertDialogDescription>
-            This action cannot be undone. Your current project and all its history will be deleted permanently. Make
-            sure you export the current project just in case.
+            This action cannot be undone. Your current project and all its history will be deleted permanently. Make sure you export the
+            current project just in case.
           </AlertDialogDescription>
           <AlertDialogFooter className="mt-2">
             <AlertDialogCancel>Cancel</AlertDialogCancel>

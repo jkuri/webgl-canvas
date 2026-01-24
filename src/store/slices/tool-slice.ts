@@ -49,8 +49,7 @@ export const createToolSlice: StateCreator<ToolSlice, [], [], ToolSlice> = (set)
   setIsSpaceHeld: (held) => set({ isSpaceHeld: held }),
   setIsPanning: (panning) => set({ isPanning: panning }),
   setIsDragging: (dragging) => set({ isDragging: dragging }),
-  setIsResizing: (resizing, handle) =>
-    set({ isResizing: resizing, activeResizeHandle: resizing ? (handle ?? null) : null }),
+  setIsResizing: (resizing, handle) => set({ isResizing: resizing, activeResizeHandle: resizing ? (handle ?? null) : null }),
   setIsRotating: (rotating) => set({ isRotating: rotating }),
   setIsMarqueeSelecting: (selecting) => set({ isMarqueeSelecting: selecting }),
   setIsEditingText: (editing, elementId) => set({ isEditingText: editing, editingTextId: elementId ?? null }),

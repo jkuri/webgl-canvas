@@ -12,13 +12,7 @@ export function useDragInteraction(
   const dragStartRef = useRef<DragStartState | null>(null);
 
   const startDrag = useCallback(
-    (
-      worldX: number,
-      worldY: number,
-      elementIds: string[],
-      elements: CanvasElement[],
-      setIsDragging: (dragging: boolean) => void,
-    ) => {
+    (worldX: number, worldY: number, elementIds: string[], elements: CanvasElement[], setIsDragging: (dragging: boolean) => void) => {
       setIsDragging(true);
 
       const elementsMap = new Map<
@@ -66,13 +60,7 @@ export function useDragInteraction(
   );
 
   const startDragForElement = useCallback(
-    (
-      worldX: number,
-      worldY: number,
-      element: CanvasElement,
-      elements: CanvasElement[],
-      setIsDragging: (dragging: boolean) => void,
-    ) => {
+    (worldX: number, worldY: number, element: CanvasElement, elements: CanvasElement[], setIsDragging: (dragging: boolean) => void) => {
       setIsDragging(true);
 
       const elementsMap = new Map<

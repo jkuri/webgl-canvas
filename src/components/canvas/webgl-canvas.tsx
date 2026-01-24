@@ -190,8 +190,7 @@ export function WebGLCanvas({ isReady = false }: WebGLCanvasProps) {
     };
   }, [handleWheel, handleMouseDown, handleMouseMove, onMouseUp, handleDragOver, handleDrop]);
 
-  const isCornerHandle =
-    hoveredHandle === "nw" || hoveredHandle === "ne" || hoveredHandle === "se" || hoveredHandle === "sw";
+  const isCornerHandle = hoveredHandle === "nw" || hoveredHandle === "ne" || hoveredHandle === "se" || hoveredHandle === "sw";
 
   const cursor = isPanning
     ? "grabbing"

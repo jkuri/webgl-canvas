@@ -31,10 +31,7 @@ export interface ElementData {
 export interface DragStartState {
   worldX: number;
   worldY: number;
-  elements: Map<
-    string,
-    { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }
-  >;
+  elements: Map<string, { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }>;
   snapState: SnapState;
   originalBounds: Bounds;
 }

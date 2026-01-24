@@ -9,12 +9,7 @@ type ThemeProviderProps = {
 
 const IS_SERVER = typeof window === "undefined";
 
-export function ThemeProvider({
-  children,
-  defaultTheme = "system",
-  storageKey = "foil-ui-theme",
-  ...props
-}: ThemeProviderProps) {
+export function ThemeProvider({ children, defaultTheme = "system", storageKey = "foil-ui-theme", ...props }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (IS_SERVER) return defaultTheme;
     return (localStorage.getItem(storageKey) as Theme) || defaultTheme;

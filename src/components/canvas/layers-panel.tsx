@@ -10,12 +10,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Layers01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -88,12 +83,7 @@ function VirtualizedRow(props: RowComponentProps<VirtualizedRowProps>) {
 
   return (
     <div style={style}>
-      <SortableLayerItem
-        elementId={item.id}
-        depth={item.depth}
-        onSelect={handleSelect}
-        onToggleExpand={toggleGroupExpanded}
-      />
+      <SortableLayerItem elementId={item.id} depth={item.depth} onSelect={handleSelect} onToggleExpand={toggleGroupExpanded} />
     </div>
   );
 }
@@ -200,12 +190,7 @@ export function LayersPanel() {
   const activeElement = activeId ? elements.find((e) => e.id === activeId) : null;
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex h-10 items-center justify-between border-b bg-muted/30 px-3">
         <div className="flex items-center gap-2">
           <HugeiconsIcon icon={Layers01Icon} className="size-4" />

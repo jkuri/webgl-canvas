@@ -105,12 +105,7 @@ export function drawShapeOutlineWithHandles(ctx: RenderContext, shape: Shape, sc
   }
 }
 
-export function drawBoundingBoxWithHandles(
-  ctx: RenderContext,
-  bounds: BoundingBox,
-  _isMultiSelect: boolean,
-  scale: number,
-): void {
+export function drawBoundingBoxWithHandles(ctx: RenderContext, bounds: BoundingBox, _isMultiSelect: boolean, scale: number): void {
   const { x, y, width, height } = bounds;
   const { gl, program, positionBuffer } = ctx;
 

@@ -77,12 +77,7 @@ function MenubarContent({
   );
 }
 
-function MenubarItem({
-  className,
-  inset,
-  variant = "default",
-  ...props
-}: React.ComponentProps<typeof DropdownMenuItem>) {
+function MenubarItem({ className, inset, variant = "default", ...props }: React.ComponentProps<typeof DropdownMenuItem>) {
   return (
     <DropdownMenuItem
       data-slot="menubar-item"
@@ -154,13 +149,7 @@ function MenubarLabel({ className, inset, ...props }: React.ComponentProps<typeo
 }
 
 function MenubarSeparator({ className, ...props }: React.ComponentProps<typeof DropdownMenuSeparator>) {
-  return (
-    <DropdownMenuSeparator
-      data-slot="menubar-separator"
-      className={cn("-mx-1 my-1 h-px bg-border/50", className)}
-      {...props}
-    />
-  );
+  return <DropdownMenuSeparator data-slot="menubar-separator" className={cn("-mx-1 my-1 h-px bg-border/50", className)} {...props} />;
 }
 
 function MenubarShortcut({ className, ...props }: React.ComponentProps<typeof DropdownMenuShortcut>) {

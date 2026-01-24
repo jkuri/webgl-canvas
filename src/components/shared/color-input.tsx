@@ -20,9 +20,7 @@ export function ColorInput({ value = "#000000", opacity = 1, onChange, className
       <div className={cn("flex h-8 items-center gap-2 rounded-md border bg-muted/50 pl-2", className)}>
         <PopoverTrigger className="relative size-4 shrink-0 cursor-pointer overflow-hidden rounded-sm border transition-transform">
           <div className="absolute inset-0" style={{ backgroundColor: isMixed ? "#888" : value }} />
-          {isMixed && (
-            <div className="absolute inset-0 flex items-center justify-center font-bold text-[10px] text-white">?</div>
-          )}
+          {isMixed && <div className="absolute inset-0 flex items-center justify-center font-bold text-[10px] text-white">?</div>}
           {!isMixed && opacity < 1 && (
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNjY0MiLz48cmVjdCB4PSI0IiB5PSI0IiB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjY2NjIi8+PC9zdmc+')] opacity-20" />
           )}

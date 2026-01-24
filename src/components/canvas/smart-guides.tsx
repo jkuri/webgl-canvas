@@ -13,14 +13,7 @@ export function SmartGuides() {
       <svg className="h-full w-full">
         <defs>
           <pattern id="dash-pattern" patternUnits="userSpaceOnUse" width={8 / transform.scale} height={1}>
-            <line
-              x1="0"
-              y1="0"
-              x2={4 / transform.scale}
-              y2="0"
-              stroke={GUIDE_COLOR}
-              strokeWidth={1 / transform.scale}
-            />
+            <line x1="0" y1="0" x2={4 / transform.scale} y2="0" stroke={GUIDE_COLOR} strokeWidth={1 / transform.scale} />
           </pattern>
         </defs>
         <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
@@ -68,41 +61,13 @@ export function SmartGuides() {
 
                   {isHorizontal ? (
                     <>
-                      <line
-                        x1={x1}
-                        y1={y1 - capSize}
-                        x2={x1}
-                        y2={y1 + capSize}
-                        stroke={GUIDE_COLOR}
-                        strokeWidth={strokeWidth}
-                      />
-                      <line
-                        x1={x2}
-                        y1={y2 - capSize}
-                        x2={x2}
-                        y2={y2 + capSize}
-                        stroke={GUIDE_COLOR}
-                        strokeWidth={strokeWidth}
-                      />
+                      <line x1={x1} y1={y1 - capSize} x2={x1} y2={y1 + capSize} stroke={GUIDE_COLOR} strokeWidth={strokeWidth} />
+                      <line x1={x2} y1={y2 - capSize} x2={x2} y2={y2 + capSize} stroke={GUIDE_COLOR} strokeWidth={strokeWidth} />
                     </>
                   ) : (
                     <>
-                      <line
-                        x1={x1 - capSize}
-                        y1={y1}
-                        x2={x1 + capSize}
-                        y2={y1}
-                        stroke={GUIDE_COLOR}
-                        strokeWidth={strokeWidth}
-                      />
-                      <line
-                        x1={x2 - capSize}
-                        y1={y2}
-                        x2={x2 + capSize}
-                        y2={y2}
-                        stroke={GUIDE_COLOR}
-                        strokeWidth={strokeWidth}
-                      />
+                      <line x1={x1 - capSize} y1={y1} x2={x1 + capSize} y2={y1} stroke={GUIDE_COLOR} strokeWidth={strokeWidth} />
+                      <line x1={x2 - capSize} y1={y2} x2={x2 + capSize} y2={y2} stroke={GUIDE_COLOR} strokeWidth={strokeWidth} />
                     </>
                   )}
 

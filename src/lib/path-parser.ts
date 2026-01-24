@@ -64,17 +64,7 @@ export function parsePath(d: string): PathCommand[] {
           lastY = cmd.y;
           break;
         case SVGPathData.ARC: {
-          const arcBeziers = arcToBeziers(
-            lastX,
-            lastY,
-            cmd.x,
-            cmd.y,
-            cmd.rX,
-            cmd.rY,
-            cmd.xRot,
-            cmd.lArcFlag !== 0,
-            cmd.sweepFlag !== 0,
-          );
+          const arcBeziers = arcToBeziers(lastX, lastY, cmd.x, cmd.y, cmd.rX, cmd.rY, cmd.xRot, cmd.lArcFlag !== 0, cmd.sweepFlag !== 0);
           for (const bez of arcBeziers) {
             if (bez.length === 6) {
               commands.push({ type: "C", args: bez });

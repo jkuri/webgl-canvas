@@ -74,10 +74,7 @@ function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
     case "line": {
       const cx = (element.x1 + element.x2) / 2;
       const cy = (element.y1 + element.y2) / 2;
-      return [
-        rotatePoint(element.x1, element.y1, cx, cy, rotation),
-        rotatePoint(element.x2, element.y2, cx, cy, rotation),
-      ];
+      return [rotatePoint(element.x1, element.y1, cx, cy, rotation), rotatePoint(element.x2, element.y2, cx, cy, rotation)];
     }
     case "path": {
       const bounds = element.bounds;
@@ -124,10 +121,7 @@ function getRotatedCorners(element: CanvasElement): { x: number; y: number }[] {
   }
 }
 
-function calculateBounds(
-  elements: CanvasElement[],
-  allElements: CanvasElement[],
-): { x: number; y: number; width: number; height: number } {
+function calculateBounds(elements: CanvasElement[], allElements: CanvasElement[]): { x: number; y: number; width: number; height: number } {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
@@ -281,10 +275,8 @@ function elementToSVGOriginal(element: CanvasElement, allElements: CanvasElement
       return `${indent}<path d="${element.d}"${getFillStroke(element)}${pathTransform}/>`;
     }
     case "text": {
-      const fontWeight =
-        element.fontWeight && element.fontWeight !== "normal" ? ` font-weight="${element.fontWeight}"` : "";
-      const textAnchor =
-        element.textAnchor && element.textAnchor !== "start" ? ` text-anchor="${element.textAnchor}"` : "";
+      const fontWeight = element.fontWeight && element.fontWeight !== "normal" ? ` font-weight="${element.fontWeight}"` : "";
+      const textAnchor = element.textAnchor && element.textAnchor !== "start" ? ` text-anchor="${element.textAnchor}"` : "";
       return `${indent}<text x="${element.x}" y="${element.y}" font-family="${element.fontFamily}" font-size="${element.fontSize}"${fontWeight}${textAnchor}${getFillStroke(element)}${transform}>${element.text}</text>`;
     }
     case "polygon": {

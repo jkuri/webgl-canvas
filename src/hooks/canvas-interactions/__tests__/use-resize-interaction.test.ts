@@ -1,14 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getResizeHandle, useResizeInteraction } from "../use-resize-interaction";
-import {
-  createGetElementById,
-  createGroup,
-  createLine,
-  createRect,
-  createScreenToWorld,
-  resetIdCounter,
-} from "./test-utils";
+import { createGetElementById, createGroup, createLine, createRect, createScreenToWorld, resetIdCounter } from "./test-utils";
 
 const mockUpdateElement = vi.fn();
 const mockUpdateElements = vi.fn();

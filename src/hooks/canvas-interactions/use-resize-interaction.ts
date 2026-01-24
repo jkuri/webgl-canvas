@@ -25,9 +25,7 @@ export function useResizeInteraction(
     ) => {
       const isSingleRotatedElement =
         selectedElements.length === 1 &&
-        (selectedElements[0].rotation !== 0 ||
-          selectedElements[0].type === "line" ||
-          selectedElements[0].type === "group");
+        (selectedElements[0].rotation !== 0 || selectedElements[0].type === "line" || selectedElements[0].type === "group");
       const elementRotation = isSingleRotatedElement ? selectedElements[0].rotation : 0;
 
       let bounds: BoundingBox | null;
@@ -109,9 +107,7 @@ export function useResizeInteraction(
       const shouldResizeSingleRotated = isSingleRotatedElement && (targetId ? true : originalElements.size === 1);
 
       if (shouldResizeSingleRotated) {
-        const [id, original] = targetId
-          ? [targetId, originalElements.get(targetId)!]
-          : [...originalElements.entries()][0];
+        const [id, original] = targetId ? [targetId, originalElements.get(targetId)!] : [...originalElements.entries()][0];
 
         if (!original) return;
 

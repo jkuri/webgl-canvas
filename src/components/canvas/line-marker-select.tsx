@@ -2,9 +2,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface LineMarkerSelectProps {
   value: "none" | "arrow" | "triangle" | "reversed_triangle" | "circle" | "diamond" | "round" | "square";
-  onChange: (
-    value: "none" | "arrow" | "triangle" | "reversed_triangle" | "circle" | "diamond" | "round" | "square",
-  ) => void;
+  onChange: (value: "none" | "arrow" | "triangle" | "reversed_triangle" | "circle" | "diamond" | "round" | "square") => void;
 }
 
 const MarkerIcon = ({ type }: { type: string }) => {
@@ -25,13 +23,7 @@ const MarkerIcon = ({ type }: { type: string }) => {
       return (
         <svg {...commonProps} fill="none">
           <path d="M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <path
-            d="M16 8L20 12L16 16"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d="M16 8L20 12L16 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "triangle":

@@ -1,15 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 import { useCanvasStore } from "@/store";
-import type {
-  EllipseElement,
-  GroupElement,
-  ImageElement,
-  LineElement,
-  PathElement,
-  RectElement,
-  Shape,
-  TextElement,
-} from "@/types";
+import type { EllipseElement, GroupElement, ImageElement, LineElement, PathElement, RectElement, Shape, TextElement } from "@/types";
 import { EllipseProperties } from "./ellipse-properties";
 import { FillSection } from "./fill-section";
 import { GroupProperties } from "./group-properties";

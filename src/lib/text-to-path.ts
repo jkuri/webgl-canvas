@@ -77,9 +77,7 @@ export async function convertTextToPath(textElement: TextElement): Promise<TextC
   };
 }
 
-export async function calculateTextBounds(
-  textElement: TextElement,
-): Promise<{ x: number; y: number; width: number; height: number }> {
+export async function calculateTextBounds(textElement: TextElement): Promise<{ x: number; y: number; width: number; height: number }> {
   const { text, fontFamily, fontWeight = "400" } = textElement;
   const fontSize = Number(textElement.fontSize);
   const x = Number(textElement.x);

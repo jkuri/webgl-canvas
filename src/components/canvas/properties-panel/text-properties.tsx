@@ -211,11 +211,7 @@ export function TextProperties({ element }: TextPropertiesProps) {
           <SectionHeader title="Appearance" />
           <div className="flex flex-col gap-1">
             <span className="font-medium text-[10px] text-muted-foreground uppercase">Opacity</span>
-            <NumberInput
-              value={(element.opacity ?? 1) * 100}
-              onChange={(v) => updateElement(element.id, { opacity: v / 100 })}
-              step={1}
-            />
+            <NumberInput value={(element.opacity ?? 1) * 100} onChange={(v) => updateElement(element.id, { opacity: v / 100 })} step={1} />
           </div>
         </div>
 

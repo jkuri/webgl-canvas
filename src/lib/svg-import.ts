@@ -461,9 +461,7 @@ function processNode(rootNode: INode): SVGParseResult {
         }
       }
 
-      return Number.isFinite(minX)
-        ? { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
-        : { x: 0, y: 0, width: 0, height: 0 };
+      return Number.isFinite(minX) ? { x: minX, y: minY, width: maxX - minX, height: maxY - minY } : { x: 0, y: 0, width: 0, height: 0 };
     } catch {
       return { x: 0, y: 0, width: 0, height: 0 };
     }

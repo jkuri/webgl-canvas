@@ -32,7 +32,7 @@
   },
   "formatter": {
     "indentStyle": "space",
-    "lineWidth": 120,
+    "lineWidth": 140,
     "lineEnding": "lf"
   },
   "assist": {

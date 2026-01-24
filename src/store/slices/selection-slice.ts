@@ -16,12 +16,7 @@ export interface SelectionSlice {
   flipVertical: () => void;
 }
 
-export const createSelectionSlice: StateCreator<
-  SelectionSlice & { elements: CanvasElement[] },
-  [],
-  [],
-  SelectionSlice
-> = (set, get) => ({
+export const createSelectionSlice: StateCreator<SelectionSlice & { elements: CanvasElement[] }, [], [], SelectionSlice> = (set, get) => ({
   selectedIds: [],
   clipboard: [],
 
@@ -33,9 +28,7 @@ export const createSelectionSlice: StateCreator<
 
   toggleSelection: (id) =>
     set((state) => ({
-      selectedIds: state.selectedIds.includes(id)
-        ? state.selectedIds.filter((sid) => sid !== id)
-        : [...state.selectedIds, id],
+      selectedIds: state.selectedIds.includes(id) ? state.selectedIds.filter((sid) => sid !== id) : [...state.selectedIds, id],
     })),
 
   copySelected: () => {

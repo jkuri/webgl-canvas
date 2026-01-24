@@ -1,12 +1,4 @@
-import type {
-  BoundingBox,
-  CanvasElement,
-  EllipseElement,
-  LineElement,
-  RectElement,
-  ResizeHandle,
-  Shape,
-} from "@/types";
+import type { BoundingBox, CanvasElement, EllipseElement, LineElement, RectElement, ResizeHandle, Shape } from "@/types";
 
 function getRotatedCornersRect(element: RectElement): { x: number; y: number }[] {
   const { x, y, width, height, rotation } = element;
@@ -203,14 +195,7 @@ function hitTestEllipse(worldX: number, worldY: number, element: EllipseElement)
   return (localX * localX) / (rx * rx) + (localY * localY) / (ry * ry) <= 1;
 }
 
-function pointToLineDistance(
-  px: number,
-  py: number,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-): { distance: number; t: number } {
+function pointToLineDistance(px: number, py: number, x1: number, y1: number, x2: number, y2: number): { distance: number; t: number } {
   const dx = x2 - x1;
   const dy = y2 - y1;
   const lengthSq = dx * dx + dy * dy;
@@ -257,9 +242,7 @@ export function hitTestElement(worldX: number, worldY: number, element: CanvasEl
 
         const absoluteX = element.x + x;
         const absoluteY = element.y + y;
-        return (
-          worldX >= absoluteX && worldX <= absoluteX + width && worldY >= absoluteY && worldY <= absoluteY + height
-        );
+        return worldX >= absoluteX && worldX <= absoluteX + width && worldY >= absoluteY && worldY <= absoluteY + height;
       }
 
       const textWidth = element.text.length * element.fontSize * 0.6;
@@ -292,12 +275,7 @@ export function hitTestElement(worldX: number, worldY: number, element: CanvasEl
   }
 }
 
-export function hitTestShape(
-  worldX: number,
-  worldY: number,
-  elements: CanvasElement[],
-  deepSelect = false,
-): CanvasElement | null {
+export function hitTestShape(worldX: number, worldY: number, elements: CanvasElement[], deepSelect = false): CanvasElement | null {
   const testGroup = (group: CanvasElement, depth: number): { hit: CanvasElement; parent: CanvasElement } | null => {
     if (group.type !== "group") return null;
 
@@ -354,12 +332,7 @@ export function hitTestShape(
   return null;
 }
 
-export function hitTestAllElements(
-  worldX: number,
-  worldY: number,
-  elements: CanvasElement[],
-  parentId?: string,
-): CanvasElement[] {
+export function hitTestAllElements(worldX: number, worldY: number, elements: CanvasElement[], parentId?: string): CanvasElement[] {
   const hits: CanvasElement[] = [];
 
   const groupHasHitChild = (group: CanvasElement): boolean => {
@@ -609,10 +582,7 @@ function elementIntersectsBox(element: CanvasElement, minX: number, minY: number
   const shapeBounds = calculateBoundingBox([shape]);
   if (!shapeBounds) return false;
   return (
-    shapeBounds.x < maxX &&
-    shapeBounds.x + shapeBounds.width > minX &&
-    shapeBounds.y < maxY &&
-    shapeBounds.y + shapeBounds.height > minY
+    shapeBounds.x < maxX && shapeBounds.x + shapeBounds.width > minX && shapeBounds.y < maxY && shapeBounds.y + shapeBounds.height > minY
   );
 }
 

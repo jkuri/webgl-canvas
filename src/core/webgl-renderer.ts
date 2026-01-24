@@ -65,11 +65,7 @@ export class WebGLRenderer {
     this.quadBuffer = this.gl.createBuffer();
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
-      this.gl.STATIC_DRAW,
-    );
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), this.gl.STATIC_DRAW);
   }
 
   resize(width: number, height: number): void {
@@ -291,12 +287,7 @@ export class WebGLRenderer {
       }
 
       if (element.type !== "group" && ew > 0 && eh > 0) {
-        if (
-          ex + ew < visibleBounds.minX ||
-          ex > visibleBounds.maxX ||
-          ey + eh < visibleBounds.minY ||
-          ey > visibleBounds.maxY
-        ) {
+        if (ex + ew < visibleBounds.minX || ex > visibleBounds.maxX || ey + eh < visibleBounds.minY || ey > visibleBounds.maxY) {
           return;
         }
       }

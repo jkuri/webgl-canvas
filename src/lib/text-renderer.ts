@@ -3,10 +3,7 @@ import { FONT_FILES } from "./fonts";
 
 const fontCache = new Map<string, opentype.Font>();
 
-export async function getFont(
-  fontFamily: string,
-  fontWeight: string | number = "400",
-): Promise<opentype.Font[] | null> {
+export async function getFont(fontFamily: string, fontWeight: string | number = "400"): Promise<opentype.Font[] | null> {
   const fontName = fontFamily.split(",")[0].trim().replace(/['"]/g, "");
   const weight = String(fontWeight);
 

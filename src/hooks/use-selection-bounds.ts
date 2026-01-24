@@ -17,9 +17,7 @@ export function useSelectionBounds() {
       const shapes: CanvasElement[] = [];
       for (const el of els) {
         if (el.type === "group") {
-          const children = (el as GroupElement).childIds
-            .map((id) => elements.find((e) => e.id === id))
-            .filter(Boolean) as CanvasElement[];
+          const children = (el as GroupElement).childIds.map((id) => elements.find((e) => e.id === id)).filter(Boolean) as CanvasElement[];
           shapes.push(...getAllShapes(children));
         } else {
           shapes.push(el);

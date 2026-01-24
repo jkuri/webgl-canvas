@@ -50,11 +50,7 @@ export const cloneElement = (element: CanvasElement, newId: string, offset: numb
   return copy;
 };
 
-export const getDescendants = (
-  groupId: string,
-  elements: CanvasElement[],
-  collected: CanvasElement[] = [],
-): CanvasElement[] => {
+export const getDescendants = (groupId: string, elements: CanvasElement[], collected: CanvasElement[] = []): CanvasElement[] => {
   const group = elements.find((e) => e.id === groupId);
   if (!group || group.type !== "group") return collected;
 

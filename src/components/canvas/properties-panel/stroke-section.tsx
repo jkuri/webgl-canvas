@@ -26,16 +26,14 @@ export function StrokeSection({ elements, showMarkers = false }: StrokeSectionPr
       return null;
     }),
   );
-  const displayColor =
-    uniqueColors.size === 1 ? (elements[0].stroke?.color ?? "#000000") : (elements[0].stroke?.color ?? "#000000");
+  const displayColor = uniqueColors.size === 1 ? (elements[0].stroke?.color ?? "#000000") : (elements[0].stroke?.color ?? "#000000");
   const isMixedColor = uniqueColors.size > 1;
 
   const uniqueWidths = new Set(elements.map((e) => e.stroke?.width));
   const displayWidth = uniqueWidths.size === 1 ? (elements[0].stroke?.width ?? 1) : (elements[0].stroke?.width ?? 1);
 
   const uniqueOpacities = new Set(elements.map((e) => e.stroke?.opacity));
-  const displayOpacity =
-    uniqueOpacities.size === 1 ? (elements[0].stroke?.opacity ?? 1) : (elements[0].stroke?.opacity ?? 1);
+  const displayOpacity = uniqueOpacities.size === 1 ? (elements[0].stroke?.opacity ?? 1) : (elements[0].stroke?.opacity ?? 1);
 
   const displayDashArray = elements[0].stroke?.dashArray;
 
@@ -136,9 +134,7 @@ export function StrokeSection({ elements, showMarkers = false }: StrokeSectionPr
             }}
           >
             <SelectTrigger className="w-full text-xs">
-              <SelectValue>
-                {displayDashArray?.length ? (displayDashArray[0] === 1 ? "Dotted" : "Dashed") : "Solid"}
-              </SelectValue>
+              <SelectValue>{displayDashArray?.length ? (displayDashArray[0] === 1 ? "Dotted" : "Dashed") : "Solid"}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="solid">Solid</SelectItem>

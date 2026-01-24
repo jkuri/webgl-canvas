@@ -23,10 +23,7 @@ export function flattenCanvasElements(
   return result;
 }
 
-export function getDescendantIds(
-  ids: string[],
-  getElementById: (id: string) => CanvasElement | undefined,
-): Set<string> {
+export function getDescendantIds(ids: string[], getElementById: (id: string) => CanvasElement | undefined): Set<string> {
   const descendants = new Set<string>();
 
   const collectDescendants = (elementIds: string[]) => {
@@ -180,10 +177,7 @@ export function collectElementsForRotation(
 
 export function collectDraggableElements(
   ids: string[],
-  map: Map<
-    string,
-    { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }
-  >,
+  map: Map<string, { x: number; y: number; cx?: number; cy?: number; x1?: number; y1?: number; x2?: number; y2?: number }>,
   getElementById: (id: string) => CanvasElement | undefined,
 ) {
   for (const id of ids) {

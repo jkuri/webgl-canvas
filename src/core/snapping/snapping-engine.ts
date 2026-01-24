@@ -187,8 +187,7 @@ export function calculateSnaps(
 }
 
 function findBestAlignment(bounds: Bounds, lines: SnapLine[], axis: "x" | "y", threshold: number) {
-  const targets =
-    axis === "x" ? [bounds.minX, bounds.centerX, bounds.maxX] : [bounds.minY, bounds.centerY, bounds.maxY];
+  const targets = axis === "x" ? [bounds.minX, bounds.centerX, bounds.maxX] : [bounds.minY, bounds.centerY, bounds.maxY];
 
   let bestDiff = Infinity;
   let bestGuides: SmartGuide[] = [];
@@ -283,8 +282,7 @@ function findBestSpacing(bounds: Bounds, sortedBounds: Bounds[], axis: "x" | "y"
     const b = sortedBounds[i];
     const bMax = axis === "x" ? b.maxX : b.maxY;
 
-    const overlaps =
-      axis === "x" ? b.maxY > bounds.minY && b.minY < bounds.maxY : b.maxX > bounds.minX && b.minX < bounds.maxX;
+    const overlaps = axis === "x" ? b.maxY > bounds.minY && b.minY < bounds.maxY : b.maxX > bounds.minX && b.minX < bounds.maxX;
 
     if (overlaps) {
       if (bMax < minVal) {
@@ -300,8 +298,7 @@ function findBestSpacing(bounds: Bounds, sortedBounds: Bounds[], axis: "x" | "y"
     const b = sortedBounds[i];
     const bMin = axis === "x" ? b.minX : b.minY;
 
-    const overlaps =
-      axis === "x" ? b.maxY > bounds.minY && b.minY < bounds.maxY : b.maxX > bounds.minX && b.minX < bounds.maxX;
+    const overlaps = axis === "x" ? b.maxY > bounds.minY && b.minY < bounds.maxY : b.maxX > bounds.minX && b.minX < bounds.maxX;
 
     if (overlaps) {
       if (bMin > maxVal) {

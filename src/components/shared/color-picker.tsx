@@ -281,10 +281,7 @@ export function ColorPicker({ color, onChange, className, opacity = 1, onOpacity
               }
             }}
           >
-            <div
-              className="absolute inset-0"
-              style={{ background: `linear-gradient(to right, transparent, ${color})` }}
-            />
+            <div className="absolute inset-0" style={{ background: `linear-gradient(to right, transparent, ${color})` }} />
             <div
               className="pointer-events-none absolute top-0 h-full w-3 -translate-x-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-black/20"
               style={{ left: `${opacity * 100}%` }}
