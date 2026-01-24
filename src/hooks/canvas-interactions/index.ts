@@ -12,11 +12,9 @@ export type {
   DragStartState,
   ElementData,
   MarqueeStartState,
-  PendingUpdate,
   ResizeStartState,
   RotateStartState,
 } from "./types";
-export { scheduleUpdate } from "./update-scheduler";
 export { useDragInteraction } from "./use-drag-interaction";
 export { useMarqueeInteraction } from "./use-marquee-interaction";
 export { getResizeHandle, useResizeInteraction } from "./use-resize-interaction";

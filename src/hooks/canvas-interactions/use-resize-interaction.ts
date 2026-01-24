@@ -1,12 +1,13 @@
 import { useCallback, useRef } from "react";
 import { calculateBoundingBox } from "@/core";
+import { resizeElementInGroup } from "@/lib/group-utils";
 import { resizePath } from "@/lib/svg-import";
+
 import { useCanvasStore } from "@/store";
 import type { BoundingBox, CanvasElement, ResizeHandle, Shape } from "@/types";
 import { getElementBounds } from "@/types";
 import { collectElementsForResize, flattenCanvasElements } from "./element-helpers";
 import type { ElementData, ResizeStartState } from "./types";
-import { scheduleUpdate } from "./update-scheduler";
 
 export function useResizeInteraction(
   screenToWorld: (screenX: number, screenY: number) => { x: number; y: number },
@@ -167,17 +168,11 @@ export function useResizeInteraction(
           const finalX = newCenterWorldX - newWidth / 2;
           const finalY = newCenterWorldY - newHeight / 2;
 
-          scheduleUpdate({
-            type: "resize",
-            singleUpdate: {
-              id,
-              data: {
-                x: finalX,
-                y: finalY,
-                width: newWidth,
-                height: newHeight,
-              },
-            },
+          useCanvasStore.getState().updateElement(id, {
+            x: finalX,
+            y: finalY,
+            width: newWidth,
+            height: newHeight,
           });
         } else if (original.type === "line") {
           const currentX1 = original.x1 ?? 0;
@@ -186,26 +181,14 @@ export function useResizeInteraction(
           const currentY2 = original.y2 ?? 0;
 
           if (handle === "nw") {
-            scheduleUpdate({
-              type: "resize",
-              singleUpdate: {
-                id,
-                data: {
-                  x1: currentX1 + deltaX,
-                  y1: currentY1 + deltaY,
-                },
-              },
+            useCanvasStore.getState().updateElement(id, {
+              x1: currentX1 + deltaX,
+              y1: currentY1 + deltaY,
             });
           } else if (handle === "se") {
-            scheduleUpdate({
-              type: "resize",
-              singleUpdate: {
-                id,
-                data: {
-                  x2: currentX2 + deltaX,
-                  y2: currentY2 + deltaY,
-                },
-              },
+            useCanvasStore.getState().updateElement(id, {
+              x2: currentX2 + deltaX,
+              y2: currentY2 + deltaY,
             });
           }
         } else if (original.type === "path") {
@@ -275,15 +258,9 @@ export function useResizeInteraction(
           const newBounds = { x: newX, y: newY, width: newWidth, height: newHeight };
           const newD = resizePath(original.d!, bounds, newBounds);
 
-          scheduleUpdate({
-            type: "resize",
-            singleUpdate: {
-              id,
-              data: {
-                d: newD,
-                bounds: newBounds,
-              },
-            },
+          useCanvasStore.getState().updateElement(id, {
+            d: newD,
+            bounds: newBounds,
           });
         }
       } else {
@@ -354,63 +331,16 @@ export function useResizeInteraction(
 
         const updates = new Map<string, Record<string, unknown>>();
         for (const [id, original] of originalElements) {
-          const relX = (original.x - originalBounds.x) / originalBounds.width;
-          const relY = (original.y - originalBounds.y) / originalBounds.height;
-          const relW = original.width / originalBounds.width;
-          const relH = original.height / originalBounds.height;
-
-          const newX = newBoundsX + relX * newBoundsWidth;
-          const newY = newBoundsY + relY * newBoundsHeight;
-          const newW = Math.max(1, relW * newBoundsWidth);
-          const newH = Math.max(1, relH * newBoundsHeight);
-
-          if (original.type === "rect" || original.type === "image") {
-            updates.set(id, { x: newX, y: newY, width: newW, height: newH });
-          } else if (original.type === "ellipse") {
-            updates.set(id, {
-              cx: newX + newW / 2,
-              cy: newY + newH / 2,
-              rx: newW / 2,
-              ry: newH / 2,
-            });
-          } else if (original.type === "line") {
-            const relX1 = ((original.x1 ?? 0) - originalBounds.x) / originalBounds.width;
-            const relY1 = ((original.y1 ?? 0) - originalBounds.y) / originalBounds.height;
-            const relX2 = ((original.x2 ?? 0) - originalBounds.x) / originalBounds.width;
-            const relY2 = ((original.y2 ?? 0) - originalBounds.y) / originalBounds.height;
-
-            updates.set(id, {
-              x1: newBoundsX + relX1 * newBoundsWidth,
-              y1: newBoundsY + relY1 * newBoundsHeight,
-              x2: newBoundsX + relX2 * newBoundsWidth,
-              y2: newBoundsY + relY2 * newBoundsHeight,
-            });
-          } else if (original.type === "path") {
-            const oldBounds = original.bounds || { x: 0, y: 0, width: 0, height: 0 };
-            const newBounds = {
-              ...oldBounds,
-              x: newX,
-              y: newY,
-              width: newW,
-              height: newH,
-            };
-            const newD = resizePath(original.d!, oldBounds, newBounds);
-
-            updates.set(id, {
-              d: newD,
-              bounds: newBounds,
-            });
-          }
+          resizeElementInGroup(
+            { id, ...original } as CanvasElement,
+            originalBounds,
+            { x: newBoundsX, y: newBoundsY, width: newBoundsWidth, height: newBoundsHeight },
+            updates,
+          );
         }
 
         if (updates.size > 0) {
-          const { snapToGrid, snapToObjects, snapToGeometry } = useCanvasStore.getState();
-          const hasSnapping = snapToGrid || snapToObjects || snapToGeometry;
-          scheduleUpdate({
-            type: "drag",
-            updates,
-            smartGuides: hasSnapping ? useCanvasStore.getState().smartGuides : [],
-          });
+          useCanvasStore.getState().updateElements(updates);
         }
       }
     },

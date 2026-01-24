@@ -1,14 +1,5 @@
 import type { Bounds, SnapState } from "@/core/snapping";
-import type { BoundingBox, ResizeHandle, SmartGuide } from "@/types";
-
-export interface PendingUpdate {
-  type: "drag" | "resize" | "rotate" | "marquee";
-  updates?: Map<string, Record<string, unknown>>;
-  singleUpdate?: { id: string; data: Record<string, unknown> };
-  selectionBox?: { startX: number; startY: number; endX: number; endY: number } | null;
-  selectedIds?: string[];
-  smartGuides?: SmartGuide[];
-}
+import type { BoundingBox, ResizeHandle } from "@/types";
 
 export interface ElementData {
   x?: number;
@@ -31,6 +22,9 @@ export interface ElementData {
   aspectRatioLocked?: boolean;
   anchorX?: number;
   anchorY?: number;
+  fontSize?: number;
+  text?: string;
+  points?: { x: number; y: number }[];
 }
 
 export interface DragStartState {
@@ -69,6 +63,9 @@ export interface ResizeStartState {
       bounds?: { x: number; y: number; width: number; height: number; rotation?: number };
       aspectRatioLocked?: boolean;
       d?: string;
+      fontSize?: number;
+      text?: string;
+      points?: { x: number; y: number }[];
     }
   >;
   isSingleRotatedElement: boolean;

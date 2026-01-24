@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { getRotatedCorners } from "@/core";
+import { calculateGroupOBB, getRotatedCorners } from "@/core";
 import { useCanvasStore } from "@/store";
 import type { CanvasElement, GroupElement, Shape } from "@/types";
 import { getElementBounds } from "@/types";
@@ -84,6 +84,25 @@ export function useSelectionBounds() {
       return {
         bounds,
         rotation: element.rotation,
+        isLine: false,
+      };
+    }
+
+    if (selectedElements.length === 1 && selectedElements[0].type === "group") {
+      const element = selectedElements[0] as GroupElement;
+      const shapes = getAllShapes([element]) as Shape[];
+      if (shapes.length === 0) return null;
+
+      const obb = calculateGroupOBB(shapes, element.rotation);
+
+      return {
+        bounds: {
+          x: obb.x,
+          y: obb.y,
+          width: obb.width,
+          height: obb.height,
+        },
+        rotation: obb.rotation,
         isLine: false,
       };
     }

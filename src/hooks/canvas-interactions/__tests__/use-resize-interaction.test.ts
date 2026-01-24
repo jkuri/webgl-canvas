@@ -10,10 +10,8 @@ import {
   resetIdCounter,
 } from "./test-utils";
 
-// Mock dependencies
-vi.mock("../update-scheduler", () => ({
-  scheduleUpdate: vi.fn(),
-}));
+const mockUpdateElement = vi.fn();
+const mockUpdateElements = vi.fn();
 
 vi.mock("@/store", () => ({
   useCanvasStore: {
@@ -22,6 +20,8 @@ vi.mock("@/store", () => ({
       snapToObjects: false,
       snapToGeometry: false,
       smartGuides: [],
+      updateElement: mockUpdateElement,
+      updateElements: mockUpdateElements,
     }),
   },
 }));
@@ -29,8 +29,6 @@ vi.mock("@/store", () => ({
 vi.mock("@/lib/svg-import", () => ({
   resizePath: vi.fn((d) => d),
 }));
-
-import { scheduleUpdate } from "../update-scheduler";
 
 beforeEach(() => {
   resetIdCounter();
@@ -115,7 +113,8 @@ describe("useResizeInteraction", () => {
         result.current.updateResize(150, 150, false);
       });
 
-      expect(scheduleUpdate).not.toHaveBeenCalled();
+      expect(mockUpdateElement).not.toHaveBeenCalled();
+      expect(mockUpdateElements).not.toHaveBeenCalled();
     });
 
     it("should resize rect from se handle", () => {
@@ -132,7 +131,8 @@ describe("useResizeInteraction", () => {
         result.current.updateResize(150, 150, false);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
+      // Non-rotated rects use updateElements
+      expect(mockUpdateElements).toHaveBeenCalled();
     });
 
     it("should resize line endpoints", () => {
@@ -149,10 +149,10 @@ describe("useResizeInteraction", () => {
         result.current.updateResize(150, 150, false);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      expect(call.singleUpdate?.data.x2).toBeDefined();
-      expect(call.singleUpdate?.data.y2).toBeDefined();
+      expect(mockUpdateElement).toHaveBeenCalled();
+      const call = mockUpdateElement.mock.calls[0];
+      expect(call[1].x2).toBeDefined();
+      expect(call[1].y2).toBeDefined();
     });
 
     it("should resize from nw handle", () => {
@@ -169,7 +169,8 @@ describe("useResizeInteraction", () => {
         result.current.updateResize(-50, -50, false);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
+      // Non-rotated rects use updateElements
+      expect(mockUpdateElements).toHaveBeenCalled();
     });
 
     it("should maintain minimum size", () => {
@@ -187,7 +188,128 @@ describe("useResizeInteraction", () => {
         result.current.updateResize(5, 5, false);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
+      // Non-rotated rects use updateElements
+      expect(mockUpdateElements).toHaveBeenCalled();
+    });
+
+    it("should resize rotated rect from se handle using updateElement", () => {
+      // For rotated elements, isSingleRotatedElement = true, so updateElement is used
+      const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 4 });
+      const getElementById = createGetElementById([rect]);
+      const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
+
+      const setIsResizing = vi.fn();
+      act(() => {
+        result.current.startResize(100, 100, "se", [rect], setIsResizing);
+      });
+
+      // Verify rotated element detection
+      expect(result.current.resizeStartRef.current?.isSingleRotatedElement).toBe(true);
+      expect(result.current.resizeStartRef.current?.elementRotation).toBe(Math.PI / 4);
+
+      act(() => {
+        result.current.updateResize(150, 150, false);
+      });
+
+      // Rotated rects use updateElement (singular)
+      expect(mockUpdateElement).toHaveBeenCalled();
+      const [id, data] = mockUpdateElement.mock.calls[0];
+      expect(id).toBe(rect.id);
+      expect(data.width).toBeDefined();
+      expect(data.height).toBeDefined();
+      expect(data.x).toBeDefined();
+      expect(data.y).toBeDefined();
+    });
+
+    it("should resize rotated rect from nw handle", () => {
+      const rect = createRect({ x: 50, y: 50, width: 100, height: 100, rotation: Math.PI / 6 });
+      const getElementById = createGetElementById([rect]);
+      const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
+
+      const setIsResizing = vi.fn();
+      act(() => {
+        result.current.startResize(50, 50, "nw", [rect], setIsResizing);
+      });
+
+      act(() => {
+        result.current.updateResize(30, 30, false);
+      });
+
+      expect(mockUpdateElement).toHaveBeenCalled();
+    });
+
+    it("should resize rotated rect from e handle (edge)", () => {
+      const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 3 });
+      const getElementById = createGetElementById([rect]);
+      const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
+
+      const setIsResizing = vi.fn();
+      act(() => {
+        result.current.startResize(100, 50, "e", [rect], setIsResizing);
+      });
+
+      act(() => {
+        result.current.updateResize(150, 50, false);
+      });
+
+      expect(mockUpdateElement).toHaveBeenCalled();
+      const [, data] = mockUpdateElement.mock.calls[0];
+      expect(data.width).toBeGreaterThan(100);
+    });
+
+    it("should maintain aspect ratio for rotated rect with shift key", () => {
+      const rect = createRect({ x: 0, y: 0, width: 100, height: 50, rotation: Math.PI / 4 });
+      const getElementById = createGetElementById([rect]);
+      const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
+
+      const setIsResizing = vi.fn();
+      act(() => {
+        result.current.startResize(100, 50, "se", [rect], setIsResizing);
+      });
+
+      act(() => {
+        result.current.updateResize(150, 100, true); // shiftKey = true
+      });
+
+      expect(mockUpdateElement).toHaveBeenCalled();
+      const [, data] = mockUpdateElement.mock.calls[0];
+      // Aspect ratio should be maintained (2:1)
+      expect(Math.abs(data.width / data.height - 2)).toBeLessThan(0.01);
+    });
+
+    it("should resize rotated image element", () => {
+      const image = {
+        id: "test-image",
+        type: "image" as const,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        rotation: Math.PI / 4,
+        href: "data:image/png;base64,test",
+        fill: null,
+        stroke: null,
+        opacity: 1,
+        visible: true,
+        locked: false,
+        name: "Image",
+        aspectRatioLocked: true,
+      };
+      const getElementById = createGetElementById([image]);
+      const { result } = renderHook(() => useResizeInteraction(screenToWorld, getElementById));
+
+      const setIsResizing = vi.fn();
+      act(() => {
+        result.current.startResize(100, 100, "se", [image], setIsResizing);
+      });
+
+      expect(result.current.resizeStartRef.current?.isSingleRotatedElement).toBe(true);
+
+      act(() => {
+        result.current.updateResize(150, 150, false);
+      });
+
+      expect(mockUpdateElement).toHaveBeenCalled();
     });
   });
 

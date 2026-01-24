@@ -4,7 +4,6 @@ import { useCanvasStore } from "@/store";
 import type { CanvasElement } from "@/types";
 import { collectDraggableElements, getDescendantIds, getSnapCandidatesAndPoints } from "./element-helpers";
 import type { DragStartState } from "./types";
-import { scheduleUpdate } from "./update-scheduler";
 
 export function useDragInteraction(
   screenToWorld: (screenX: number, screenY: number) => { x: number; y: number },
@@ -194,11 +193,7 @@ export function useDragInteraction(
       }
 
       if (updates.size > 0) {
-        scheduleUpdate({
-          type: "drag",
-          updates,
-          smartGuides: useCanvasStore.getState().smartGuides,
-        });
+        useCanvasStore.getState().updateElements(updates);
       }
     },
     [screenToWorld, getElementById],

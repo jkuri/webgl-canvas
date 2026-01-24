@@ -1,9 +1,9 @@
 import { useCallback, useRef } from "react";
 import { calculateBoundingBox } from "@/core";
+import { useCanvasStore } from "@/store";
 import type { CanvasElement, ResizeHandle } from "@/types";
 import { collectElementsForRotation, flattenCanvasElements } from "./element-helpers";
 import type { RotateStartState } from "./types";
-import { scheduleUpdate } from "./update-scheduler";
 
 export function useRotateInteraction(
   screenToWorld: (screenX: number, screenY: number) => { x: number; y: number },
@@ -187,10 +187,7 @@ export function useRotateInteraction(
       }
 
       if (updates.size > 0) {
-        scheduleUpdate({
-          type: "rotate",
-          updates,
-        });
+        useCanvasStore.getState().updateElements(updates);
       }
     },
     [screenToWorld],

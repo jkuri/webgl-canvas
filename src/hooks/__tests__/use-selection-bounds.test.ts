@@ -40,7 +40,7 @@ describe("useSelectionBounds", () => {
   });
 
   describe("single group - axis-aligned bounds", () => {
-    it("should return rotation 0 for single group (axis-aligned)", () => {
+    it("should return group rotation for single group", () => {
       const rect = createRect({ x: 0, y: 0, width: 100, height: 100 });
       const group = createGroup([rect], { rotation: Math.PI / 2 });
       mockElements = [rect, group];
@@ -48,8 +48,8 @@ describe("useSelectionBounds", () => {
 
       const { result } = renderHook(() => useSelectionBounds());
 
-      // Groups always get axis-aligned bounds (rotation: 0)
-      expect(result.current?.rotation).toBe(0);
+      // Should return group rotation
+      expect(result.current?.rotation).toBe(Math.PI / 2);
     });
 
     it("should return non-zero bounds for group", () => {
@@ -65,7 +65,7 @@ describe("useSelectionBounds", () => {
       expect(result.current?.bounds.height).toBeGreaterThan(0);
     });
 
-    it("should return rotation 0 for group with nested rotated children", () => {
+    it("should return group rotation for group with nested rotated children", () => {
       const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 4 });
       const group = createGroup([rect], { rotation: Math.PI / 2 });
       mockElements = [rect, group];
@@ -73,8 +73,8 @@ describe("useSelectionBounds", () => {
 
       const { result } = renderHook(() => useSelectionBounds());
 
-      // Groups always return rotation: 0 (axis-aligned bounds)
-      expect(result.current?.rotation).toBe(0);
+      // Should return group rotation
+      expect(result.current?.rotation).toBe(Math.PI / 2);
     });
   });
 

@@ -11,4 +11,5 @@ export {
   hitTestShape,
 } from "./hit-testing";
 export * from "./snapping";
+export { calculateGroupOBB } from "./webgl/renderers/overlay-renderer";
 export { WebGLRenderer } from "./webgl-renderer";

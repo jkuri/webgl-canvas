@@ -2,7 +2,6 @@ import { useCallback, useRef } from "react";
 import { getShapesInBox } from "@/core";
 import { useCanvasStore } from "@/store";
 import type { MarqueeStartState } from "./types";
-import { scheduleUpdate } from "./update-scheduler";
 
 export function useMarqueeInteraction(screenToWorld: (screenX: number, screenY: number) => { x: number; y: number }) {
   const marqueeStartRef = useRef<MarqueeStartState | null>(null);
@@ -65,16 +64,16 @@ export function useMarqueeInteraction(screenToWorld: (screenX: number, screenY: 
         newSelectedIds = [];
       }
 
-      scheduleUpdate({
-        type: "marquee",
-        selectionBox: {
-          startX: marqueeStartRef.current.worldX,
-          startY: marqueeStartRef.current.worldY,
-          endX: world.x,
-          endY: world.y,
-        },
-        selectedIds: newSelectedIds,
+      const { setSelectionBox, setSelectedIds: storeSetSelectedIds } = useCanvasStore.getState();
+      setSelectionBox({
+        startX: marqueeStartRef.current.worldX,
+        startY: marqueeStartRef.current.worldY,
+        endX: world.x,
+        endY: world.y,
       });
+      if (newSelectedIds !== undefined) {
+        storeSetSelectedIds(newSelectedIds);
+      }
     },
     [screenToWorld],
   );

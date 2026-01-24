@@ -90,6 +90,11 @@ export function collectElementsForResize(
       } else if (element.type === "path") {
         entry.d = element.d;
         entry.bounds = element.bounds;
+      } else if (element.type === "text") {
+        entry.fontSize = element.fontSize;
+        entry.text = element.text;
+      } else if (element.type === "polygon" || element.type === "polyline") {
+        entry.points = element.points;
       }
 
       map.set(element.id, entry);

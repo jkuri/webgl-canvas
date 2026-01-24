@@ -3,15 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useMarqueeInteraction } from "../use-marquee-interaction";
 import { createRect, createScreenToWorld, resetIdCounter } from "./test-utils";
 
-// Mock dependencies
-vi.mock("../update-scheduler", () => ({
-  scheduleUpdate: vi.fn(),
-}));
+const mockSetSelectionBox = vi.fn();
+const mockSetSelectedIds = vi.fn();
 
 vi.mock("@/store", () => ({
   useCanvasStore: {
     getState: () => ({
       elements: [],
+      setSelectionBox: mockSetSelectionBox,
+      setSelectedIds: mockSetSelectedIds,
     }),
   },
 }));
@@ -21,7 +21,6 @@ vi.mock("@/core", () => ({
 }));
 
 import { getShapesInBox } from "@/core";
-import { scheduleUpdate } from "../update-scheduler";
 
 beforeEach(() => {
   resetIdCounter();
@@ -121,7 +120,7 @@ describe("useMarqueeInteraction", () => {
         result.current.updateMarquee(200, 200, []);
       });
 
-      expect(scheduleUpdate).not.toHaveBeenCalled();
+      expect(mockSetSelectionBox).not.toHaveBeenCalled();
     });
 
     it("should update selection box", () => {
@@ -139,10 +138,7 @@ describe("useMarqueeInteraction", () => {
         result.current.updateMarquee(200, 200, []);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      expect(call.type).toBe("marquee");
-      expect(call.selectionBox).toEqual({
+      expect(mockSetSelectionBox).toHaveBeenCalledWith({
         startX: 100,
         startY: 100,
         endX: 200,
@@ -168,8 +164,7 @@ describe("useMarqueeInteraction", () => {
         result.current.updateMarquee(200, 200, []);
       });
 
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      expect(call.selectedIds).toContain(rect.id);
+      expect(mockSetSelectedIds).toHaveBeenCalledWith([rect.id]);
     });
 
     it("should add to existing selection when shift was held", () => {
@@ -199,9 +194,9 @@ describe("useMarqueeInteraction", () => {
         result.current.updateMarquee(200, 200, [existingRect.id]);
       });
 
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      expect(call.selectedIds).toContain(existingRect.id);
-      expect(call.selectedIds).toContain(newRect.id);
+      const lastCall = mockSetSelectedIds.mock.calls[mockSetSelectedIds.mock.calls.length - 1][0];
+      expect(lastCall).toContain(existingRect.id);
+      expect(lastCall).toContain(newRect.id);
     });
   });
 

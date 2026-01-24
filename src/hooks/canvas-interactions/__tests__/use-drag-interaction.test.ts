@@ -13,10 +13,8 @@ import {
   resetIdCounter,
 } from "./test-utils";
 
-// Mock dependencies
-vi.mock("../update-scheduler", () => ({
-  scheduleUpdate: vi.fn(),
-}));
+const mockUpdateElements = vi.fn();
+const mockSetSmartGuides = vi.fn();
 
 vi.mock("@/store", () => ({
   useCanvasStore: {
@@ -26,12 +24,11 @@ vi.mock("@/store", () => ({
       snapToGeometry: false,
       gridSize: 10,
       smartGuides: [],
-      setSmartGuides: vi.fn(),
+      setSmartGuides: mockSetSmartGuides,
+      updateElements: mockUpdateElements,
     }),
   },
 }));
-
-import { scheduleUpdate } from "../update-scheduler";
 
 beforeEach(() => {
   resetIdCounter();
@@ -177,7 +174,7 @@ describe("useDragInteraction", () => {
         result.current.updateDrag(100, 100, 1);
       });
 
-      expect(scheduleUpdate).not.toHaveBeenCalled();
+      expect(mockUpdateElements).not.toHaveBeenCalled();
     });
 
     it("should update rect position", () => {
@@ -194,10 +191,9 @@ describe("useDragInteraction", () => {
         result.current.updateDrag(100, 150, 1); // Move by (50, 100)
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      expect(call.type).toBe("drag");
-      const update = call.updates?.get(rect.id);
+      expect(mockUpdateElements).toHaveBeenCalled();
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const update = updates.get(rect.id);
       expect(update?.x).toBe(50);
       expect(update?.y).toBe(100);
     });
@@ -216,8 +212,8 @@ describe("useDragInteraction", () => {
         result.current.updateDrag(80, 90, 1);
       });
 
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      const update = call.updates?.get(ellipse.id);
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const update = updates.get(ellipse.id);
       expect(update?.cx).toBe(80);
       expect(update?.cy).toBe(90);
     });
@@ -236,8 +232,8 @@ describe("useDragInteraction", () => {
         result.current.updateDrag(70, 60, 1); // Delta: (20, 10)
       });
 
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      const update = call.updates?.get(line.id);
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const update = updates.get(line.id);
       expect(update?.x1).toBe(20);
       expect(update?.y1).toBe(10);
       expect(update?.x2).toBe(120);
@@ -258,8 +254,8 @@ describe("useDragInteraction", () => {
         result.current.updateDrag(80, 90, 1); // Delta: (30, 40)
       });
 
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      const update = call.updates?.get(path.id);
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const update = updates.get(path.id);
       expect(update?.bounds).toEqual({
         x: 40,
         y: 60,
@@ -282,8 +278,8 @@ describe("useDragInteraction", () => {
         result.current.updateDrag(50, 75, 1); // Delta: (35, 50)
       });
 
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      const update = call.updates?.get(text.id);
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const update = updates.get(text.id);
       expect(update?.x).toBe(45);
       expect(update?.y).toBe(70);
     });

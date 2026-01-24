@@ -13,12 +13,15 @@ import {
   resetIdCounter,
 } from "./test-utils";
 
-// Mock the update scheduler
-vi.mock("../update-scheduler", () => ({
-  scheduleUpdate: vi.fn(),
-}));
+const mockUpdateElements = vi.fn();
 
-import { scheduleUpdate } from "../update-scheduler";
+vi.mock("@/store", () => ({
+  useCanvasStore: {
+    getState: () => ({
+      updateElements: mockUpdateElements,
+    }),
+  },
+}));
 
 beforeEach(() => {
   resetIdCounter();
@@ -77,7 +80,6 @@ describe("useRotateInteraction", () => {
       const setIsRotating = vi.fn();
       result.current.startRotate(100, 50, "ne", [group], setIsRotating);
 
-      // Group rotation should be stored
       const groupEntry = result.current.rotateStartRef.current?.originalElements.get(group.id);
       expect(groupEntry?.type).toBe("group");
       expect(groupEntry?.rotation).toBe(Math.PI / 2);
@@ -93,7 +95,6 @@ describe("useRotateInteraction", () => {
       const setIsRotating = vi.fn();
       result.current.startRotate(150, 150, "se", elements, setIsRotating);
 
-      // Center should be between both elements
       expect(result.current.rotateStartRef.current?.centerX).toBe(75);
       expect(result.current.rotateStartRef.current?.centerY).toBe(75);
     });
@@ -108,7 +109,7 @@ describe("useRotateInteraction", () => {
         result.current.updateRotate(100, 100);
       });
 
-      expect(scheduleUpdate).not.toHaveBeenCalled();
+      expect(mockUpdateElements).not.toHaveBeenCalled();
     });
 
     it("should calculate new rotation for rect", () => {
@@ -118,19 +119,16 @@ describe("useRotateInteraction", () => {
 
       const setIsRotating = vi.fn();
       act(() => {
-        result.current.startRotate(100, 50, "e", [rect], setIsRotating); // Start at right center
+        result.current.startRotate(100, 50, "e", [rect], setIsRotating);
       });
 
       act(() => {
-        result.current.updateRotate(50, 100); // Move to bottom center (90 degrees)
+        result.current.updateRotate(50, 100);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      expect(call.type).toBe("rotate");
-      expect(call.updates).toBeDefined();
-      const update = call.updates?.get(rect.id);
-      expect(update?.rotation).toBeDefined();
+      expect(mockUpdateElements).toHaveBeenCalled();
+      const updates = mockUpdateElements.mock.calls[0][0];
+      expect(updates.get(rect.id)?.rotation).toBeDefined();
     });
 
     it("should update group rotation only", () => {
@@ -149,10 +147,9 @@ describe("useRotateInteraction", () => {
         result.current.updateRotate(50, 100);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      const groupUpdate = call.updates?.get(group.id);
-      expect(groupUpdate?.rotation).toBeDefined();
+      expect(mockUpdateElements).toHaveBeenCalled();
+      const updates = mockUpdateElements.mock.calls[0][0];
+      expect(updates.get(group.id)?.rotation).toBeDefined();
     });
 
     it("should handle line rotation by moving endpoints", () => {
@@ -169,9 +166,9 @@ describe("useRotateInteraction", () => {
         result.current.updateRotate(50, 100);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      const update = call.updates?.get(line.id);
+      expect(mockUpdateElements).toHaveBeenCalled();
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const update = updates.get(line.id);
       expect(update?.x1).toBeDefined();
       expect(update?.y1).toBeDefined();
       expect(update?.x2).toBeDefined();
@@ -192,9 +189,9 @@ describe("useRotateInteraction", () => {
         result.current.updateRotate(50, 80);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      const update = call.updates?.get(ellipse.id);
+      expect(mockUpdateElements).toHaveBeenCalled();
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const update = updates.get(ellipse.id);
       expect(update?.rotation).toBeDefined();
     });
 
@@ -212,9 +209,9 @@ describe("useRotateInteraction", () => {
         result.current.updateRotate(50, 100);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
-      const call = vi.mocked(scheduleUpdate).mock.calls[0][0];
-      const update = call.updates?.get(path.id);
+      expect(mockUpdateElements).toHaveBeenCalled();
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const update = updates.get(path.id);
       expect(update?.bounds).toBeDefined();
       expect(update?.rotation).toBeDefined();
     });
@@ -233,7 +230,105 @@ describe("useRotateInteraction", () => {
         result.current.updateRotate(25, 30);
       });
 
-      expect(scheduleUpdate).toHaveBeenCalled();
+      expect(mockUpdateElements).toHaveBeenCalled();
+    });
+
+    it("should rotate rect with existing rotation", () => {
+      // Element already has rotation = 45 degrees
+      const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 4 });
+      const getElementById = createGetElementById([rect]);
+      const { result } = renderHook(() => useRotateInteraction(screenToWorld, getElementById));
+
+      const setIsRotating = vi.fn();
+      act(() => {
+        result.current.startRotate(100, 50, "se", [rect], setIsRotating);
+      });
+
+      // Verify initial rotation was stored
+      expect(result.current.rotateStartRef.current?.originalRotations.get(rect.id)).toBe(Math.PI / 4);
+
+      act(() => {
+        result.current.updateRotate(50, 100);
+      });
+
+      expect(mockUpdateElements).toHaveBeenCalled();
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const update = updates.get(rect.id);
+      expect(update?.rotation).toBeDefined();
+      // New rotation should be different from original
+      expect(update?.rotation).not.toBe(Math.PI / 4);
+    });
+
+    it("should rotate ellipse with existing rotation", () => {
+      const ellipse = createEllipse({ cx: 50, cy: 50, rx: 50, ry: 30, rotation: Math.PI / 6 });
+      const getElementById = createGetElementById([ellipse]);
+      const { result } = renderHook(() => useRotateInteraction(screenToWorld, getElementById));
+
+      const setIsRotating = vi.fn();
+      act(() => {
+        result.current.startRotate(100, 50, "ne", [ellipse], setIsRotating);
+      });
+
+      expect(result.current.rotateStartRef.current?.originalRotations.get(ellipse.id)).toBe(Math.PI / 6);
+
+      act(() => {
+        result.current.updateRotate(50, 100);
+      });
+
+      expect(mockUpdateElements).toHaveBeenCalled();
+      const updates = mockUpdateElements.mock.calls[0][0];
+      expect(updates.get(ellipse.id)?.rotation).toBeDefined();
+    });
+
+    it("should accumulate rotation when rotating already-rotated element", () => {
+      // Start with a 90-degree rotated element
+      const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 2 });
+      const getElementById = createGetElementById([rect]);
+      const { result } = renderHook(() => useRotateInteraction(screenToWorld, getElementById));
+
+      const setIsRotating = vi.fn();
+      act(() => {
+        // Start rotation from east handle (right side of 90-deg rotated element)
+        result.current.startRotate(100, 50, "e", [rect], setIsRotating);
+      });
+
+      act(() => {
+        // Move to create additional rotation
+        result.current.updateRotate(50, 100);
+      });
+
+      expect(mockUpdateElements).toHaveBeenCalled();
+      const updates = mockUpdateElements.mock.calls[0][0];
+      const newRotation = updates.get(rect.id)?.rotation as number;
+      expect(newRotation).toBeDefined();
+      expect(typeof newRotation).toBe("number");
+    });
+
+    it("should not lose rotation when rotating by small amounts", () => {
+      const rect = createRect({ x: 0, y: 0, width: 100, height: 100, rotation: Math.PI / 3 });
+      const getElementById = createGetElementById([rect]);
+      const { result } = renderHook(() => useRotateInteraction(screenToWorld, getElementById));
+
+      const setIsRotating = vi.fn();
+      act(() => {
+        result.current.startRotate(100, 50, "se", [rect], setIsRotating);
+      });
+
+      // Simulate multiple small rotation updates (like during mouse move)
+      act(() => {
+        result.current.updateRotate(101, 51);
+      });
+
+      expect(mockUpdateElements).toHaveBeenCalled();
+
+      // Clear mocks and do another update
+      mockUpdateElements.mockClear();
+
+      act(() => {
+        result.current.updateRotate(102, 52);
+      });
+
+      expect(mockUpdateElements).toHaveBeenCalled();
     });
   });
 
