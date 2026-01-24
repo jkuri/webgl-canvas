@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type CanvasSnapshot, canvasHistory } from "../canvas-history";
 
-// Mock idb-keyval
 vi.mock("idb-keyval", () => ({
   get: vi.fn(),
   set: vi.fn(),
@@ -27,10 +26,7 @@ describe("lib/canvas-history", () => {
     canvasHistory.push(state1);
 
     expect(canvasHistory.getCurrent()?.canvasBackground).toBe("#fff");
-    expect(canvasHistory.canUndo()).toBe(false); // Can't undo the first state if it's the only one?
-    // Logic: push(snapshot) -> current = snapshot.
-    // If there was a previous current, it goes to undoStack.
-    // So 1st push: current set. Undo stack empty.
+    expect(canvasHistory.canUndo()).toBe(false);
 
     const state2: Omit<CanvasSnapshot, "timestamp"> = {
       elements: [],
@@ -63,10 +59,10 @@ describe("lib/canvas-history", () => {
     canvasHistory.push(state1);
     canvasHistory.push(state2);
 
-    canvasHistory.undo(); // back to 1
+    canvasHistory.undo();
     expect(canvasHistory.getCurrent()?.canvasBackground).toBe("1");
 
-    const redone = canvasHistory.redo(); // back to 2
+    const redone = canvasHistory.redo();
     expect(redone?.canvasBackground).toBe("2");
     expect(canvasHistory.getCurrent()?.canvasBackground).toBe("2");
   });
@@ -90,9 +86,9 @@ describe("lib/canvas-history", () => {
 
     canvasHistory.push(state1);
     canvasHistory.push(state2);
-    canvasHistory.undo(); // back to 1, redo has 2
+    canvasHistory.undo();
 
-    canvasHistory.push(state3); // current is 3. redo should be empty.
+    canvasHistory.push(state3);
     expect(canvasHistory.canRedo()).toBe(false);
   });
 });

@@ -72,7 +72,7 @@ describe("lib/group-utils", () => {
       };
       const g1: GroupElement = { id: "g1", type: "group", childIds: ["g2"], opacity: 1, rotation: 0, name: "G1" };
 
-      const bounds = getGroupBounds(g1, [c1, g2, g1]); // Pass all potential elements
+      const bounds = getGroupBounds(g1, [c1, g2, g1]);
       expect(bounds).toEqual({ x: 0, y: 0, width: 10, height: 10 });
     });
   });
@@ -106,18 +106,6 @@ describe("lib/group-utils", () => {
 
   describe("rotateGroupChildren", () => {
     it("should rotate children around group center", () => {
-      // Group center at 50, 50.
-      // Child at 40, 50 (left of center).
-      // Rotate 90 degrees clockwise around 50,50.
-      // Child should move to 50, 40? No.
-      // 40,50 relative to 50,50 is -10, 0.
-      // Rotated 90 deg: -10*cos(90) - 0*sin(90) -> 0.
-      //                 -10*sin(90) + 0*cos(90) -> -10.
-      // Result relative: 0, -10.
-      // Abs: 50, 40. Correct.
-
-      // Note: rotateGroupChildren takes deltaRotation.
-
       const c1: CanvasElement = {
         id: "c1",
         type: "rect",
@@ -143,7 +131,6 @@ describe("lib/group-utils", () => {
     });
 
     it("should handle nested recursion", () => {
-      // Testing recursion
       const c1: CanvasElement = {
         id: "c1",
         type: "rect",
@@ -172,7 +159,6 @@ describe("lib/group-utils", () => {
       const updates = rotateGroupChildren(g1, Math.PI / 2, 50, 50, [c1, g2, g1]);
 
       expect(updates.has("c1")).toBe(true);
-      // Should update c1 even though it's inside nested group
     });
   });
 });

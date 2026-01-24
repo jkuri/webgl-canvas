@@ -14,7 +14,6 @@ describe("lib/colors", () => {
     });
 
     it("should parse 8-digit hex (with alpha)", () => {
-      // #ff000080 -> Red with ~50% opacity (128/255)
       const rgba = cssToRGBA("#ff000080");
       expect(rgba[0]).toBe(1);
       expect(rgba[1]).toBe(0);
